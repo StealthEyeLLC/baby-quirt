@@ -13,8 +13,8 @@ Temporary development/bootstrap credentials for CI and gateway authority.
 
 | Asset | SHA-256 fingerprint |
 |---|---|
-| Gateway authority public key | `cd495d69248349eed51906db3cd9aa1d20b7065adc006d5dcad988c09a0a9984` |
-| CI deploy SSH public key | `SHA256:3vOomr9RWI6kWD6CTc3rehHkAGIZjzoNCJWzuMDhMNI` |
+| Gateway authority public key | `0288179e795a801111cebfbba1b43fd3792f08b38c861974eff4a915d61b1ed7` |
+| CI deploy SSH public key | `SHA256:G/canENPq2U6Ak5tb4PsCQPjtfLC1RSifjYwKycCTRA` |
 | VPS SSH host key (ed25519) | `SHA256:hTe07vTyIU1bZ6C56+58+T2PgctkQ+RYkepn/5j+aaE` |
 
 ## Owner Principal Fingerprint
