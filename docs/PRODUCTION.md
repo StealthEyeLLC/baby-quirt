@@ -85,7 +85,7 @@ These items are source defects or assurance gaps, not current production outages
 1. **Release layout:** package and test `peer_cred.node` at the exact path loaded by the compiled release.
 2. **Install permissions:** enforce `root:horsey` traversal and `0640` public-key modes during install and repair.
 3. **Packaged live test:** load the native addon and complete a signed QRT1 health call from the extracted release before activation.
-4. **Contract algorithms:** `contracts/baby-quirt-contracts-v1.json` advertises `hmac-sha256`, while the live authenticator accepts Ed25519 only; make the contract and runtime agree.
+4. **Contract guard:** the canonical contract and protocol schema are now Ed25519-only; expand contract validation so a future change cannot advertise an algorithm rejected by the live authenticator.
 5. **State durability:** job, PTY, artifact, replay, and idempotency records use direct JSON-file writes rather than atomic transactional updates; document and harden crash semantics.
 6. **Replay persistence window:** a nonce is persisted after successful dispatch, leaving a crash window between acceptance and durable replay recording.
 7. **Artifact bounds:** configured archive-size limits are not enforced by `ArtifactManager`; large `baby.artifact.create` calls can read an entire file into memory.
