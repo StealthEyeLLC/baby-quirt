@@ -30,7 +30,7 @@
       "type": "object",
       "required": ["algorithm", "gatewayId", "nonce", "signature"],
       "properties": {
-        "algorithm": { "type": "string", "enum": ["ed25519", "hmac-sha256"] },
+        "algorithm": { "type": "string", "const": "ed25519" },
         "gatewayId": { "type": "string" },
         "nonce": { "type": "string", "minLength": 16 },
         "signature": { "type": "string" },
