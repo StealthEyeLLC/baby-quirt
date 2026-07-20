@@ -28,9 +28,13 @@ npm run build
 npm run build:native
 
 rm -rf "$RELEASE_DIR" "$ARCHIVE" "$DIGEST_FILE" "$MANIFEST_FILE"
-mkdir -p "$RELEASE_DIR/bin" "$RELEASE_DIR/lib/native/build/Release" "$RELEASE_DIR/ops"
+mkdir -p "$RELEASE_DIR/bin" "$RELEASE_DIR/lib/dist" "$RELEASE_DIR/lib/native/build/Release" "$RELEASE_DIR/ops"
 
-cp -r dist "$RELEASE_DIR/lib/"
+# TypeScript is compiled with rootDir='.', so runtime source lands under dist/src.
+# Flatten only that runtime subtree into lib/dist so all installed entrypoints are
+# stable at lib/dist/{index,cli,...}.js. Compiled build-only scripts are excluded.
+test -d dist/src
+cp -r dist/src/. "$RELEASE_DIR/lib/dist/"
 cp package.json package-lock.json binding.gyp "$RELEASE_DIR/lib/"
 mkdir -p "$RELEASE_DIR/lib/native/src"
 cp native/src/peer_cred.cc "$RELEASE_DIR/lib/native/src/"
@@ -85,6 +89,30 @@ tar --sort=name \
   --mtime="@${SOURCE_DATE_EPOCH}" \
   --owner=0 --group=0 --numeric-owner \
   -cf - -C "$BUILD_ROOT" "${RELEASE_NAME}" | gzip -n > "$ARCHIVE"
+
+# Fail the build before publication if the archive does not contain the exact
+# runtime paths consumed by first-install, systemd, verification, and rollback.
+ARCHIVE_LIST="${BUILD_ROOT}/archive.list"
+tar -tzf "$ARCHIVE" > "$ARCHIVE_LIST"
+for required in \
+  "bin/baby-quirt-daemon" \
+  "lib/dist/index.js" \
+  "lib/dist/cli/install.js" \
+  "lib/dist/cli/verify.js" \
+  "lib/dist/cli/rollback.js" \
+  "ops/systemd/baby-quirt.socket" \
+  "ops/systemd/baby-quirt.service" \
+  "ops/tmpfiles/baby-quirt.conf" \
+  "manifest.json"; do
+  if ! grep -Fxq "${RELEASE_NAME}/${required}" "$ARCHIVE_LIST"; then
+    echo "ERROR: release archive is missing required runtime path: $required" >&2
+    exit 1
+  fi
+done
+if grep -Fq "${RELEASE_NAME}/lib/dist/src/" "$ARCHIVE_LIST"; then
+  echo "ERROR: release archive contains an unexpected nested dist/src runtime" >&2
+  exit 1
+fi
 
 DIGEST=$(sha256sum "$ARCHIVE" | awk '{print $1}')
 printf '%s  %s\n' "$DIGEST" "$(basename "$ARCHIVE")" > "$DIGEST_FILE"
