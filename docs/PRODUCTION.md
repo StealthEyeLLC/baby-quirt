@@ -8,7 +8,7 @@ Update this document whenever the active Baby Quirt release, gateway release, ho
 ## Deployed topology
 
 ```text
-ChatGPT custom app
+Authorized OAuth MCP client
   -> OAuth issuer and JWKS at https://mcp.stealtheye.io
   -> https://baby-quirt.stealtheye.io/mcp
   -> baby-quirt-mcp.service as fix-mcp (UID 997)
@@ -17,7 +17,7 @@ ChatGPT custom app
   -> durable result plus supervisor-signed receipt
 ```
 
-Baby Quirt itself has no public listener. Caddy terminates public TLS only for the separately deployed MCP gateway.
+A ChatGPT custom app can be that client after separate workspace registration and authenticated acceptance. Baby Quirt itself has no public listener. Caddy terminates public TLS only for the separately deployed MCP gateway.
 
 ## Runtime inventory
 
@@ -50,6 +50,8 @@ The final production verification established all of the following:
 7. Public `/healthz` and `/.well-known/oauth-protected-resource` responses are correct.
 8. The OAuth JWKS is reachable from `https://mcp.stealtheye.io/oauth/jwks.json`.
 9. An unauthenticated MCP initialize request returns HTTP `401` with the expected protected-resource challenge and `fix.apply` scope.
+
+The last check proves the public OAuth challenge, not issuance or use of an owner token through a registered ChatGPT custom app.
 
 ## Host remediations applied during first production activation
 
