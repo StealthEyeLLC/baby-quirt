@@ -20,7 +20,7 @@
     "install": "node-gyp rebuild",
     "test": "node --import tsx --test test/**/*.test.ts",
     "test:integration": "node --import tsx --test integration/**/*.test.ts",
-    "test:acceptance": "node --import tsx --test acceptance/**/*.test.ts",
+    "test:acceptance": "node --import tsx --test --test-concurrency=1 acceptance/**/*.test.ts",
     "test:all": "npm run test && npm run test:integration && npm run test:acceptance",
     "test:contracts": "node --import tsx scripts/validate-contracts.ts",
     "lint": "tsc -p tsconfig.json --noEmit",

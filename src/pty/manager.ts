@@ -277,6 +277,10 @@ export class PtyManager {
         try {
           execFileSync(
             'tmux',
+            tmuxArgs(session.tmuxServer, 'pipe-pane', '-t', session.tmuxSession),
+          );
+          execFileSync(
+            'tmux',
             tmuxArgs(
               session.tmuxServer,
               'pipe-pane',

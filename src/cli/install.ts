@@ -42,11 +42,11 @@ async function main(): Promise<void> {
   const { releaseDir, version, archivePath } = parseArgs();
   assertSafeVersion(version);
 
-  const configRoot = DEFAULTS.configRoot;
-  const stateRoot = DEFAULTS.stateRoot;
-  const releaseRoot = DEFAULTS.releaseRoot;
-  const currentLink = DEFAULTS.currentLink;
-  const previousLink = DEFAULTS.previousLink;
+  const configRoot = process.env.BABY_QUIRT_CONFIG_ROOT ?? DEFAULTS.configRoot;
+  const stateRoot = process.env.BABY_QUIRT_STATE_ROOT ?? DEFAULTS.stateRoot;
+  const releaseRoot = process.env.BABY_QUIRT_RELEASE_ROOT ?? DEFAULTS.releaseRoot;
+  const currentLink = process.env.BABY_QUIRT_CURRENT_LINK ?? DEFAULTS.currentLink;
+  const previousLink = process.env.BABY_QUIRT_PREVIOUS_LINK ?? DEFAULTS.previousLink;
 
   for (const dir of [
     configRoot,
@@ -105,12 +105,10 @@ async function main(): Promise<void> {
   if (archivePath) {
     const prefix = `baby-quirt-${version}`;
     await safeExtractTarGz(archivePath, targetRelease, prefix);
-    const extracted = join(targetRelease, prefix);
-    if (!existsSync(extracted)) {
+    if (!existsSync(join(targetRelease, 'bin', 'baby-quirt-daemon'))) {
       console.error('Extracted release directory missing');
       process.exit(1);
     }
-    cpSync(extracted, targetRelease, { recursive: true, force: true });
   } else {
     cpSync(releaseDir, targetRelease, { recursive: true });
   }

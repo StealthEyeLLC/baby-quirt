@@ -75,6 +75,25 @@ export async function stopTestServer(ctx: TestServerContext): Promise<void> {
   rmSync(ctx.dir, { recursive: true, force: true });
 }
 
+/** Restart server reusing persisted state (socket, config, state roots). */
+export async function restartTestServer(ctx: TestServerContext): Promise<void> {
+  await ctx.server.stop();
+
+  const config = loadRuntimeConfig({
+    socketPath: ctx.socketPath,
+    stateRoot: ctx.stateRoot,
+    configRoot: ctx.configRoot,
+    expectedMachineIdSha256: 'test',
+    expectedHostname: hostname(),
+    ownerPrincipalFingerprint: ctx.ownerPrincipalFingerprint,
+    skipPeerCredCheck: true,
+  });
+
+  const server = new BabyQuirtServer(config);
+  await server.start();
+  ctx.server = server;
+}
+
 export function installGatewayPublicKey(ctx: TestServerContext, pemPath: string): void {
   copyFileSync(pemPath, join(ctx.configRoot, 'gateway-authority-public.pem'));
 }

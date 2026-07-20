@@ -5,7 +5,9 @@ import { DEFAULTS } from '../config.js';
 import { rollbackSymlinks } from '../install/symlinks.js';
 
 function main(): void {
-  const result = rollbackSymlinks(DEFAULTS.currentLink, DEFAULTS.previousLink);
+  const currentLink = process.env.BABY_QUIRT_CURRENT_LINK ?? DEFAULTS.currentLink;
+  const previousLink = process.env.BABY_QUIRT_PREVIOUS_LINK ?? DEFAULTS.previousLink;
+  const result = rollbackSymlinks(currentLink, previousLink);
 
   console.log(JSON.stringify({
     action: 'rollback',

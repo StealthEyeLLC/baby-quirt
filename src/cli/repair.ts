@@ -7,17 +7,22 @@ import { DEFAULTS } from '../config.js';
 
 function main(): void {
   const repairs: string[] = [];
+  const configRoot = process.env.BABY_QUIRT_CONFIG_ROOT ?? DEFAULTS.configRoot;
+  const stateRoot = process.env.BABY_QUIRT_STATE_ROOT ?? DEFAULTS.stateRoot;
+  const releaseRoot = process.env.BABY_QUIRT_RELEASE_ROOT ?? DEFAULTS.releaseRoot;
+  const currentLink = process.env.BABY_QUIRT_CURRENT_LINK ?? DEFAULTS.currentLink;
+  const socketPath = process.env.BABY_QUIRT_SOCKET_PATH ?? DEFAULTS.socketPath;
 
   // Ensure directories
   for (const dir of [
-    DEFAULTS.configRoot,
-    DEFAULTS.stateRoot,
-    DEFAULTS.releaseRoot,
-    join(DEFAULTS.stateRoot, 'jobs'),
-    join(DEFAULTS.stateRoot, 'streams'),
-    join(DEFAULTS.stateRoot, 'pty'),
-    join(DEFAULTS.stateRoot, 'artifacts'),
-    dirname(DEFAULTS.socketPath),
+    configRoot,
+    stateRoot,
+    releaseRoot,
+    join(stateRoot, 'jobs'),
+    join(stateRoot, 'streams'),
+    join(stateRoot, 'pty'),
+    join(stateRoot, 'artifacts'),
+    dirname(socketPath),
   ]) {
     if (!existsSync(dir)) {
       mkdirSync(dir, { recursive: true, mode: 0o750 });
@@ -25,9 +30,9 @@ function main(): void {
     }
   }
 
-  const pubKey = join(DEFAULTS.configRoot, 'gateway-authority-public.pem');
-  const receiptPub = join(DEFAULTS.configRoot, 'supervisor-receipt-public.pem');
-  const receiptPriv = join(DEFAULTS.configRoot, 'supervisor-receipt-private.pem');
+  const pubKey = join(configRoot, 'gateway-authority-public.pem');
+  const receiptPub = join(configRoot, 'supervisor-receipt-public.pem');
+  const receiptPriv = join(configRoot, 'supervisor-receipt-private.pem');
   if (existsSync(pubKey)) {
     chmodSync(pubKey, 0o644);
     repairs.push('Fixed gateway authority public key permissions');
@@ -42,12 +47,12 @@ function main(): void {
   }
 
   // Verify current release link
-  if (!existsSync(DEFAULTS.currentLink)) {
+  if (!existsSync(currentLink)) {
     repairs.push('WARNING: current release link missing — manual intervention required');
   }
 
   // Check runtime config
-  const configPath = join(DEFAULTS.configRoot, 'runtime.json');
+  const configPath = join(configRoot, 'runtime.json');
   if (existsSync(configPath)) {
     try {
       JSON.parse(readFileSync(configPath, 'utf8'));

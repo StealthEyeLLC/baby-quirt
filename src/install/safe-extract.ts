@@ -75,7 +75,7 @@ export async function safeExtractTarGz(
     while (offset < stat.size) {
       const n = readSync(fd, buf, 0, buf.length, offset);
       if (n <= 0) break;
-      chunks.push(buf.subarray(0, n));
+      chunks.push(Buffer.from(buf.subarray(0, n)));
       offset += n;
     }
     const compressed = Buffer.concat(chunks);

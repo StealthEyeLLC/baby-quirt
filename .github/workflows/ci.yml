@@ -22,9 +22,9 @@ jobs:
         run: |
           sudo DEBIAN_FRONTEND=noninteractive apt-get update
           sudo DEBIAN_FRONTEND=noninteractive apt-get install -y \
-            build-essential python3 python3-dev make g++ gcc pkg-config \
-            git jq curl ca-certificates openssh-client tmux tar gzip xz-utils \
-            rsync util-linux systemd systemd-dev
+            build-essential gcc g++ make python3 python3-dev pkg-config \
+            git jq curl ca-certificates openssh-client openssl tmux tar gzip xz-utils \
+            rsync util-linux systemd systemd-dev libsystemd-dev
 
       - name: Setup Node.js 24.18
         uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
@@ -36,6 +36,9 @@ jobs:
         run: |
           npm ci
           npm run build:native
+
+      - name: Verify runtime dependencies
+        run: bash scripts/verify-runtime-deps.sh
 
       - name: Typecheck
         run: npm run lint
@@ -65,8 +68,9 @@ jobs:
         run: |
           sudo DEBIAN_FRONTEND=noninteractive apt-get update
           sudo DEBIAN_FRONTEND=noninteractive apt-get install -y \
-            build-essential python3 python3-dev make g++ gcc pkg-config \
-            git jq curl ca-certificates tmux tar gzip xz-utils rsync util-linux
+            build-essential gcc g++ make python3 python3-dev pkg-config \
+            git jq curl ca-certificates openssh-client openssl tmux tar gzip xz-utils \
+            rsync util-linux systemd systemd-dev libsystemd-dev
 
       - name: Setup Node.js 24.18
         uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
@@ -77,10 +81,13 @@ jobs:
       - name: Record source commit
         run: echo "BABY_QUIRT_SOURCE_COMMIT=${{ github.event.pull_request.head.sha || github.sha }}" >> "$GITHUB_ENV"
 
+      - name: Verify runtime dependencies
+        run: bash scripts/verify-runtime-deps.sh
+
       - name: Build release bundle
         run: |
           chmod +x scripts/*.sh
-          bash scripts/release.sh 0.1.0
+          bash scripts/build-release.sh 0.1.0
 
       - name: Reproducibility build A
         run: |

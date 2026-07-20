@@ -2,22 +2,31 @@
 # Configure GitHub repository secrets and variables for Baby Quirt bootstrap lane.
 set -euo pipefail
 
-: "${GH_TOKEN:?GH_TOKEN is required}"
+if [ -z "${quirt_sec_gh_token:-}" ]; then
+  echo "ERROR: quirt_sec_gh_token is required for secret administration" >&2
+  exit 1
+fi
+
+export GH_TOKEN="$quirt_sec_gh_token"
 
 REPO="${BABY_QUIRT_REPOSITORY:-StealthEyeLLC/baby-quirt}"
 BOOTSTRAP="${HOME}/.baby-quirt-bootstrap"
 
-set_secret() {
-  if gh secret set "$1" --repo "$REPO" < "$2"; then
-    echo "configured secret $1"
-  else
-    echo "warning: could not configure secret $1 (token may lack actions secret scope)" >&2
+require_file() {
+  if [ ! -f "$1" ]; then
+    echo "ERROR: required bootstrap file missing: $1" >&2
+    exit 1
   fi
 }
 
-set_secret BABY_QUIRT_VPS_SSH_PRIVATE_KEY "$BOOTSTRAP/ci-deploy"
-set_secret BABY_QUIRT_VPS_SSH_KNOWN_HOSTS "$BOOTSTRAP/known_hosts"
-set_secret BABY_QUIRT_GATEWAY_SIGNING_PRIVATE_KEY "$BOOTSTRAP/gateway-authority-private.pem"
+require_file "$BOOTSTRAP/ci-deploy"
+require_file "$BOOTSTRAP/known_hosts"
+require_file "$BOOTSTRAP/gateway-authority-private.pem"
+require_file "$BOOTSTRAP/gateway-authority-public.pem"
+
+gh secret set BABY_QUIRT_VPS_SSH_PRIVATE_KEY --repo "$REPO" < "$BOOTSTRAP/ci-deploy"
+gh secret set BABY_QUIRT_VPS_SSH_KNOWN_HOSTS --repo "$REPO" < "$BOOTSTRAP/known_hosts"
+gh secret set BABY_QUIRT_GATEWAY_SIGNING_PRIVATE_KEY --repo "$REPO" < "$BOOTSTRAP/gateway-authority-private.pem"
 
 gh variable set BABY_QUIRT_VPS_HOST --repo "$REPO" --body "51.81.86.225"
 gh variable set BABY_QUIRT_VPS_PORT --repo "$REPO" --body "22"
@@ -37,4 +46,19 @@ gh variable set BABY_QUIRT_OAUTH_JWKS_URI --repo "$REPO" --body "https://mcp.ste
 GATEWAY_FP=$(sha256sum "$BOOTSTRAP/gateway-authority-public.pem" | awk '{print $1}')
 gh variable set BABY_QUIRT_OWNER_PRINCIPAL_FINGERPRINT --repo "$REPO" --body "$GATEWAY_FP"
 
-echo "Configured variables for $REPO"
+SECRET_COUNT=$(gh secret list --repo "$REPO" --json name -q 'length')
+if [ "$SECRET_COUNT" -lt 4 ]; then
+  echo "ERROR: expected at least 4 repository secrets, found $SECRET_COUNT" >&2
+  gh secret list --repo "$REPO"
+  exit 1
+fi
+
+gh secret list --repo "$REPO" | awk '{print $1}' | grep -qx 'quirt_all_gh_token' || {
+  echo "ERROR: quirt_all_gh_token secret is missing" >&2
+  exit 1
+}
+gh secret list --repo "$REPO" | awk '{print $1}' | grep -qx 'BABY_QUIRT_VPS_SSH_PRIVATE_KEY' || exit 1
+gh secret list --repo "$REPO" | awk '{print $1}' | grep -qx 'BABY_QUIRT_GATEWAY_SIGNING_PRIVATE_KEY' || exit 1
+gh secret list --repo "$REPO" | awk '{print $1}' | grep -qx 'BABY_QUIRT_VPS_SSH_KNOWN_HOSTS' || exit 1
+
+echo "Configured secrets and variables for $REPO"
