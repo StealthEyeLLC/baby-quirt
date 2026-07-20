@@ -18,6 +18,23 @@ describe('production deployment lane', () => {
     assert.match(install, /gateway-authority-public\.pem/);
   });
 
+  it('packages runtime files at the exact paths consumed by first install', () => {
+    const bundle = readFileSync('scripts/build-bundle.sh', 'utf8');
+    assert.match(bundle, /test -d dist\/src/);
+    assert.match(bundle, /cp -r dist\/src\/\. "\$RELEASE_DIR\/lib\/dist\/"/);
+    assert.doesNotMatch(bundle, /cp -r dist "\$RELEASE_DIR\/lib\/"/);
+    for (const required of [
+      'lib/dist/index.js',
+      'lib/dist/cli/install.js',
+      'lib/dist/cli/verify.js',
+      'lib/dist/cli/rollback.js',
+      'bin/baby-quirt-daemon',
+    ]) {
+      assert.match(bundle, new RegExp(required.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')));
+    }
+    assert.match(bundle, /unexpected nested dist\/src runtime/);
+  });
+
   it('pins deploy checkout and all upload-artifact actions', () => {
     const workflow = readFileSync('.github/workflows/deploy.yml', 'utf8');
     const uploadPin = 'actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02';
