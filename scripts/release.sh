@@ -12,7 +12,8 @@ echo "==> Building Baby Quirt ${VERSION} from commit ${BABY_QUIRT_SOURCE_COMMIT}
 npm ci
 npm run build:native
 npm run build
-npm run test:all
+npm run test
+npm run test:integration
 npm run test:contracts
 
 chmod +x scripts/build-bundle.sh

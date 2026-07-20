@@ -100,7 +100,7 @@ jobs:
       - name: Verify artifact contents
         run: |
           ls -la release/
-          test "$(find release -maxdepth 1 -type f -name 'baby-quirt-0.1.0.*' | wc -l)" -eq 3
+          test "$(find release -maxdepth 1 -type f -name 'baby-quirt-0.1.0*' | wc -l)" -eq 3
           test -f release/baby-quirt-0.1.0.tar.gz
           test -f release/baby-quirt-0.1.0.sha256
           test -f release/baby-quirt-0.1.0.manifest.json
