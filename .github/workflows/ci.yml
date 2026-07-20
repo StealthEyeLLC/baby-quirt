@@ -14,7 +14,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@11bd71901bbe5b1633cf0311809b8e7e5df8c2e3 # v4.2.2
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.0
 
       - name: Setup Node.js 24.18
         uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
@@ -23,7 +23,9 @@ jobs:
           cache: npm
 
       - name: Install dependencies
-        run: npm ci
+        run: |
+          npm ci
+          npm rebuild node-pty
 
       - name: Typecheck
         run: npm run lint
@@ -42,7 +44,7 @@ jobs:
     needs: test
     steps:
       - name: Checkout
-        uses: actions/checkout@11bd71901bbe5b1633cf0311809b8e7e5df8c2e3 # v4.2.2
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.0
 
       - name: Setup Node.js 24.18
         uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0

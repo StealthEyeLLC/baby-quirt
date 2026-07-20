@@ -19,7 +19,7 @@ jobs:
       version: ${{ steps.release.outputs.version }}
     steps:
       - name: Checkout
-        uses: actions/checkout@11bd71901bbe5b1633cf0311809b8e7e5df8c2e3 # v4.2.2
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.0
 
       - name: Setup Node.js 24.18
         uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
@@ -29,6 +29,8 @@ jobs:
 
       - name: Build and test
         run: |
+          npm ci
+          npm rebuild node-pty
           chmod +x scripts/*.sh
           bash scripts/release.sh "${{ inputs.version }}"
 
@@ -54,10 +56,10 @@ jobs:
     environment: production
     steps:
       - name: Checkout
-        uses: actions/checkout@11bd71901bbe5b1633cf0311809b8e7e5df8c2e3 # v4.2.2
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.0
 
       - name: Download release bundle
-        uses: actions/download-artifact@d3f86a106a044f6a2d8e90591b9b9799095a18fd # v4.3.0
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
         with:
           name: deploy-bundle
           path: staging
