@@ -15,7 +15,7 @@ Baby Quirt is not a public control plane, OAuth server, public MCP server, gener
 ## Production topology
 
 ```text
-ChatGPT custom app
+Authorized OAuth MCP client
         |
         | OAuth-authenticated MCP
         v
@@ -33,7 +33,7 @@ baby-quirt.service as root
         +-- result bound to supervisor-signed receipt
 ```
 
-The separate `StealthEyeLLC/baby-quirt-mcp` repository owns the remote OAuth/MCP boundary. Baby Quirt itself binds no TCP port and is not routed by Caddy.
+A ChatGPT custom app can be that client after separate workspace registration and authenticated acceptance. The separate `StealthEyeLLC/baby-quirt-mcp` repository owns the remote OAuth/MCP boundary. Baby Quirt itself binds no TCP port and is not routed by Caddy.
 
 ## Identity and transport
 
