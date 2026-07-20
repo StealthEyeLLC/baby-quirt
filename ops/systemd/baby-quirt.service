@@ -1,0 +1,28 @@
+[Unit]
+Description=Baby Quirt private host-control runtime
+Documentation=https://github.com/StealthEyeLLC/baby-quirt
+After=network.target
+Requires=baby-quirt.socket
+
+[Service]
+Type=simple
+User=root
+Group=root
+ExecStart=/opt/baby-quirt/current/bin/baby-quirt-daemon
+Environment=NODE_ENV=production
+EnvironmentFile=-/etc/baby-quirt/environment
+Restart=on-failure
+RestartSec=5
+TimeoutStopSec=30
+KillMode=mixed
+KillSignal=SIGTERM
+
+# Security hardening (runtime operates as root by design)
+NoNewPrivileges=false
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/var/lib/baby-quirt /run/horsey /opt/baby-quirt /etc/baby-quirt /tmp
+PrivateTmp=false
+
+[Install]
+WantedBy=multi-user.target

@@ -1,0 +1,147 @@
+name: Deploy
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Release version to deploy'
+        required: true
+        type: string
+      expected_commit:
+        description: 'Exact 40-character source commit SHA'
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    outputs:
+      digest: ${{ steps.release.outputs.digest }}
+      version: ${{ steps.release.outputs.version }}
+      commit: ${{ steps.release.outputs.commit }}
+    steps:
+      - name: Checkout exact source SHA
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.0
+        with:
+          ref: ${{ inputs.expected_commit }}
+
+      - name: Setup Node.js 24.18
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: '24.18.0'
+          cache: npm
+
+      - name: Build and test
+        env:
+          BABY_QUIRT_SOURCE_COMMIT: ${{ inputs.expected_commit }}
+        run: |
+          npm ci
+          npm run build:native
+          chmod +x scripts/*.sh
+          bash scripts/release.sh "${{ inputs.version }}"
+
+      - name: Capture digest
+        id: release
+        run: |
+          DIGEST=$(awk '{print $1}' "release/baby-quirt-${{ inputs.version }}.sha256")
+          COMMIT=$(python3 -c "import json; print(json.load(open('release/baby-quirt-${{ inputs.version }}.manifest.json'))['commit'])")
+          echo "digest=$DIGEST" >> "$GITHUB_OUTPUT"
+          echo "version=${{ inputs.version }}" >> "$GITHUB_OUTPUT"
+          echo "commit=$COMMIT" >> "$GITHUB_OUTPUT"
+
+      - name: Upload release bundle
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: deploy-bundle
+          path: release/baby-quirt-${{ inputs.version }}.tar.gz
+          retention-days: 7
+
+      - name: Upload release digest
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f7d6820020 # v4.6.2
+        with:
+          name: deploy-bundle-digest
+          path: release/baby-quirt-${{ inputs.version }}.sha256
+          retention-days: 7
+
+      - name: Upload release manifest
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: deploy-bundle-manifest
+          path: release/baby-quirt-${{ inputs.version }}.manifest.json
+          retention-days: 7
+
+  deploy:
+    runs-on: ubuntu-latest
+    needs: build
+    environment: production
+    steps:
+      - name: Checkout
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.0
+
+      - name: Download release bundle
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
+        with:
+          pattern: deploy-bundle*
+          merge-multiple: true
+          path: staging
+
+      - name: Setup SSH
+        env:
+          SSH_PRIVATE_KEY: ${{ secrets.BABY_QUIRT_VPS_SSH_PRIVATE_KEY }}
+          SSH_KNOWN_HOSTS: ${{ secrets.BABY_QUIRT_VPS_SSH_KNOWN_HOSTS }}
+        run: |
+          if [ -z "$SSH_PRIVATE_KEY" ]; then
+            echo "ERROR: BABY_QUIRT_VPS_SSH_PRIVATE_KEY secret is not configured"
+            exit 1
+          fi
+          if [ -z "$SSH_KNOWN_HOSTS" ]; then
+            echo "ERROR: BABY_QUIRT_VPS_SSH_KNOWN_HOSTS secret is not configured"
+            exit 1
+          fi
+          mkdir -p ~/.ssh
+          echo "$SSH_PRIVATE_KEY" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+          echo "$SSH_KNOWN_HOSTS" > ~/.ssh/known_hosts
+
+      - name: Upload to VPS staging
+        run: |
+          STAGING="/tmp/baby-quirt-deploy-${{ needs.build.outputs.version }}"
+          ssh -i ~/.ssh/deploy_key -p ${{ vars.BABY_QUIRT_VPS_PORT || 22 }} -o StrictHostKeyChecking=yes \
+            "${{ vars.BABY_QUIRT_VPS_USER || 'ubuntu' }}@${{ vars.BABY_QUIRT_VPS_HOST }}" "mkdir -p $STAGING"
+          scp -i ~/.ssh/deploy_key -P ${{ vars.BABY_QUIRT_VPS_PORT || 22 }} -o StrictHostKeyChecking=yes \
+            staging/* "${{ vars.BABY_QUIRT_VPS_USER || 'ubuntu' }}@${{ vars.BABY_QUIRT_VPS_HOST }}:$STAGING/"
+
+      - name: Install on VPS
+        env:
+          BABY_QUIRT_VERSION: ${{ needs.build.outputs.version }}
+          BABY_QUIRT_EXPECTED_COMMIT: ${{ needs.build.outputs.commit }}
+          BABY_QUIRT_EXPECTED_HOSTNAME: ${{ vars.BABY_QUIRT_EXPECTED_HOSTNAME }}
+          BABY_QUIRT_EXPECTED_MACHINE_ID_SHA256: ${{ vars.BABY_QUIRT_EXPECTED_MACHINE_ID_SHA256 }}
+        run: |
+          STAGING="/tmp/baby-quirt-deploy-${{ needs.build.outputs.version }}"
+          ssh -i ~/.ssh/deploy_key -p ${{ vars.BABY_QUIRT_VPS_PORT || 22 }} -o StrictHostKeyChecking=yes \
+            "${{ vars.BABY_QUIRT_VPS_USER || 'ubuntu' }}@${{ vars.BABY_QUIRT_VPS_HOST }}" \
+            "BABY_QUIRT_VERSION='$BABY_QUIRT_VERSION' \
+             BABY_QUIRT_STAGING_PATH='$STAGING' \
+             BABY_QUIRT_EXPECTED_COMMIT='$BABY_QUIRT_EXPECTED_COMMIT' \
+             BABY_QUIRT_EXPECTED_HOSTNAME='$BABY_QUIRT_EXPECTED_HOSTNAME' \
+             BABY_QUIRT_EXPECTED_MACHINE_ID_SHA256='$BABY_QUIRT_EXPECTED_MACHINE_ID_SHA256' \
+             bash -s" < scripts/remote-install.sh
+
+      - name: Rollback on failure
+        if: failure()
+        run: |
+          ssh -i ~/.ssh/deploy_key -p ${{ vars.BABY_QUIRT_VPS_PORT || 22 }} -o StrictHostKeyChecking=yes \
+            "${{ vars.BABY_QUIRT_VPS_USER || 'ubuntu' }}@${{ vars.BABY_QUIRT_VPS_HOST }}" "bash -s" < scripts/remote-rollback.sh || true
+
+      - name: Deployment evidence
+        run: |
+          cat >> "$GITHUB_STEP_SUMMARY" << EOF
+          ## Deployment Evidence
+          - **Version:** ${{ needs.build.outputs.version }}
+          - **Digest:** ${{ needs.build.outputs.digest }}
+          - **Commit:** ${{ needs.build.outputs.commit }}
+          EOF
