@@ -42,7 +42,7 @@
     "issuerMatching": "exact_required",
     "subjectMatching": "exact_required",
     "gatewayId": "stealtheye-horsey-gateway",
-    "algorithms": ["ed25519", "hmac-sha256"],
+    "algorithms": ["ed25519"],
     "securityMechanisms": [
       "exact_issuer",
       "exact_subject",
