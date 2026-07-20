@@ -1,229 +1,110 @@
-name: Deploy
+name: Deploy Baby Quirt MCP Temporary
 
 on:
   workflow_dispatch:
-    inputs:
-      version:
-        description: 'Release version to deploy'
-        required: true
-        type: string
-      expected_commit:
-        description: 'Exact 40-character source commit SHA from main'
-        required: true
-        type: string
 
 permissions:
   contents: read
 
 jobs:
-  build:
+  deploy:
     runs-on: ubuntu-latest
-    outputs:
-      digest: ${{ steps.release.outputs.digest }}
-      version: ${{ steps.release.outputs.version }}
-      commit: ${{ steps.release.outputs.commit }}
+    timeout-minutes: 25
     steps:
-      - name: Checkout exact source SHA
-        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.0
+      - name: Checkout exact standalone MCP source
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
         with:
-          ref: ${{ inputs.expected_commit }}
+          repository: StealthEyeLLC/baby-quirt-mcp
+          ref: 6cf1477cd1293e09c0d54830117a4dfd036601ff
+          token: ${{ secrets.quirt_all_gh_token }}
           fetch-depth: 0
 
-      - name: Validate deployment inputs and ancestry
-        env:
-          VERSION: ${{ inputs.version }}
-          EXPECTED_COMMIT: ${{ inputs.expected_commit }}
-        run: |
-          set -euo pipefail
-          [[ "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+(-[a-zA-Z0-9.]+)?$ ]]
-          [[ "$EXPECTED_COMMIT" =~ ^[a-f0-9]{40}$ ]]
-          test "$(git rev-parse HEAD)" = "$EXPECTED_COMMIT"
-          git fetch --no-tags origin main
-          git merge-base --is-ancestor "$EXPECTED_COMMIT" origin/main
-
-      - name: Install system dependencies
-        run: |
-          sudo DEBIAN_FRONTEND=noninteractive apt-get update
-          sudo DEBIAN_FRONTEND=noninteractive apt-get install -y \
-            build-essential gcc g++ make python3 python3-dev pkg-config \
-            git jq curl ca-certificates openssh-client openssl tmux tar gzip xz-utils \
-            rsync util-linux systemd systemd-dev libsystemd-dev
-
       - name: Setup Node.js 24.18
-        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
         with:
           node-version: '24.18.0'
           cache: npm
 
-      - name: Build and test
+      - name: Validate and build exact release
         env:
-          BABY_QUIRT_SOURCE_COMMIT: ${{ inputs.expected_commit }}
+          BABY_QUIRT_MCP_SOURCE_COMMIT: 6cf1477cd1293e09c0d54830117a4dfd036601ff
         run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "6cf1477cd1293e09c0d54830117a4dfd036601ff"
           npm ci
-          npm run build:native
-          chmod +x scripts/*.sh scripts/*.py
-          bash scripts/release.sh "${{ inputs.version }}"
+          npm run check
+          npm test
+          bash -n scripts/*.sh
+          bash scripts/release.sh 0.1.0-prod.1
 
-      - name: Capture and verify release identity
-        id: release
+      - name: Prepare protected staging material
         env:
-          VERSION: ${{ inputs.version }}
-          EXPECTED_COMMIT: ${{ inputs.expected_commit }}
-        run: |
-          set -euo pipefail
-          DIGEST=$(awk '{print $1}' "release/baby-quirt-${VERSION}.sha256")
-          COMMIT=$(python3 -c "import json; print(json.load(open('release/baby-quirt-${VERSION}.manifest.json'))['commit'])")
-          test "$COMMIT" = "$EXPECTED_COMMIT"
-          echo "digest=$DIGEST" >> "$GITHUB_OUTPUT"
-          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
-          echo "commit=$COMMIT" >> "$GITHUB_OUTPUT"
-
-      - name: Upload release bundle
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
-        with:
-          name: deploy-bundle
-          path: release/baby-quirt-${{ inputs.version }}.tar.gz
-          retention-days: 7
-
-      - name: Upload release digest
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
-        with:
-          name: deploy-bundle-digest
-          path: release/baby-quirt-${{ inputs.version }}.sha256
-          retention-days: 7
-
-      - name: Upload release manifest
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
-        with:
-          name: deploy-bundle-manifest
-          path: release/baby-quirt-${{ inputs.version }}.manifest.json
-          retention-days: 7
-
-  deploy:
-    runs-on: ubuntu-latest
-    needs: build
-    environment: production
-    steps:
-      - name: Checkout exact deployment source
-        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.0
-        with:
-          ref: ${{ needs.build.outputs.commit }}
-
-      - name: Verify deployment source checkout
-        env:
-          EXPECTED_COMMIT: ${{ needs.build.outputs.commit }}
-        run: test "$(git rev-parse HEAD)" = "$EXPECTED_COMMIT"
-
-      - name: Download release bundle
-        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
-        with:
-          pattern: deploy-bundle*
-          merge-multiple: true
-          path: staging
-
-      - name: Prepare first-install support files
-        run: |
-          cp scripts/bootstrap-safe-extract.py staging/bootstrap-safe-extract.py
-          cp ops/bootstrap/gateway-authority-public.pem staging/gateway-authority-public.pem
-          chmod 0755 staging/bootstrap-safe-extract.py
-          test -f staging/gateway-authority-public.pem
-          ! grep -q 'PRIVATE KEY' staging/gateway-authority-public.pem
-
-      - name: Validate deployment configuration
-        env:
-          VPS_HOST: ${{ vars.BABY_QUIRT_VPS_HOST }}
-          EXPECTED_HOSTNAME: ${{ vars.BABY_QUIRT_EXPECTED_HOSTNAME }}
-          EXPECTED_MACHINE_ID: ${{ vars.BABY_QUIRT_EXPECTED_MACHINE_ID_SHA256 }}
-          EXPECTED_GATEWAY_KEY_SHA256: ${{ vars.BABY_QUIRT_OWNER_PRINCIPAL_FINGERPRINT }}
-        run: |
-          set -euo pipefail
-          test -n "$VPS_HOST"
-          test -n "$EXPECTED_HOSTNAME"
-          [[ "$EXPECTED_MACHINE_ID" =~ ^[a-f0-9]{64}$ ]]
-          [[ "$EXPECTED_GATEWAY_KEY_SHA256" =~ ^[a-f0-9]{64}$ ]]
-
-      - name: Setup SSH
-        env:
+          GATEWAY_PRIVATE_KEY: ${{ secrets.BABY_QUIRT_GATEWAY_SIGNING_PRIVATE_KEY }}
           SSH_PRIVATE_KEY: ${{ secrets.BABY_QUIRT_VPS_SSH_PRIVATE_KEY }}
           SSH_KNOWN_HOSTS: ${{ secrets.BABY_QUIRT_VPS_SSH_KNOWN_HOSTS }}
         run: |
           set -euo pipefail
-          if [ -z "$SSH_PRIVATE_KEY" ]; then
-            echo "ERROR: BABY_QUIRT_VPS_SSH_PRIVATE_KEY secret is not configured"
-            exit 1
-          fi
-          if [ -z "$SSH_KNOWN_HOSTS" ]; then
-            echo "ERROR: BABY_QUIRT_VPS_SSH_KNOWN_HOSTS secret is not configured"
-            exit 1
-          fi
-          mkdir -p ~/.ssh
+          test -n "$GATEWAY_PRIVATE_KEY"
+          test -n "$SSH_PRIVATE_KEY"
+          test -n "$SSH_KNOWN_HOSTS"
+          umask 077
+          mkdir -p staging ~/.ssh
+          cp release/baby-quirt-mcp-0.1.0-prod.1.tar.gz staging/
+          cp release/baby-quirt-mcp-0.1.0-prod.1.sha256 staging/
+          cp release/baby-quirt-mcp-0.1.0-prod.1.manifest.json staging/
+          cp scripts/remote-install.sh staging/
+          printf '%s\n' "$GATEWAY_PRIVATE_KEY" > staging/gateway-authority-private.pem
           printf '%s\n' "$SSH_PRIVATE_KEY" > ~/.ssh/deploy_key
-          chmod 600 ~/.ssh/deploy_key
           printf '%s\n' "$SSH_KNOWN_HOSTS" > ~/.ssh/known_hosts
+          chmod 0600 staging/gateway-authority-private.pem ~/.ssh/deploy_key ~/.ssh/known_hosts
+          openssl pkey -in staging/gateway-authority-private.pem -pubout -outform DER > staging/actual.der
+          openssl pkey -pubin -in ops/bootstrap/gateway-authority-public.pem -outform DER > staging/expected.der
+          cmp -s staging/actual.der staging/expected.der
+          rm -f staging/actual.der staging/expected.der
 
-      - name: Read-only VPS preflight
+      - name: Verify target and upload
         env:
+          VPS_HOST: ${{ vars.BABY_QUIRT_VPS_HOST }}
+          VPS_PORT: ${{ vars.BABY_QUIRT_VPS_PORT }}
+          VPS_USER: ${{ vars.BABY_QUIRT_VPS_USER }}
           EXPECTED_HOSTNAME: ${{ vars.BABY_QUIRT_EXPECTED_HOSTNAME }}
           EXPECTED_MACHINE_ID: ${{ vars.BABY_QUIRT_EXPECTED_MACHINE_ID_SHA256 }}
         run: |
           set -euo pipefail
-          ssh -i ~/.ssh/deploy_key -p ${{ vars.BABY_QUIRT_VPS_PORT || 22 }} -o StrictHostKeyChecking=yes \
-            "${{ vars.BABY_QUIRT_VPS_USER || 'ubuntu' }}@${{ vars.BABY_QUIRT_VPS_HOST }}" \
-            "test \"\$(hostname)\" = '$EXPECTED_HOSTNAME' && \
-             test \"\$(tr -d '\\r\\n' </etc/machine-id | sha256sum | awk '{print \$1}')\" = '$EXPECTED_MACHINE_ID' && \
-             test -x /opt/node-v24.18.0-linux-x64/bin/node && \
-             sudo -n true && \
-             getent group horsey >/dev/null && \
-             id -u fix-mcp >/dev/null"
+          PORT="${VPS_PORT:-22}"
+          USER="${VPS_USER:-ubuntu}"
+          SSH=(ssh -i ~/.ssh/deploy_key -p "$PORT" -o StrictHostKeyChecking=yes)
+          SCP=(scp -i ~/.ssh/deploy_key -P "$PORT" -o StrictHostKeyChecking=yes)
+          "${SSH[@]}" "$USER@$VPS_HOST" "test \"\$(hostname)\" = '$EXPECTED_HOSTNAME' && test \"\$(tr -d '\\r\\n' </etc/machine-id | sha256sum | awk '{print \$1}')\" = '$EXPECTED_MACHINE_ID' && sudo -n true && test -x /opt/node-v24.18.0-linux-x64/bin/node && sudo test -S /run/horsey/baby-quirt.sock && sudo test ! -e /opt/baby-quirt-mcp/releases/0.1.0-prod.1"
+          "${SSH[@]}" "$USER@$VPS_HOST" "umask 077; rm -rf /tmp/baby-quirt-mcp-deploy-0.1.0-prod.1; mkdir -m 0700 /tmp/baby-quirt-mcp-deploy-0.1.0-prod.1"
+          "${SCP[@]}" staging/baby-quirt-mcp-0.1.0-prod.1.tar.gz staging/baby-quirt-mcp-0.1.0-prod.1.sha256 staging/baby-quirt-mcp-0.1.0-prod.1.manifest.json staging/gateway-authority-private.pem staging/remote-install.sh "$USER@$VPS_HOST:/tmp/baby-quirt-mcp-deploy-0.1.0-prod.1/"
 
-      - name: Upload to VPS staging
-        run: |
-          set -euo pipefail
-          STAGING="/tmp/baby-quirt-deploy-${{ needs.build.outputs.version }}"
-          ssh -i ~/.ssh/deploy_key -p ${{ vars.BABY_QUIRT_VPS_PORT || 22 }} -o StrictHostKeyChecking=yes \
-            "${{ vars.BABY_QUIRT_VPS_USER || 'ubuntu' }}@${{ vars.BABY_QUIRT_VPS_HOST }}" \
-            "umask 077; rm -rf '$STAGING'; mkdir -p '$STAGING'"
-          scp -i ~/.ssh/deploy_key -P ${{ vars.BABY_QUIRT_VPS_PORT || 22 }} -o StrictHostKeyChecking=yes \
-            staging/* "${{ vars.BABY_QUIRT_VPS_USER || 'ubuntu' }}@${{ vars.BABY_QUIRT_VPS_HOST }}:$STAGING/"
-
-      - name: Install on VPS
+      - name: Install and run signed live smoke
         env:
-          BABY_QUIRT_VERSION: ${{ needs.build.outputs.version }}
-          BABY_QUIRT_EXPECTED_COMMIT: ${{ needs.build.outputs.commit }}
-          BABY_QUIRT_EXPECTED_HOSTNAME: ${{ vars.BABY_QUIRT_EXPECTED_HOSTNAME }}
-          BABY_QUIRT_EXPECTED_MACHINE_ID_SHA256: ${{ vars.BABY_QUIRT_EXPECTED_MACHINE_ID_SHA256 }}
-          BABY_QUIRT_EXPECTED_GATEWAY_PUBLIC_KEY_SHA256: ${{ vars.BABY_QUIRT_OWNER_PRINCIPAL_FINGERPRINT }}
+          VPS_HOST: ${{ vars.BABY_QUIRT_VPS_HOST }}
+          VPS_PORT: ${{ vars.BABY_QUIRT_VPS_PORT }}
+          VPS_USER: ${{ vars.BABY_QUIRT_VPS_USER }}
+          EXPECTED_HOSTNAME: ${{ vars.BABY_QUIRT_EXPECTED_HOSTNAME }}
+          EXPECTED_MACHINE_ID: ${{ vars.BABY_QUIRT_EXPECTED_MACHINE_ID_SHA256 }}
+          EXPECTED_PUBLIC_KEY_SHA256: ${{ vars.BABY_QUIRT_OWNER_PRINCIPAL_FINGERPRINT }}
         run: |
           set -euo pipefail
-          STAGING="/tmp/baby-quirt-deploy-${BABY_QUIRT_VERSION}"
-          ssh -i ~/.ssh/deploy_key -p ${{ vars.BABY_QUIRT_VPS_PORT || 22 }} -o StrictHostKeyChecking=yes \
-            "${{ vars.BABY_QUIRT_VPS_USER || 'ubuntu' }}@${{ vars.BABY_QUIRT_VPS_HOST }}" \
-            "BABY_QUIRT_VERSION='$BABY_QUIRT_VERSION' \
-             BABY_QUIRT_STAGING_PATH='$STAGING' \
-             BABY_QUIRT_EXPECTED_COMMIT='$BABY_QUIRT_EXPECTED_COMMIT' \
-             BABY_QUIRT_EXPECTED_HOSTNAME='$BABY_QUIRT_EXPECTED_HOSTNAME' \
-             BABY_QUIRT_EXPECTED_MACHINE_ID_SHA256='$BABY_QUIRT_EXPECTED_MACHINE_ID_SHA256' \
-             BABY_QUIRT_EXPECTED_GATEWAY_PUBLIC_KEY_SHA256='$BABY_QUIRT_EXPECTED_GATEWAY_PUBLIC_KEY_SHA256' \
-             bash -s" < scripts/remote-install.sh
+          PORT="${VPS_PORT:-22}"
+          USER="${VPS_USER:-ubuntu}"
+          ssh -i ~/.ssh/deploy_key -p "$PORT" -o StrictHostKeyChecking=yes "$USER@$VPS_HOST" "sudo env BABY_QUIRT_MCP_VERSION='0.1.0-prod.1' BABY_QUIRT_MCP_STAGING_PATH='/tmp/baby-quirt-mcp-deploy-0.1.0-prod.1' BABY_QUIRT_MCP_EXPECTED_COMMIT='6cf1477cd1293e09c0d54830117a4dfd036601ff' BABY_QUIRT_EXPECTED_HOSTNAME='$EXPECTED_HOSTNAME' BABY_QUIRT_EXPECTED_MACHINE_ID_SHA256='$EXPECTED_MACHINE_ID' BABY_QUIRT_OWNER_PRINCIPAL_FINGERPRINT='$EXPECTED_PUBLIC_KEY_SHA256' bash '/tmp/baby-quirt-mcp-deploy-0.1.0-prod.1/remote-install.sh'"
+          ssh -i ~/.ssh/deploy_key -p "$PORT" -o StrictHostKeyChecking=yes "$USER@$VPS_HOST" "sudo -u fix-mcp /bin/bash -c 'set -euo pipefail; set -a; source /etc/baby-quirt-mcp/environment; set +a; exec /opt/node-v24.18.0-linux-x64/bin/node /opt/baby-quirt-mcp/current/scripts/live-smoke.js'"
+          ssh -i ~/.ssh/deploy_key -p "$PORT" -o StrictHostKeyChecking=yes "$USER@$VPS_HOST" "curl -fsS --max-time 5 http://127.0.0.1:2096/healthz; echo; sudo systemctl is-active baby-quirt-mcp.service; sudo readlink -f /opt/baby-quirt-mcp/current"
 
-      - name: Rollback on failure
-        if: failure()
-        run: |
-          ssh -i ~/.ssh/deploy_key -p ${{ vars.BABY_QUIRT_VPS_PORT || 22 }} -o StrictHostKeyChecking=yes \
-            "${{ vars.BABY_QUIRT_VPS_USER || 'ubuntu' }}@${{ vars.BABY_QUIRT_VPS_HOST }}" \
-            "bash -s" < scripts/remote-rollback.sh || true
-
-      - name: Remove ephemeral SSH material
+      - name: Remove ephemeral material
         if: always()
-        run: rm -f ~/.ssh/deploy_key
-
-      - name: Deployment evidence
+        env:
+          VPS_HOST: ${{ vars.BABY_QUIRT_VPS_HOST }}
+          VPS_PORT: ${{ vars.BABY_QUIRT_VPS_PORT }}
+          VPS_USER: ${{ vars.BABY_QUIRT_VPS_USER }}
         run: |
-          cat >> "$GITHUB_STEP_SUMMARY" << EOF_SUMMARY
-          ## Deployment Evidence
-          - **Version:** ${{ needs.build.outputs.version }}
-          - **Digest:** ${{ needs.build.outputs.digest }}
-          - **Commit:** ${{ needs.build.outputs.commit }}
-          - **Host:** ${{ vars.BABY_QUIRT_EXPECTED_HOSTNAME }}
-          - **Machine identity:** ${{ vars.BABY_QUIRT_EXPECTED_MACHINE_ID_SHA256 }}
-          EOF_SUMMARY
+          PORT="${VPS_PORT:-22}"
+          USER="${VPS_USER:-ubuntu}"
+          if [ -f ~/.ssh/deploy_key ]; then
+            ssh -i ~/.ssh/deploy_key -p "$PORT" -o StrictHostKeyChecking=yes "$USER@$VPS_HOST" "sudo rm -rf /tmp/baby-quirt-mcp-deploy-0.1.0-prod.1" || true
+          fi
+          rm -rf staging ~/.ssh/deploy_key
