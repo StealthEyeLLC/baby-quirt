@@ -23,7 +23,6 @@ jobs:
         uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
         with:
           node-version: '24.18.0'
-          cache: npm
 
       - name: Validate and build exact release
         env:
@@ -31,7 +30,6 @@ jobs:
         run: |
           set -euo pipefail
           test "$(git rev-parse HEAD)" = "6cf1477cd1293e09c0d54830117a4dfd036601ff"
-          npm ci
           npm run check
           npm test
           bash -n scripts/*.sh
