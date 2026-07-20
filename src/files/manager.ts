@@ -1,7 +1,7 @@
-/** Binary-safe file operations. */
+/** Binary-safe file operations with symlink and recursion bounds. */
 
 import {
-  statSync,
+  lstatSync,
   readFileSync,
   writeFileSync,
   mkdirSync,
@@ -18,6 +18,10 @@ import {
 } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import { createHash } from 'node:crypto';
+
+export const FILE_LIST_MAX_DEPTH = 32;
+export const FILE_LIST_MAX_ENTRIES = 4096;
+export const FILE_READ_MAX_CHUNK = 64 * 1024;
 
 export interface FileStatPayload {
   path: string;
@@ -67,6 +71,8 @@ export interface FileRemovePayload {
 export interface FileListPayload {
   path: string;
   recursive?: boolean;
+  maxDepth?: number;
+  maxEntries?: number;
 }
 
 export interface FileStatResult {
@@ -99,7 +105,7 @@ export class FileManager {
     if (!existsSync(path)) {
       return { path, exists: false };
     }
-    const s = statSync(path);
+    const s = lstatSync(path);
     const result: FileStatResult = {
       path,
       exists: true,
@@ -109,15 +115,15 @@ export class FileManager {
       gid: s.gid,
       mtime: s.mtime.toISOString(),
     };
-    if (s.isFile()) {
+    if (s.isSymbolicLink()) {
+      result.type = 'symlink';
+    } else if (s.isFile()) {
       result.type = 'file';
       if (s.size <= 10 * 1024 * 1024) {
         result.sha256 = createHash('sha256').update(readFileSync(path)).digest('hex');
       }
     } else if (s.isDirectory()) {
       result.type = 'directory';
-    } else if (s.isSymbolicLink()) {
-      result.type = 'symlink';
     } else {
       result.type = 'other';
     }
@@ -128,19 +134,18 @@ export class FileManager {
     const path = assertSafePath(payload.path);
     const encoding = payload.encoding ?? 'base64';
     const offset = payload.offset ?? 0;
-    const limit = payload.limit ?? 64 * 1024;
+    const limit = Math.min(payload.limit ?? FILE_READ_MAX_CHUNK, FILE_READ_MAX_CHUNK);
 
     const fd = openSync(path, 'r');
     try {
-      const stat = statSync(path);
+      const stat = lstatSync(path);
       const available = Math.max(0, stat.size - offset);
       const toRead = Math.min(limit, available);
       const buf = Buffer.alloc(toRead);
       if (toRead > 0) {
         readSync(fd, buf, 0, toRead, offset);
       }
-      const data =
-        encoding === 'utf8' ? buf.toString('utf8') : buf.toString('base64');
+      const data = encoding === 'utf8' ? buf.toString('utf8') : buf.toString('base64');
       return {
         data,
         offset: offset + toRead,
@@ -160,7 +165,7 @@ export class FileManager {
     if (payload.offset !== undefined && payload.offset > 0) {
       const fd = openSync(path, 'r+');
       try {
-      writeSync(fd, buf, 0, buf.length, payload.offset);
+        writeSync(fd, buf, 0, buf.length, payload.offset);
       } finally {
         closeSync(fd);
       }
@@ -216,8 +221,8 @@ export class FileManager {
     if (!existsSync(path)) {
       return { path, removed: false };
     }
-    const s = statSync(path);
-    if (s.isDirectory()) {
+    const s = lstatSync(path);
+    if (s.isDirectory() && !s.isSymbolicLink()) {
       if (payload.recursive) {
         rmSync(path, { recursive: true, force: true });
       } else {
@@ -229,19 +234,44 @@ export class FileManager {
     return { path, removed: true };
   }
 
-  list(payload: FileListPayload): { path: string; entries: Array<{ name: string; type: string; path: string }> } {
+  list(payload: FileListPayload): {
+    path: string;
+    entries: Array<{ name: string; type: string; path: string }>;
+    truncated: boolean;
+  } {
     const basePath = assertSafePath(payload.path);
+    const maxDepth = payload.maxDepth ?? FILE_LIST_MAX_DEPTH;
+    const maxEntries = payload.maxEntries ?? FILE_LIST_MAX_ENTRIES;
     const entries: Array<{ name: string; type: string; path: string }> = [];
+    let truncated = false;
 
-    const walk = (dir: string) => {
+    const walk = (dir: string, depth: number) => {
+      if (depth > maxDepth) {
+        truncated = true;
+        return;
+      }
+      if (entries.length >= maxEntries) {
+        truncated = true;
+        return;
+      }
       for (const name of readdirSync(dir)) {
+        if (entries.length >= maxEntries) {
+          truncated = true;
+          return;
+        }
         const fullPath = join(dir, name);
         try {
-          const s = statSync(fullPath);
-          const type = s.isDirectory() ? 'directory' : s.isFile() ? 'file' : 'other';
+          const s = lstatSync(fullPath);
+          const type = s.isSymbolicLink()
+            ? 'symlink'
+            : s.isDirectory()
+              ? 'directory'
+              : s.isFile()
+                ? 'file'
+                : 'other';
           entries.push({ name, type, path: fullPath });
-          if (payload.recursive && s.isDirectory()) {
-            walk(fullPath);
+          if (payload.recursive && s.isDirectory() && !s.isSymbolicLink()) {
+            walk(fullPath, depth + 1);
           }
         } catch {
           entries.push({ name, type: 'inaccessible', path: fullPath });
@@ -249,7 +279,7 @@ export class FileManager {
       }
     };
 
-    walk(basePath);
-    return { path: basePath, entries };
+    walk(basePath, 0);
+    return { path: basePath, entries, truncated };
   }
 }

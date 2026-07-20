@@ -48,6 +48,7 @@ jobs:
           path: |
             release/baby-quirt-${{ inputs.version }}.tar.gz
             release/baby-quirt-${{ inputs.version }}.sha256
+            release/baby-quirt-${{ inputs.version }}.manifest.json
           retention-days: 7
 
   deploy:

@@ -57,6 +57,7 @@ export interface RuntimeConfig {
   expectedHostname: string;
   expectedMachineIdSha256: string;
   oauthIssuer: string;
+  oauthResource: string;
   oauthJwksUri: string;
   signingPublicKeyPath: string;
   signingPrivateKeyPath: string;
@@ -93,6 +94,7 @@ export function loadRuntimeConfig(overrides: Partial<RuntimeConfig> = {}): Runti
     expectedMachineIdSha256:
       env.BABY_QUIRT_EXPECTED_MACHINE_ID_SHA256 ?? DEFAULTS.expectedMachineIdSha256,
     oauthIssuer: env.BABY_QUIRT_OAUTH_ISSUER ?? DEFAULTS.oauthIssuer,
+    oauthResource: env.BABY_QUIRT_OAUTH_RESOURCE ?? DEFAULTS.oauthResource,
     oauthJwksUri: env.BABY_QUIRT_OAUTH_JWKS_URI ?? DEFAULTS.oauthJwksUri,
     signingPublicKeyPath: `${configRoot}/signing-public.pem`,
     signingPrivateKeyPath: `${configRoot}/signing-private.pem`,

@@ -4,12 +4,18 @@ set -euo pipefail
 
 VERSION="${BABY_QUIRT_VERSION:?BABY_QUIRT_VERSION required}"
 STAGING_PATH="${BABY_QUIRT_STAGING_PATH:?BABY_QUIRT_STAGING_PATH required}"
+EXPECTED_COMMIT="${BABY_QUIRT_EXPECTED_COMMIT:-}"
 RELEASE_ROOT="${BABY_QUIRT_RELEASE_ROOT:-/opt/baby-quirt/releases}"
 CURRENT_LINK="${BABY_QUIRT_CURRENT_LINK:-/opt/baby-quirt/current}"
 PREVIOUS_LINK="${BABY_QUIRT_PREVIOUS_LINK:-/opt/baby-quirt/previous}"
 CONFIG_ROOT="${BABY_QUIRT_CONFIG_ROOT:-/etc/baby-quirt}"
 STATE_ROOT="${BABY_QUIRT_STATE_ROOT:-/var/lib/baby-quirt}"
 NODE_PATH="${BABY_QUIRT_NODE_PATH:-/opt/node-v24.18.0-linux-x64/bin/node}"
+
+if [[ ! "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+(-[a-zA-Z0-9.]+)?$ ]]; then
+  echo "ERROR: invalid version format: $VERSION"
+  exit 1
+fi
 
 echo "==> Verifying machine identity"
 HOSTNAME=$(hostname)
@@ -29,26 +35,65 @@ fi
 echo "==> Verifying release archive"
 cd "$STAGING_PATH"
 ARCHIVE="baby-quirt-${VERSION}.tar.gz"
+MANIFEST="baby-quirt-${VERSION}.manifest.json"
 if [ ! -f "$ARCHIVE" ]; then
   echo "ERROR: archive not found: $ARCHIVE"
   exit 1
 fi
-
-ACTUAL_DIGEST=$(sha256sum "$ARCHIVE" | awk '{print $1}')
-EXPECTED_DIGEST=$(cat "baby-quirt-${VERSION}.sha256" | awk '{print $1}')
-if [ "$ACTUAL_DIGEST" != "$EXPECTED_DIGEST" ]; then
-  echo "ERROR: digest mismatch"
+if [ ! -f "$MANIFEST" ]; then
+  echo "ERROR: manifest not found: $MANIFEST"
   exit 1
 fi
 
-echo "==> Extracting release"
+ACTUAL_DIGEST=$(sha256sum "$ARCHIVE" | awk '{print $1}')
+MANIFEST_DIGEST=$(python3 -c "import json; print(json.load(open('$MANIFEST'))['sha256'])")
+MANIFEST_VERSION=$(python3 -c "import json; print(json.load(open('$MANIFEST'))['version'])")
+MANIFEST_COMMIT=$(python3 -c "import json; print(json.load(open('$MANIFEST'))['commit'])")
+
+if [ "$MANIFEST_VERSION" != "$VERSION" ]; then
+  echo "ERROR: manifest version mismatch"
+  exit 1
+fi
+if [ "$ACTUAL_DIGEST" != "$MANIFEST_DIGEST" ]; then
+  echo "ERROR: archive digest does not match manifest"
+  exit 1
+fi
+if [ -n "$EXPECTED_COMMIT" ] && [ "$MANIFEST_COMMIT" != "$EXPECTED_COMMIT" ]; then
+  echo "ERROR: manifest commit does not match expected commit"
+  exit 1
+fi
+
+SHA_FILE="baby-quirt-${VERSION}.sha256"
+if [ -f "$SHA_FILE" ]; then
+  FILE_DIGEST=$(awk '{print $1}' "$SHA_FILE")
+  if [ "$FILE_DIGEST" != "$ACTUAL_DIGEST" ]; then
+    echo "ERROR: sidecar digest does not match archive"
+    exit 1
+  fi
+fi
+
+echo "==> Extracting release to staging target"
+STAGE_EXTRACT="$STAGING_PATH/extracted-${VERSION}"
+rm -rf "$STAGE_EXTRACT"
+mkdir -p "$STAGE_EXTRACT"
+tar -xzf "$ARCHIVE" -C "$STAGE_EXTRACT" --no-same-owner
+
+EXTRACTED_DIR="$STAGE_EXTRACT/baby-quirt-${VERSION}"
+if [ ! -d "$EXTRACTED_DIR" ]; then
+  echo "ERROR: extracted release directory missing"
+  exit 1
+fi
+
+if [ "$(python3 -c "import json; print(json.load(open('$EXTRACTED_DIR/manifest.json'))['version'])")" != "$VERSION" ]; then
+  echo "ERROR: installed manifest version mismatch"
+  exit 1
+fi
+
 TARGET="$RELEASE_ROOT/$VERSION"
 sudo mkdir -p "$RELEASE_ROOT" "$CONFIG_ROOT" "$STATE_ROOT"
 sudo rm -rf "$TARGET"
-sudo tar -xzf "$ARCHIVE" -C "$RELEASE_ROOT"
-sudo mv "$RELEASE_ROOT/baby-quirt-${VERSION}" "$TARGET" 2>/dev/null || true
+sudo cp -a "$EXTRACTED_DIR" "$TARGET"
 
-# Generate signing keys on first install
 if [ ! -f "$CONFIG_ROOT/signing-public.pem" ]; then
   echo "==> Generating signing keys"
   sudo "$NODE_PATH" "$TARGET/lib/dist/cli/install.js" --release-dir "$TARGET" --version "$VERSION"
@@ -56,8 +101,10 @@ else
   echo "==> Signing keys already exist, updating release pointer"
   if [ -L "$CURRENT_LINK" ]; then
     PREV=$(readlink -f "$CURRENT_LINK")
+    sudo rm -f "$PREVIOUS_LINK"
     sudo ln -sfn "$PREV" "$PREVIOUS_LINK"
   fi
+  sudo rm -f "$CURRENT_LINK"
   sudo ln -sfn "$TARGET" "$CURRENT_LINK"
 fi
 
@@ -74,4 +121,7 @@ echo "==> Verifying installation"
 sleep 2
 sudo "$NODE_PATH" "$TARGET/lib/dist/cli/verify.js"
 
-echo "==> Installation complete: $VERSION"
+echo "==> Installation complete"
+echo "DEPLOY_VERSION=$VERSION"
+echo "DEPLOY_DIGEST=$ACTUAL_DIGEST"
+echo "DEPLOY_COMMIT=$MANIFEST_COMMIT"

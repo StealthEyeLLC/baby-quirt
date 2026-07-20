@@ -1,10 +1,11 @@
 #!/usr/bin/env node
 /** Baby Quirt installer — generates keys and installs release. */
 
-import { mkdirSync, writeFileSync, symlinkSync, existsSync, readFileSync, cpSync, unlinkSync } from 'node:fs';
+import { mkdirSync, writeFileSync, existsSync, cpSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import { generateEd25519KeyPair } from '../crypto/signing.js';
 import { DEFAULTS } from '../config.js';
+import { atomicSwapSymlinks } from '../install/symlinks.js';
 
 function parseArgs(): { releaseDir: string; version: string } {
   const args = process.argv.slice(2);
@@ -35,12 +36,10 @@ function main(): void {
   const currentLink = DEFAULTS.currentLink;
   const previousLink = DEFAULTS.previousLink;
 
-  // Create directories
   for (const dir of [configRoot, stateRoot, releaseRoot, join(stateRoot, 'jobs'), join(stateRoot, 'streams')]) {
     mkdirSync(dir, { recursive: true, mode: 0o750 });
   }
 
-  // Generate signing keys if not present
   const publicKeyPath = join(configRoot, 'signing-public.pem');
   const privateKeyPath = join(configRoot, 'signing-private.pem');
   if (!existsSync(publicKeyPath)) {
@@ -52,7 +51,6 @@ function main(): void {
     });
   }
 
-  // Write runtime config
   const runtimeConfig = {
     version,
     socketPath: DEFAULTS.socketPath,
@@ -73,31 +71,17 @@ function main(): void {
     mode: 0o640,
   });
 
-  // Install release
   const targetRelease = join(releaseRoot, version);
   mkdirSync(targetRelease, { recursive: true, mode: 0o755 });
   cpSync(releaseDir, targetRelease, { recursive: true });
 
-  // Update symlinks
-  if (existsSync(currentLink)) {
-    try {
-      const currentTarget = readFileSync(currentLink, 'utf8').trim();
-      if (existsSync(previousLink)) {
-        unlinkSync(previousLink);
-      }
-      symlinkSync(currentTarget, previousLink);
-    } catch {
-      // previous link update best-effort
-    }
-  }
-
-  if (existsSync(currentLink)) {
-    unlinkSync(currentLink);
-  }
-  symlinkSync(targetRelease, currentLink);
+  const swap = atomicSwapSymlinks(currentLink, previousLink, targetRelease);
 
   console.log(`Installed Baby Quirt ${version} to ${targetRelease}`);
-  console.log(`Current link: ${currentLink} -> ${targetRelease}`);
+  console.log(`Current link: ${currentLink} -> ${swap.current}`);
+  if (swap.previous) {
+    console.log(`Previous link: ${previousLink} -> ${swap.previous}`);
+  }
   console.log('Run: systemctl daemon-reload && systemctl enable --now baby-quirt.socket');
 }
 

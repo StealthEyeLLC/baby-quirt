@@ -125,9 +125,21 @@ export class ArtifactManager {
     }
 
     if (payload.finalize) {
-      const fileData = readFileSync(record.path);
-      record.sha256 = createHash('sha256').update(fileData).digest('hex');
-      record.size = fileData.length;
+      const hash = createHash('sha256');
+      const readFd = openSync(record.path, 'r');
+      const buf = Buffer.alloc(64 * 1024);
+      let pos = 0;
+      try {
+        let bytesRead = 0;
+        while ((bytesRead = readSync(readFd, buf, 0, buf.length, pos)) > 0) {
+          hash.update(buf.subarray(0, bytesRead));
+          pos += bytesRead;
+        }
+      } finally {
+        closeSync(readFd);
+      }
+      record.sha256 = hash.digest('hex');
+      record.size = pos;
     } else {
       record.size = Math.max(record.size, payload.offset + data.length);
     }

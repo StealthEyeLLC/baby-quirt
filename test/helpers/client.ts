@@ -1,0 +1,175 @@
+/** Shared test client for Baby Quirt integration and acceptance tests. */
+
+import { connect, type Socket } from 'node:net';
+import { randomUUID } from 'node:crypto';
+import { hostname } from 'node:os';
+import { existsSync } from 'node:fs';
+import {
+  FrameType,
+  encodeFrame,
+  encodeJsonPayload,
+  decodeJsonPayload,
+  feedFrames,
+  createFrameReader,
+  type HelloPayload,
+  type RequestPayload,
+  type ResponsePayload,
+  type ErrorPayload,
+} from '../../src/protocol/frame.js';
+import { buildSigningDocument } from '../../src/crypto/canonical.js';
+import { signEd25519, loadPrivateKey } from '../../src/crypto/signing.js';
+import { loadRuntimeConfig, PROTOCOL_VERSION, DEFAULTS } from '../../src/config.js';
+import { buildOwnerPrincipal } from '../../src/auth/principal.js';
+import type { RuntimeConfig } from '../../src/config.js';
+
+export interface TestClientOptions {
+  socketPath: string;
+  configRoot: string;
+  config?: Partial<RuntimeConfig>;
+  keyId?: string;
+}
+
+export class BabyQuirtTestClient {
+  private readonly privateKeyPath: string;
+  private readonly config: RuntimeConfig;
+  private readonly keyId: string;
+
+  constructor(private readonly options: TestClientOptions) {
+    this.config = loadRuntimeConfig({
+      configRoot: options.configRoot,
+      expectedMachineIdSha256: 'test',
+      expectedHostname: hostname(),
+      ...options.config,
+    });
+    this.privateKeyPath = `${options.configRoot}/signing-private.pem`;
+    this.keyId = options.keyId ?? 'test';
+  }
+
+  async request(
+    operation: string,
+    payload: unknown = {},
+    overrides: {
+      requestId?: string;
+      nonce?: string;
+      timestamp?: string;
+      principal?: Record<string, unknown>;
+      skipHandshake?: boolean;
+    } = {},
+  ): Promise<ResponsePayload> {
+    if (!existsSync(this.privateKeyPath)) {
+      throw new Error(`Signing key not found: ${this.privateKeyPath}`);
+    }
+    const privateKey = loadPrivateKey(this.privateKeyPath);
+    const requestId = overrides.requestId ?? randomUUID();
+    const timestamp = overrides.timestamp ?? new Date().toISOString();
+    const nonce = overrides.nonce ?? randomUUID();
+    const principal = overrides.principal ?? buildOwnerPrincipal();
+
+    const authorityForSigning = {
+      algorithm: 'ed25519' as const,
+      gatewayId: DEFAULTS.gatewayId,
+      nonce,
+    };
+
+    const signingDoc = buildSigningDocument({
+      protocolVersion: PROTOCOL_VERSION,
+      requestId,
+      operation,
+      principal: principal as Record<string, unknown>,
+      authority: authorityForSigning,
+      targetHost: hostname(),
+      timestamp,
+      payload,
+      binaryLength: 0,
+    });
+
+    const authority = {
+      ...authorityForSigning,
+      signature: signEd25519(signingDoc, privateKey),
+      keyId: this.keyId,
+    };
+
+    const request: RequestPayload = {
+      protocolVersion: PROTOCOL_VERSION,
+      requestId,
+      operation,
+      principal: principal as Record<string, unknown>,
+      authority,
+      targetHost: hostname(),
+      timestamp,
+      payload,
+      binaryLength: 0,
+    };
+
+    return new Promise((resolve, reject) => {
+      const socket = connect(this.options.socketPath);
+      const reader = createFrameReader();
+      let handshaken = overrides.skipHandshake ?? false;
+
+      socket.on('connect', () => {
+        if (!handshaken) {
+          const hello: HelloPayload = {
+            clientId: 'baby-quirt-test',
+            supportedFeatures: ['compression.none'],
+            supportedAlgorithms: ['ed25519'],
+          };
+          socket.write(encodeFrame(FrameType.Hello, encodeJsonPayload(hello)));
+        } else {
+          socket.write(encodeFrame(FrameType.Request, encodeJsonPayload(request), requestId));
+        }
+      });
+
+      socket.on('data', (chunk) => {
+        const frames = feedFrames(reader, chunk, 16 * 1024 * 1024);
+        for (const frame of frames) {
+          if (!handshaken && frame.header.frameType === FrameType.Welcome) {
+            handshaken = true;
+            socket.write(encodeFrame(FrameType.Request, encodeJsonPayload(request), requestId));
+            continue;
+          }
+          if (frame.header.frameType === FrameType.Response) {
+            socket.end();
+            resolve(decodeJsonPayload<ResponsePayload>(frame.payload));
+            return;
+          }
+          if (frame.header.frameType === FrameType.Error) {
+            const error = decodeJsonPayload<ErrorPayload>(frame.payload);
+            socket.end();
+            reject(new Error(`${error.code}: ${error.message}`));
+            return;
+          }
+        }
+      });
+
+      socket.on('error', reject);
+      socket.setTimeout(30_000, () => {
+        socket.destroy();
+        reject(new Error('Request timeout'));
+      });
+    });
+  }
+
+  async expectError(
+    operation: string,
+    payload: unknown,
+    expectedCode: string,
+    overrides: Parameters<BabyQuirtTestClient['request']>[2] = {},
+  ): Promise<ErrorPayload> {
+    try {
+      await this.request(operation, payload, overrides);
+      throw new Error(`Expected error ${expectedCode} but request succeeded`);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+      const [code] = message.split(':');
+      if (code !== expectedCode) {
+        throw new Error(`Expected ${expectedCode}, got ${message}`);
+      }
+      return { requestId: '', code, message: message.slice(code.length + 2), retryable: false };
+    }
+  }
+}
+
+export function setupTestEnv(): void {
+  process.env.BABY_QUIRT_TEST_MODE = '1';
+  process.env.BABY_QUIRT_ALLOW_DIRECT_BIND = '1';
+}

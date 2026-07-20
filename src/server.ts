@@ -1,12 +1,12 @@
 /** Unix socket server and connection handler. */
 
 import { createServer, type Server, type Socket } from 'node:net';
-import { existsSync, unlinkSync, mkdirSync, chmodSync } from 'node:fs';
+import { existsSync, unlinkSync, mkdirSync } from 'node:fs';
 import { dirname } from 'node:path';
 import type { RuntimeConfig } from './config.js';
 import { ReplayStore } from './state/replay-store.js';
 import { StateStore } from './state/store.js';
-import { Authenticator, AuthError } from './auth/authenticator.js';
+import { Authenticator, AuthError, IdempotentReplay } from './auth/authenticator.js';
 import { OperationRegistry } from './operations/registry.js';
 import {
   FrameType,
@@ -23,6 +23,8 @@ import {
 } from './protocol/frame.js';
 import { getHostname, getMachineIdSha256, PROTOCOL_VERSION } from './config.js';
 import { redactSecrets } from './crypto/canonical.js';
+import { getSocketPeerUid } from './net/peer-cred.js';
+import { getSystemdListenFd, isSocketActivated } from './net/socket-activation.js';
 
 export class BabyQuirtServer {
   private server?: Server;
@@ -30,7 +32,8 @@ export class BabyQuirtServer {
   private readonly stateStore: StateStore;
   private readonly authenticator: Authenticator;
   private readonly registry: OperationRegistry;
-  private negotiatedAlgorithm = 'ed25519';
+  private listenFd?: number;
+  private usingSocketActivation = false;
 
   constructor(private readonly config: RuntimeConfig) {
     this.replayStore = new ReplayStore(config);
@@ -42,25 +45,39 @@ export class BabyQuirtServer {
   async start(): Promise<void> {
     const recovery = this.registry.recover();
     console.log(
-      `[baby-quirt] recovered ${recovery.jobs} jobs, ${recovery.ptySessions} pty sessions`,
+      `[baby-quirt] recovered ${recovery.jobs} jobs, ${recovery.detached} detached, ${recovery.ptySessions} pty sessions`,
     );
+
+    this.listenFd = getSystemdListenFd();
+    this.usingSocketActivation = this.listenFd !== undefined;
+
+    this.server = createServer((socket) => this.handleConnection(socket));
+
+    if (this.usingSocketActivation && this.listenFd !== undefined) {
+      await new Promise<void>((resolve, reject) => {
+        this.server!.listen({ fd: this.listenFd, path: this.config.socketPath }, () => {
+          console.log(`[baby-quirt] socket-activated on fd ${this.listenFd}`);
+          resolve();
+        });
+        this.server!.on('error', reject);
+      });
+      return;
+    }
+
+    if (process.env.BABY_QUIRT_ALLOW_DIRECT_BIND !== '1' && !process.env.BABY_QUIRT_TEST_MODE) {
+      throw new Error(
+        'Direct socket bind disabled; use systemd socket activation or set BABY_QUIRT_ALLOW_DIRECT_BIND=1',
+      );
+    }
 
     const socketDir = dirname(this.config.socketPath);
     mkdirSync(socketDir, { recursive: true, mode: 0o750 });
-
     if (existsSync(this.config.socketPath)) {
       unlinkSync(this.config.socketPath);
     }
 
-    this.server = createServer((socket) => this.handleConnection(socket));
-
     await new Promise<void>((resolve, reject) => {
       this.server!.listen(this.config.socketPath, () => {
-        try {
-          chmodSync(this.config.socketPath, this.config.socketMode);
-        } catch {
-          // may fail in test environments
-        }
         console.log(`[baby-quirt] listening on ${this.config.socketPath}`);
         resolve();
       });
@@ -73,14 +90,19 @@ export class BabyQuirtServer {
     if (this.server) {
       await new Promise<void>((resolve) => this.server!.close(() => resolve()));
     }
-    if (existsSync(this.config.socketPath)) {
+    if (!this.usingSocketActivation && existsSync(this.config.socketPath)) {
       unlinkSync(this.config.socketPath);
     }
+  }
+
+  isSocketActivated(): boolean {
+    return this.usingSocketActivation;
   }
 
   private handleConnection(socket: Socket): void {
     const reader = createFrameReader();
     let handshaken = false;
+    let negotiatedAlgorithm: string | undefined;
 
     socket.on('data', async (chunk) => {
       try {
@@ -93,14 +115,22 @@ export class BabyQuirtServer {
               return;
             }
             const hello = decodeJsonPayload<HelloPayload>(frame.payload);
-            this.negotiatedAlgorithm = hello.supportedAlgorithms.includes('ed25519')
-              ? 'ed25519'
-              : 'hmac-sha256';
+            if (!hello.supportedAlgorithms.includes('ed25519')) {
+              this.sendError(
+                socket,
+                frame.header.requestId,
+                'unsupported_algorithm',
+                'Ed25519 is required',
+              );
+              socket.destroy();
+              return;
+            }
+            negotiatedAlgorithm = 'ed25519';
             const welcome: WelcomePayload = {
               serverId: this.config.supervisorId,
               protocolVersion: PROTOCOL_VERSION,
               selectedFeatures: ['compression.none'],
-              selectedAlgorithm: this.negotiatedAlgorithm,
+              selectedAlgorithm: negotiatedAlgorithm,
               machineIdSha256: getMachineIdSha256() || 'unknown',
               hostname: getHostname(),
             };
@@ -113,13 +143,12 @@ export class BabyQuirtServer {
 
           switch (frame.header.frameType) {
             case FrameType.Request:
-              await this.handleRequest(socket, frame.payload);
+              await this.handleRequest(socket, frame.payload, negotiatedAlgorithm);
               break;
             case FrameType.Ping:
               socket.write(encodeFrame(FrameType.Pong, Buffer.alloc(0), frame.header.requestId));
               break;
             case FrameType.Cancel:
-              // cancellation handled at job level via baby.job.cancel
               break;
             default:
               this.sendError(
@@ -143,7 +172,11 @@ export class BabyQuirtServer {
     });
   }
 
-  private async handleRequest(socket: Socket, payloadBuf: Buffer): Promise<void> {
+  private async handleRequest(
+    socket: Socket,
+    payloadBuf: Buffer,
+    negotiatedAlgorithm?: string,
+  ): Promise<void> {
     let request: RequestPayload;
     try {
       request = decodeJsonPayload<RequestPayload>(payloadBuf);
@@ -152,26 +185,26 @@ export class BabyQuirtServer {
       return;
     }
 
+    if (negotiatedAlgorithm !== 'ed25519') {
+      this.sendError(socket, request.requestId, 'handshake_required', 'Ed25519 handshake required');
+      return;
+    }
+
     try {
-      const peerUid = await this.getPeerUid(socket);
+      const peerUid = getSocketPeerUid(socket);
       const auth = this.authenticator.authenticate(request, peerUid);
       const { response } = await this.registry.dispatch(auth);
       socket.write(
         encodeFrame(FrameType.Response, encodeJsonPayload(response), request.requestId),
       );
     } catch (err: unknown) {
+      if (err instanceof IdempotentReplay) {
+        socket.write(
+          encodeFrame(FrameType.Response, encodeJsonPayload(err.cachedResponse), request.requestId),
+        );
+        return;
+      }
       if (err instanceof AuthError) {
-        if (err.code === 'idempotent_replay') {
-          try {
-            const cached = JSON.parse(err.message);
-            socket.write(
-              encodeFrame(FrameType.Response, encodeJsonPayload(cached), request.requestId),
-            );
-            return;
-          } catch {
-            // fall through
-          }
-        }
         this.sendError(socket, request.requestId, err.code, err.message, false);
         return;
       }
@@ -190,10 +223,6 @@ export class BabyQuirtServer {
     const error: ErrorPayload = { requestId, code, message, retryable };
     socket.write(encodeFrame(FrameType.Error, encodeJsonPayload(error), requestId));
   }
-
-  private getPeerUid(_socket: Socket): Promise<number | undefined> {
-    // SO_PEERCRED is not directly exposed in Node.js net.Socket;
-    // peer credential binding is enforced via socket group permissions.
-    return Promise.resolve(undefined);
-  }
 }
+
+export { isSocketActivated };

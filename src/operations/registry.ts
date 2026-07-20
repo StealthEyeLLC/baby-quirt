@@ -42,9 +42,10 @@ export class OperationRegistry {
     }
   }
 
-  recover(): { jobs: number; ptySessions: number } {
+  recover(): { jobs: number; detached: number; ptySessions: number } {
     return {
       jobs: this.jobs.recoverRunningJobs(),
+      detached: this.jobs.recoverDetachedJobs(),
       ptySessions: this.pty.recoverSessions(),
     };
   }

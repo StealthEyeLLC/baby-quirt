@@ -39,6 +39,7 @@ export interface JobRecord {
   script?: string;
   env?: Record<string, string>;
   detached: boolean;
+  pgid?: number;
   streams: StreamState;
   ptySessionId?: string;
   metadata?: Record<string, unknown>;

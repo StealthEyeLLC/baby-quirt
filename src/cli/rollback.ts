@@ -1,35 +1,16 @@
 #!/usr/bin/env node
 /** Baby Quirt rollback — restores previous release pointer. */
 
-import { existsSync, readlinkSync, symlinkSync, unlinkSync } from 'node:fs';
 import { DEFAULTS } from '../config.js';
+import { rollbackSymlinks } from '../install/symlinks.js';
 
 function main(): void {
-  const currentLink = DEFAULTS.currentLink;
-  const previousLink = DEFAULTS.previousLink;
-
-  if (!existsSync(previousLink)) {
-    console.error('No previous release to roll back to');
-    process.exit(1);
-  }
-
-  const previousTarget = readlinkSync(previousLink);
-  const currentTarget = existsSync(currentLink) ? readlinkSync(currentLink) : null;
-
-  if (existsSync(currentLink)) {
-    unlinkSync(currentLink);
-  }
-  symlinkSync(previousTarget, currentLink);
-
-  if (currentTarget) {
-    if (existsSync(previousLink)) unlinkSync(previousLink);
-    symlinkSync(currentTarget, previousLink);
-  }
+  const result = rollbackSymlinks(DEFAULTS.currentLink, DEFAULTS.previousLink);
 
   console.log(JSON.stringify({
     action: 'rollback',
-    current: previousTarget,
-    previous: currentTarget,
+    current: result.current,
+    previous: result.previous,
     timestamp: new Date().toISOString(),
   }, null, 2));
 

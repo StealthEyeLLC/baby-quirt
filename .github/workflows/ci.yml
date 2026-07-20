@@ -36,6 +36,9 @@ jobs:
       - name: Integration tests
         run: npm run test:integration
 
+      - name: Acceptance tests
+        run: npm run test:acceptance
+
       - name: Contract validation
         run: npm run test:contracts
 
@@ -64,4 +67,5 @@ jobs:
           path: |
             release/*.tar.gz
             release/*.sha256
+            release/*.manifest.json
           retention-days: 30

@@ -58,7 +58,12 @@ export class ReplayStore {
     );
   }
 
-  checkAndRecordNonce(nonce: string): boolean {
+  hasNonce(nonce: string): boolean {
+    this.prune();
+    return this.data.nonces.some((n) => n.nonce === nonce);
+  }
+
+  tryCommitNonce(nonce: string): boolean {
     this.prune();
     if (this.data.nonces.some((n) => n.nonce === nonce)) {
       return false;
@@ -66,6 +71,11 @@ export class ReplayStore {
     this.data.nonces.push({ nonce, seenAt: Date.now() });
     this.dirty = true;
     return true;
+  }
+
+  /** @deprecated use tryCommitNonce after verification */
+  checkAndRecordNonce(nonce: string): boolean {
+    return this.tryCommitNonce(nonce);
   }
 
   getIdempotentResponse(hash: string): unknown | undefined {

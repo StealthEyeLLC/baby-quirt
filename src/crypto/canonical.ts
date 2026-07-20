@@ -73,7 +73,7 @@ export function redactSecrets(value: unknown, depth = 0): unknown {
   if (depth > 10) return '[depth_exceeded]';
   if (value === null || value === undefined) return value;
   if (typeof value === 'string') {
-    if (/secret|token|password|private|key|credential/i.test(value) && value.length > 8) {
+    if (value.includes('PRIVATE KEY') || value.includes('BEGIN RSA PRIVATE KEY')) {
       return '[REDACTED]';
     }
     return value;

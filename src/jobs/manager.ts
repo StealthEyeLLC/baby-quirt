@@ -115,57 +115,90 @@ export class JobManager {
     env?: Record<string, string>,
     detached = false,
   ): void {
-    const stdoutStream = createWriteStream(job.streams.stdoutPath, { flags: 'a' });
-    const stderrStream = createWriteStream(job.streams.stderrPath, { flags: 'a' });
+    const spawnEnv = env ? { ...process.env, ...env } : process.env;
+    let child: ChildProcess;
+    let stdoutStream: ReturnType<typeof createWriteStream> | undefined;
+    let stderrStream: ReturnType<typeof createWriteStream> | undefined;
 
-    const child = spawn(argv[0], argv.slice(1), {
-      cwd,
-      env: env ? { ...process.env, ...env } : process.env,
-      detached,
-      stdio: ['ignore', 'pipe', 'pipe'],
-    });
+    if (detached) {
+      const stdoutFd = openSync(job.streams.stdoutPath, 'a');
+      const stderrFd = openSync(job.streams.stderrPath, 'a');
+      child = spawn(argv[0], argv.slice(1), {
+        cwd,
+        env: spawnEnv,
+        detached: true,
+        stdio: ['ignore', stdoutFd, stderrFd],
+      });
+      closeSync(stdoutFd);
+      closeSync(stderrFd);
+      job.streams.stdoutClosed = false;
+      job.streams.stderrClosed = false;
+    } else {
+      stdoutStream = createWriteStream(job.streams.stdoutPath, { flags: 'a' });
+      stderrStream = createWriteStream(job.streams.stderrPath, { flags: 'a' });
+      child = spawn(argv[0], argv.slice(1), {
+        cwd,
+        env: spawnEnv,
+        detached: false,
+        stdio: ['ignore', 'pipe', 'pipe'],
+      });
+    }
 
     job.status = detached ? 'detached' : 'running';
     job.pid = child.pid;
+    job.pgid = child.pid;
     job.startedAt = new Date().toISOString();
     this.store.saveJob(job);
     runningProcesses.set(job.jobId, child);
 
-    child.stdout?.on('data', (chunk: Buffer) => {
-      stdoutStream.write(chunk);
-      job.streams.stdoutOffset += chunk.length;
-      if (job.streams.stdoutOffset > this.config.maxOutputBytes) {
-        child.kill('SIGTERM');
-      }
-    });
+    if (!detached) {
+      child.stdout?.on('data', (chunk: Buffer) => {
+        stdoutStream!.write(chunk);
+        job.streams.stdoutOffset += chunk.length;
+        if (job.streams.stdoutOffset > this.config.maxOutputBytes) {
+          child.kill('SIGTERM');
+        }
+      });
 
-    child.stderr?.on('data', (chunk: Buffer) => {
-      stderrStream.write(chunk);
-      job.streams.stderrOffset += chunk.length;
-      if (job.streams.stderrOffset > this.config.maxOutputBytes) {
-        child.kill('SIGTERM');
-      }
-    });
+      child.stderr?.on('data', (chunk: Buffer) => {
+        stderrStream!.write(chunk);
+        job.streams.stderrOffset += chunk.length;
+        if (job.streams.stderrOffset > this.config.maxOutputBytes) {
+          child.kill('SIGTERM');
+        }
+      });
+    }
 
-    const finalize = (status: JobRecord['status'], exitCode?: number | null, signal?: string | null) => {
-      stdoutStream.end();
-      stderrStream.end();
+    const finalize = (
+      status: JobRecord['status'],
+      exitCode?: number | null,
+      signal?: string | null,
+    ) => {
+      stdoutStream?.end();
+      stderrStream?.end();
       job.status = status;
       job.exitCode = exitCode ?? null;
       job.signal = signal ?? null;
       job.completedAt = new Date().toISOString();
       job.streams.stdoutClosed = true;
       job.streams.stderrClosed = true;
-      this.store.saveJob(job);
+      try {
+        this.store.saveJob(job);
+      } catch {
+        // state directory may be unavailable during shutdown
+      }
       runningProcesses.delete(job.jobId);
     };
 
     child.on('error', (err) => {
       finalize('failed');
-      stderrStream.write(Buffer.from(`Process error: ${err.message}\n`));
+      if (stderrStream) {
+        stderrStream.write(Buffer.from(`Process error: ${err.message}\n`));
+      }
     });
 
     child.on('close', (code, signal) => {
+      if (detached) return;
       const status = code === 0 ? 'completed' : 'failed';
       finalize(status, code, signal);
     });
@@ -207,14 +240,8 @@ export class JobManager {
           return;
         }
         if (['completed', 'failed', 'cancelled', 'detached'].includes(current.status)) {
-          if (current.status === 'detached') {
-            resolve(current);
-            return;
-          }
-          if (['completed', 'failed', 'cancelled'].includes(current.status)) {
-            resolve(current);
-            return;
-          }
+          resolve(current);
+          return;
         }
         if (Date.now() - start > timeout) {
           reject(new Error('Job wait timeout'));
@@ -231,22 +258,34 @@ export class JobManager {
     if (!job) throw new Error(`Job not found: ${payload.jobId}`);
 
     const signal = payload.signal ?? 'SIGTERM';
-    const child = runningProcesses.get(payload.jobId);
-    if (child?.pid) {
+    const pgid = job.pgid ?? job.pid;
+    if (pgid) {
       try {
-        process.kill(-child.pid, signal as NodeJS.Signals);
+        process.kill(-pgid, signal as NodeJS.Signals);
       } catch {
         try {
-          child.kill(signal as NodeJS.Signals);
+          process.kill(pgid, signal as NodeJS.Signals);
         } catch {
           // process may have exited
         }
       }
     }
 
+    const child = runningProcesses.get(payload.jobId);
+    if (child?.pid) {
+      try {
+        child.kill(signal as NodeJS.Signals);
+      } catch {
+        // ignore
+      }
+    }
+
     job.status = 'cancelled';
     job.completedAt = new Date().toISOString();
+    job.streams.stdoutClosed = true;
+    job.streams.stderrClosed = true;
     this.store.saveJob(job);
+    runningProcesses.delete(payload.jobId);
     return job;
   }
 
@@ -311,6 +350,48 @@ export class JobManager {
       }
     }
     return recovered;
+  }
+
+  recoverDetachedJobs(): number {
+    const jobs = this.store.listJobs().filter((j: JobRecord) => j.status === 'detached');
+    let recovered = 0;
+    for (const job of jobs) {
+      const pid = job.pgid ?? job.pid;
+      if (!pid) {
+        job.status = 'failed';
+        job.completedAt = new Date().toISOString();
+        this.store.saveJob(job);
+        continue;
+      }
+      try {
+        process.kill(pid, 0);
+        recovered++;
+      } catch {
+        job.status = 'completed';
+        job.completedAt = new Date().toISOString();
+        job.streams.stdoutClosed = true;
+        job.streams.stderrClosed = true;
+        this.store.saveJob(job);
+      }
+    }
+    return recovered;
+  }
+
+  adoptDetachedJob(jobId: string): JobRecord | undefined {
+    const job = this.store.getJob(jobId);
+    if (!job || job.status !== 'detached') return job;
+    const pid = job.pgid ?? job.pid;
+    if (!pid) return job;
+    try {
+      process.kill(pid, 0);
+    } catch {
+      job.status = 'completed';
+      job.completedAt = new Date().toISOString();
+      job.streams.stdoutClosed = true;
+      job.streams.stderrClosed = true;
+      this.store.saveJob(job);
+    }
+    return job;
   }
 }
 

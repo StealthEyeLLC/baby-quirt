@@ -1,23 +1,16 @@
 /** Request authentication and authorization. */
 
 import { buildSigningDocument, requestHash } from '../crypto/canonical.js';
-import { verifyAuthority, type AuthorityEnvelope } from '../crypto/signing.js';
-import { loadPublicKey } from '../crypto/signing.js';
+import { verifyEd25519, loadPublicKey, type AuthorityEnvelope } from '../crypto/signing.js';
 import { existsSync } from 'node:fs';
 import type { RuntimeConfig } from '../config.js';
 import { getHostname, getMachineIdSha256 } from '../config.js';
 import type { RequestPayload } from '../protocol/frame.js';
 import type { ReplayStore } from '../state/replay-store.js';
+import { AuthError, IdempotentReplay } from './errors.js';
+import { validatePrincipal } from './principal.js';
 
-export class AuthError extends Error {
-  constructor(
-    public readonly code: string,
-    message: string,
-  ) {
-    super(message);
-    this.name = 'AuthError';
-  }
-}
+export { AuthError, IdempotentReplay };
 
 export interface AuthenticatedRequest {
   payload: RequestPayload;
@@ -26,6 +19,8 @@ export interface AuthenticatedRequest {
   subject: string;
   authorityClass: string;
 }
+
+const SUPPORTED_ALGORITHMS = ['ed25519'] as const;
 
 export class Authenticator {
   private publicKey?: ReturnType<typeof loadPublicKey>;
@@ -51,18 +46,15 @@ export class Authenticator {
   }
 
   authenticate(request: RequestPayload, peerUid?: number): AuthenticatedRequest {
-    const principal = request.principal as Record<string, unknown>;
+    const principal = validatePrincipal(request.principal as Record<string, unknown>, this.config);
     const authority = request.authority as unknown as AuthorityEnvelope;
 
-    const subject = String(principal.subject ?? '');
-    const authorityClass = String(principal.authorityClass ?? '');
-
-    if (subject !== this.config.expectedSubject) {
-      throw new AuthError('invalid_subject', 'Principal subject does not match expected owner');
+    if (!SUPPORTED_ALGORITHMS.includes(authority.algorithm as (typeof SUPPORTED_ALGORITHMS)[number])) {
+      throw new AuthError('unsupported_algorithm', `Algorithm ${authority.algorithm} is not supported`);
     }
 
-    if (authorityClass !== this.config.authorityClass) {
-      throw new AuthError('invalid_authority_class', 'Authority class does not match');
+    if (authority.keyId && authority.keyId !== this.config.signingKeyId) {
+      throw new AuthError('invalid_key_id', 'Authority key ID does not match configured signing key');
     }
 
     if (request.targetHost !== getHostname()) {
@@ -71,7 +63,6 @@ export class Authenticator {
 
     const machineId = getMachineIdSha256();
     if (machineId && machineId !== this.config.expectedMachineIdSha256) {
-      // Allow empty machine id in test environments
       if (this.config.expectedMachineIdSha256 !== 'test') {
         throw new AuthError('invalid_machine_id', 'Machine identity does not match');
       }
@@ -88,9 +79,6 @@ export class Authenticator {
 
     if (!authority.nonce) {
       throw new AuthError('missing_nonce', 'Authority nonce is required');
-    }
-    if (!this.replayStore.checkAndRecordNonce(authority.nonce)) {
-      throw new AuthError('replay_detected', 'Nonce has already been used');
     }
 
     const authorityForSigning = {
@@ -115,37 +103,50 @@ export class Authenticator {
 
     const idempotent = this.replayStore.getIdempotentResponse(hash);
     if (idempotent !== undefined) {
-      throw new AuthError('idempotent_replay', JSON.stringify(idempotent));
+      throw new IdempotentReplay(idempotent);
+    }
+
+    if (authority.gatewayId !== this.config.gatewayId) {
+      throw new AuthError('invalid_gateway_id', 'Authority gateway ID does not match');
     }
 
     if (!this.publicKey) {
       throw new AuthError('no_signing_key', 'Server signing public key not configured');
     }
 
-    const valid = verifyAuthority({
-      document: signingDocument,
-      authority,
-      expectedGatewayId: this.config.gatewayId,
-      publicKey: this.publicKey,
-      previousPublicKey: this.previousPublicKey,
-    });
+    const valid =
+      verifyEd25519(signingDocument, authority.signature, this.publicKey) ||
+      (this.previousPublicKey
+        ? verifyEd25519(signingDocument, authority.signature, this.previousPublicKey)
+        : false);
 
     if (!valid) {
       throw new AuthError('invalid_signature', 'Authority signature verification failed');
     }
 
-    if (this.config.gatewayUid !== undefined && peerUid !== undefined) {
+    if (this.config.gatewayUid !== undefined) {
+      if (peerUid === undefined) {
+        throw new AuthError('invalid_peer', 'Unix peer credentials unavailable');
+      }
       if (peerUid !== this.config.gatewayUid && peerUid !== 0) {
         throw new AuthError('invalid_peer', 'Unix peer credentials do not match gateway');
       }
+    }
+
+    if (!this.replayStore.tryCommitNonce(authority.nonce)) {
+      const retry = this.replayStore.getIdempotentResponse(hash);
+      if (retry !== undefined) {
+        throw new IdempotentReplay(retry);
+      }
+      throw new AuthError('replay_detected', 'Nonce has already been used');
     }
 
     return {
       payload: request,
       signingDocument,
       hash,
-      subject,
-      authorityClass,
+      subject: principal.subject,
+      authorityClass: principal.authorityClass,
     };
   }
 }
