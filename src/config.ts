@@ -1,5 +1,9 @@
 /** Baby Quirt configuration constants and runtime config loader. */
 
+import { createHash } from 'node:crypto';
+import { readFileSync } from 'node:fs';
+import { hostname } from 'node:os';
+
 export const PROTOCOL_VERSION = '1.0.0';
 export const CONTRACT_VERSION = '1.0.0';
 export const PRODUCT_NAME = 'baby-quirt';
@@ -133,14 +137,20 @@ export function loadRuntimeConfig(overrides: Partial<RuntimeConfig> = {}): Runti
   return { ...base, ...overrides, configRoot, stateRoot };
 }
 
-import { createHash } from 'node:crypto';
-import { readFileSync } from 'node:fs';
-import { hostname } from 'node:os';
+export function normalizeMachineId(raw: Buffer | string): string {
+  const text = Buffer.isBuffer(raw) ? raw.toString('utf8') : raw;
+  return text.replace(/[\r\n]/g, '');
+}
+
+export function machineIdSha256(raw: Buffer | string): string {
+  const normalized = normalizeMachineId(raw);
+  if (!normalized) return '';
+  return createHash('sha256').update(normalized, 'utf8').digest('hex');
+}
 
 export function getMachineIdSha256(): string {
   try {
-    const machineId = readFileSync('/etc/machine-id');
-    return createHash('sha256').update(machineId).digest('hex');
+    return machineIdSha256(readFileSync('/etc/machine-id'));
   } catch {
     return '';
   }
