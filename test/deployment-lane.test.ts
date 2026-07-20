@@ -16,6 +16,8 @@ describe('production deployment lane', () => {
     assert.doesNotMatch(install, /CURRENT_LINK.*safe-extract/);
     assert.doesNotMatch(install, /CURRENT_LINK.*cli\/install/);
     assert.match(install, /gateway-authority-public\.pem/);
+    assert.ok(install.includes('ACTIVE_TARGET=$(sudo readlink -f "$CURRENT_LINK")'));
+    assert.ok(!install.includes('ACTIVE_TARGET=$(readlink -f "$CURRENT_LINK")'));
   });
 
   it('packages runtime files at the exact paths consumed by first install', () => {
