@@ -5,11 +5,12 @@ ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$ROOT"
 
 VERSION="${1:-$(node -p "require('./package.json').version")}"
+export BABY_QUIRT_SOURCE_COMMIT="${BABY_QUIRT_SOURCE_COMMIT:-$(git rev-parse HEAD)}"
 
-echo "==> Building Baby Quirt ${VERSION}"
+echo "==> Building Baby Quirt ${VERSION} from commit ${BABY_QUIRT_SOURCE_COMMIT}"
 
 npm ci
-npm rebuild node-pty
+npm run build:native
 npm run build
 npm run test:all
 npm run test:contracts

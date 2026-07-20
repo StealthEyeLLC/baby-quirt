@@ -13,8 +13,18 @@ jobs:
   test:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout
+      - name: Checkout exact source SHA
         uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.0
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+
+      - name: Install system dependencies
+        run: |
+          sudo DEBIAN_FRONTEND=noninteractive apt-get update
+          sudo DEBIAN_FRONTEND=noninteractive apt-get install -y \
+            build-essential python3 python3-dev make g++ gcc pkg-config \
+            git jq curl ca-certificates openssh-client tmux tar gzip xz-utils \
+            rsync util-linux systemd systemd-dev
 
       - name: Setup Node.js 24.18
         uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
@@ -25,7 +35,7 @@ jobs:
       - name: Install dependencies
         run: |
           npm ci
-          npm rebuild node-pty
+          npm run build:native
 
       - name: Typecheck
         run: npm run lint
@@ -46,8 +56,17 @@ jobs:
     runs-on: ubuntu-latest
     needs: test
     steps:
-      - name: Checkout
+      - name: Checkout exact source SHA
         uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.0
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+
+      - name: Install system dependencies
+        run: |
+          sudo DEBIAN_FRONTEND=noninteractive apt-get update
+          sudo DEBIAN_FRONTEND=noninteractive apt-get install -y \
+            build-essential python3 python3-dev make g++ gcc pkg-config \
+            git jq curl ca-certificates tmux tar gzip xz-utils rsync util-linux
 
       - name: Setup Node.js 24.18
         uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
@@ -55,17 +74,56 @@ jobs:
           node-version: '24.18.0'
           cache: npm
 
+      - name: Record source commit
+        run: echo "BABY_QUIRT_SOURCE_COMMIT=${{ github.event.pull_request.head.sha || github.sha }}" >> "$GITHUB_ENV"
+
       - name: Build release bundle
         run: |
           chmod +x scripts/*.sh
-          bash scripts/release.sh
+          bash scripts/release.sh 0.1.0
+
+      - name: Reproducibility build A
+        run: |
+          BUILD_A=$(mktemp -d)
+          BABY_QUIRT_BUILD_ROOT="$BUILD_A" BABY_QUIRT_SOURCE_COMMIT="${{ github.event.pull_request.head.sha || github.sha }}" \
+            bash scripts/build-bundle.sh 0.1.0 > /tmp/digest-a.txt
+          cp release/baby-quirt-0.1.0.sha256 /tmp/sha-a.txt
+
+      - name: Reproducibility build B
+        run: |
+          BUILD_B=$(mktemp -d)
+          BABY_QUIRT_BUILD_ROOT="$BUILD_B" BABY_QUIRT_SOURCE_COMMIT="${{ github.event.pull_request.head.sha || github.sha }}" \
+            bash scripts/build-bundle.sh 0.1.0 > /tmp/digest-b.txt
+          cp release/baby-quirt-0.1.0.sha256 /tmp/sha-b.txt
+          diff /tmp/sha-a.txt /tmp/sha-b.txt
+
+      - name: Verify artifact contents
+        run: |
+          test "$(find release -maxdepth 1 -type f | wc -l)" -eq 3
+          test -f release/baby-quirt-0.1.0.tar.gz
+          test -f release/baby-quirt-0.1.0.sha256
+          test -f release/baby-quirt-0.1.0.manifest.json
+          COMMIT=$(python3 -c "import json; print(json.load(open('release/baby-quirt-0.1.0.manifest.json'))['commit'])")
+          test "${#COMMIT}" -eq 40
+          test "$COMMIT" = "${{ github.event.pull_request.head.sha || github.sha }}"
 
       - name: Upload release artifact
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
           name: baby-quirt-release
-          path: |
-            release/*.tar.gz
-            release/*.sha256
-            release/*.manifest.json
+          path: release/baby-quirt-0.1.0.tar.gz
+          retention-days: 30
+
+      - name: Upload release digest
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: baby-quirt-release-digest
+          path: release/baby-quirt-0.1.0.sha256
+          retention-days: 30
+
+      - name: Upload release manifest
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: baby-quirt-release-manifest
+          path: release/baby-quirt-0.1.0.manifest.json
           retention-days: 30

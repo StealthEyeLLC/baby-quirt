@@ -34,11 +34,11 @@ export class OperationRegistry {
   ) {
     this.jobs = new JobManager(config, store);
     this.files = new FileManager();
-    this.pty = new PtyManager(config, store);
+    this.pty = new PtyManager(store);
     this.artifacts = new ArtifactManager(store);
 
-    if (existsSync(config.signingPrivateKeyPath)) {
-      this.privateKey = loadPrivKey(config.signingPrivateKeyPath);
+    if (existsSync(config.supervisorReceiptPrivateKeyPath)) {
+      this.privateKey = loadPrivKey(config.supervisorReceiptPrivateKeyPath);
     }
   }
 
@@ -76,7 +76,7 @@ export class OperationRegistry {
             hostname: getHostname(),
           },
           this.privateKey,
-          this.config.signingKeyId,
+          this.config.supervisorReceiptKeyId,
         ) as unknown as Record<string, unknown>;
       }
 
@@ -103,9 +103,9 @@ export class OperationRegistry {
       case 'baby.health':
         return this.health();
       case 'baby.exec':
-        return this.jobs.exec(requestId, body as never);
+        return await this.jobs.exec(requestId, body as never);
       case 'baby.shell':
-        return this.jobs.shell(requestId, body as never);
+        return await this.jobs.shell(requestId, body as never);
       case 'baby.job.get':
         return this.jobs.getJob(String(body.jobId));
       case 'baby.job.list':

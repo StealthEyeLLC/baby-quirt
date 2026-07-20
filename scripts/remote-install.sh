@@ -4,7 +4,7 @@ set -euo pipefail
 
 VERSION="${BABY_QUIRT_VERSION:?BABY_QUIRT_VERSION required}"
 STAGING_PATH="${BABY_QUIRT_STAGING_PATH:?BABY_QUIRT_STAGING_PATH required}"
-EXPECTED_COMMIT="${BABY_QUIRT_EXPECTED_COMMIT:-}"
+EXPECTED_COMMIT="${BABY_QUIRT_EXPECTED_COMMIT:?BABY_QUIRT_EXPECTED_COMMIT required}"
 RELEASE_ROOT="${BABY_QUIRT_RELEASE_ROOT:-/opt/baby-quirt/releases}"
 CURRENT_LINK="${BABY_QUIRT_CURRENT_LINK:-/opt/baby-quirt/current}"
 PREVIOUS_LINK="${BABY_QUIRT_PREVIOUS_LINK:-/opt/baby-quirt/previous}"
@@ -14,6 +14,11 @@ NODE_PATH="${BABY_QUIRT_NODE_PATH:-/opt/node-v24.18.0-linux-x64/bin/node}"
 
 if [[ ! "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+(-[a-zA-Z0-9.]+)?$ ]]; then
   echo "ERROR: invalid version format: $VERSION"
+  exit 1
+fi
+
+if [ "${#EXPECTED_COMMIT}" -ne 40 ]; then
+  echo "ERROR: BABY_QUIRT_EXPECTED_COMMIT must be a 40-character SHA"
   exit 1
 fi
 
@@ -58,7 +63,7 @@ if [ "$ACTUAL_DIGEST" != "$MANIFEST_DIGEST" ]; then
   echo "ERROR: archive digest does not match manifest"
   exit 1
 fi
-if [ -n "$EXPECTED_COMMIT" ] && [ "$MANIFEST_COMMIT" != "$EXPECTED_COMMIT" ]; then
+if [ "$MANIFEST_COMMIT" != "$EXPECTED_COMMIT" ]; then
   echo "ERROR: manifest commit does not match expected commit"
   exit 1
 fi
@@ -72,20 +77,18 @@ if [ -f "$SHA_FILE" ]; then
   fi
 fi
 
-echo "==> Extracting release to staging target"
+echo "==> Extracting release with safe extractor"
 STAGE_EXTRACT="$STAGING_PATH/extracted-${VERSION}"
 rm -rf "$STAGE_EXTRACT"
 mkdir -p "$STAGE_EXTRACT"
-tar -xzf "$ARCHIVE" -C "$STAGE_EXTRACT" --no-same-owner
+"$NODE_PATH" -e "
+import { safeExtractTarGz } from './lib/dist/install/safe-extract.js';
+await safeExtractTarGz('$ARCHIVE', '$STAGE_EXTRACT', 'baby-quirt-${VERSION}');
+" 2>/dev/null || sudo "$NODE_PATH" "$CURRENT_LINK/lib/dist/cli/install.js" --archive "$STAGING_PATH/$ARCHIVE" --version "$VERSION"
 
 EXTRACTED_DIR="$STAGE_EXTRACT/baby-quirt-${VERSION}"
 if [ ! -d "$EXTRACTED_DIR" ]; then
   echo "ERROR: extracted release directory missing"
-  exit 1
-fi
-
-if [ "$(python3 -c "import json; print(json.load(open('$EXTRACTED_DIR/manifest.json'))['version'])")" != "$VERSION" ]; then
-  echo "ERROR: installed manifest version mismatch"
   exit 1
 fi
 
@@ -94,11 +97,16 @@ sudo mkdir -p "$RELEASE_ROOT" "$CONFIG_ROOT" "$STATE_ROOT"
 sudo rm -rf "$TARGET"
 sudo cp -a "$EXTRACTED_DIR" "$TARGET"
 
-if [ ! -f "$CONFIG_ROOT/signing-public.pem" ]; then
-  echo "==> Generating signing keys"
+if [ ! -f "$CONFIG_ROOT/gateway-authority-public.pem" ]; then
+  echo "ERROR: gateway authority public key must be installed before deployment"
+  exit 1
+fi
+
+if [ ! -f "$CONFIG_ROOT/supervisor-receipt-public.pem" ]; then
+  echo "==> Generating supervisor receipt keys on host"
   sudo "$NODE_PATH" "$TARGET/lib/dist/cli/install.js" --release-dir "$TARGET" --version "$VERSION"
 else
-  echo "==> Signing keys already exist, updating release pointer"
+  echo "==> Supervisor receipt keys already exist, updating release pointer"
   if [ -L "$CURRENT_LINK" ]; then
     PREV=$(readlink -f "$CURRENT_LINK")
     sudo rm -f "$PREVIOUS_LINK"

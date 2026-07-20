@@ -19,7 +19,7 @@ import {
 } from '../protocol/frame.js';
 import { buildSigningDocument } from '../crypto/canonical.js';
 import { signEd25519, loadPrivateKey } from '../crypto/signing.js';
-import { loadRuntimeConfig, PROTOCOL_VERSION, DEFAULTS } from '../config.js';
+import { loadRuntimeConfig, PROTOCOL_VERSION, DEFAULTS, GATEWAY_AUTHORITY_KEY_ID } from '../config.js';
 
 interface CliOptions {
   socketPath: string;
@@ -78,7 +78,7 @@ function parseArgs(): CliOptions {
 
 async function sendRequest(options: CliOptions): Promise<unknown> {
   const config = loadRuntimeConfig();
-  const keyPath = options.keyPath ?? config.signingPrivateKeyPath;
+  const keyPath = options.keyPath ?? config.gatewayAuthorityPrivateKeyPath;
 
   if (!existsSync(keyPath)) {
     throw new Error(`Signing key not found: ${keyPath}`);
@@ -100,6 +100,7 @@ async function sendRequest(options: CliOptions): Promise<unknown> {
   const authorityForSigning = {
     algorithm: 'ed25519' as const,
     gatewayId: options.gatewayId,
+    keyId: GATEWAY_AUTHORITY_KEY_ID,
     nonce,
   };
 
@@ -118,7 +119,7 @@ async function sendRequest(options: CliOptions): Promise<unknown> {
   const authority = {
     ...authorityForSigning,
     signature: signEd25519(signingDoc, privateKey),
-    keyId: config.signingKeyId,
+    keyId: GATEWAY_AUTHORITY_KEY_ID,
   };
 
   const request: RequestPayload = {

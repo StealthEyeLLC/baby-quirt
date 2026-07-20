@@ -5,10 +5,13 @@ export const CONTRACT_VERSION = '1.0.0';
 export const PRODUCT_NAME = 'baby-quirt';
 export const FRAME_MAGIC = 'QRT1';
 
+export const GATEWAY_AUTHORITY_KEY_ID = 'gateway-authority-v1';
+export const SUPERVISOR_RECEIPT_KEY_ID = 'supervisor-receipt-v1';
+
 export const DEFAULTS = {
   repository: 'StealthEyeLLC/baby-quirt',
   defaultBranch: 'main',
-  workBranch: 'build/quirt-core',
+  workBranch: 'cursor/baby-quirt-core-e857',
   gitRemote: 'https://github.com/StealthEyeLLC/baby-quirt.git',
   vpsHost: '51.81.86.225',
   vpsPort: 22,
@@ -22,6 +25,7 @@ export const DEFAULTS = {
   socketGroup: 'horsey',
   socketMode: 0o660,
   gatewayUser: 'fix-mcp',
+  gatewayUid: 997,
   releaseRoot: '/opt/baby-quirt/releases',
   currentLink: '/opt/baby-quirt/current',
   previousLink: '/opt/baby-quirt/previous',
@@ -42,6 +46,8 @@ export const DEFAULTS = {
   nonceRetentionMs: 24 * 60 * 60 * 1000,
   idempotencyRetentionMs: 24 * 60 * 60 * 1000,
   streamChunkSize: 64 * 1024,
+  maxArchiveBytes: 512 * 1024 * 1024,
+  maxArchiveFileBytes: 256 * 1024 * 1024,
 } as const;
 
 export interface RuntimeConfig {
@@ -59,11 +65,16 @@ export interface RuntimeConfig {
   oauthIssuer: string;
   oauthResource: string;
   oauthJwksUri: string;
-  signingPublicKeyPath: string;
-  signingPrivateKeyPath: string;
-  signingKeyId: string;
-  previousSigningPublicKeyPath?: string;
-  gatewayUid?: number;
+  gatewayAuthorityPublicKeyPath: string;
+  gatewayAuthorityPrivateKeyPath: string;
+  gatewayAuthorityKeyId: string;
+  supervisorReceiptPrivateKeyPath: string;
+  supervisorReceiptPublicKeyPath: string;
+  supervisorReceiptKeyId: string;
+  ownerPrincipalFingerprint: string;
+  previousGatewayAuthorityPublicKeyPath?: string;
+  gatewayUid: number;
+  skipPeerCredCheck: boolean;
   maxFrameSize: number;
   maxOutputBytes: number;
   maxJobQueue: number;
@@ -96,13 +107,20 @@ export function loadRuntimeConfig(overrides: Partial<RuntimeConfig> = {}): Runti
     oauthIssuer: env.BABY_QUIRT_OAUTH_ISSUER ?? DEFAULTS.oauthIssuer,
     oauthResource: env.BABY_QUIRT_OAUTH_RESOURCE ?? DEFAULTS.oauthResource,
     oauthJwksUri: env.BABY_QUIRT_OAUTH_JWKS_URI ?? DEFAULTS.oauthJwksUri,
-    signingPublicKeyPath: `${configRoot}/signing-public.pem`,
-    signingPrivateKeyPath: `${configRoot}/signing-private.pem`,
-    signingKeyId: 'baby-quirt-signing-v1',
-    previousSigningPublicKeyPath: undefined,
+    gatewayAuthorityPublicKeyPath: `${configRoot}/gateway-authority-public.pem`,
+    gatewayAuthorityPrivateKeyPath: `${configRoot}/gateway-authority-private.pem`,
+    gatewayAuthorityKeyId: GATEWAY_AUTHORITY_KEY_ID,
+    supervisorReceiptPrivateKeyPath: `${configRoot}/supervisor-receipt-private.pem`,
+    supervisorReceiptPublicKeyPath: `${configRoot}/supervisor-receipt-public.pem`,
+    supervisorReceiptKeyId: SUPERVISOR_RECEIPT_KEY_ID,
+    ownerPrincipalFingerprint: env.BABY_QUIRT_OWNER_PRINCIPAL_FINGERPRINT ?? '',
+    previousGatewayAuthorityPublicKeyPath: undefined,
     gatewayUid: env.BABY_QUIRT_GATEWAY_UID
       ? parseInt(env.BABY_QUIRT_GATEWAY_UID, 10)
-      : undefined,
+      : DEFAULTS.gatewayUid,
+    skipPeerCredCheck:
+      overrides.skipPeerCredCheck ??
+      (env.BABY_QUIRT_SKIP_PEER_CRED === '1' || env.BABY_QUIRT_TEST_MODE === '1'),
     maxFrameSize: DEFAULTS.maxFrameSize,
     maxOutputBytes: DEFAULTS.maxOutputBytes,
     maxJobQueue: DEFAULTS.maxJobQueue,
@@ -121,7 +139,7 @@ import { hostname } from 'node:os';
 
 export function getMachineIdSha256(): string {
   try {
-    const machineId = readFileSync('/etc/machine-id', 'utf8').trim();
+    const machineId = readFileSync('/etc/machine-id');
     return createHash('sha256').update(machineId).digest('hex');
   } catch {
     return '';
@@ -130,4 +148,9 @@ export function getMachineIdSha256(): string {
 
 export function getHostname(): string {
   return hostname();
+}
+
+export function publicKeyFingerprint(pemPath: string): string {
+  const pem = readFileSync(pemPath);
+  return createHash('sha256').update(pem).digest('hex');
 }

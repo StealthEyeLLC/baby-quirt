@@ -13,10 +13,28 @@ import { randomUUID } from 'node:crypto';
 import type { RuntimeConfig } from '../config.js';
 import type { StateStore, JobRecord } from '../state/store.js';
 import { DEFAULTS } from '../config.js';
+import {
+  captureProcessIdentity,
+  processAlive,
+  readProcessGroup,
+} from '../process/identity.js';
+import {
+  MapSecretProvider,
+  ProcessEnvSecretProvider,
+  resolveEnvironment,
+  type SecretProvider,
+} from '../secrets/provider.js';
+
+export interface EnvEntry {
+  name: string;
+  value?: string;
+  secretReference?: string;
+}
 
 export interface ExecPayload {
   argv: string[];
   cwd?: string;
+  environment?: EnvEntry[];
   env?: Record<string, string>;
   detached?: boolean;
 }
@@ -26,6 +44,7 @@ export interface ShellPayload {
   command?: string;
   script?: string;
   cwd?: string;
+  environment?: EnvEntry[];
   env?: Record<string, string>;
   detached?: boolean;
 }
@@ -55,31 +74,37 @@ export interface JobListPayload {
 const runningProcesses = new Map<string, ChildProcess>();
 
 export class JobManager {
+  private readonly secretProvider: SecretProvider;
+
   constructor(
     private readonly config: RuntimeConfig,
     private readonly store: StateStore,
-  ) {}
+    secretProvider?: SecretProvider,
+  ) {
+    this.secretProvider = secretProvider ?? new ProcessEnvSecretProvider();
+  }
 
-  exec(requestId: string, payload: ExecPayload): JobRecord {
+  async exec(requestId: string, payload: ExecPayload): Promise<JobRecord> {
     if (!payload.argv || payload.argv.length === 0) {
       throw new Error('argv must be a non-empty array');
     }
     const cwd = payload.cwd ?? process.cwd();
+    const resolved = await this.resolveEnv(payload);
     const job = this.store.createJob({
       requestId,
       operation: 'baby.exec',
       status: 'pending',
       cwd,
       argv: [...payload.argv],
-      env: payload.env,
+      env: resolved.persisted,
       detached: payload.detached ?? false,
     });
 
-    this.startProcess(job, payload.argv, cwd, payload.env, payload.detached ?? false);
+    await this.startProcess(job, payload.argv, cwd, resolved.env, payload.detached ?? false);
     return this.store.getJob(job.jobId)!;
   }
 
-  shell(requestId: string, payload: ShellPayload): JobRecord {
+  async shell(requestId: string, payload: ShellPayload): Promise<JobRecord> {
     const cwd = payload.cwd ?? process.cwd();
     let argv: string[];
     if (payload.script) {
@@ -92,6 +117,7 @@ export class JobManager {
       throw new Error('Either command or script is required');
     }
 
+    const resolved = await this.resolveEnv(payload);
     const job = this.store.createJob({
       requestId,
       operation: 'baby.shell',
@@ -100,22 +126,38 @@ export class JobManager {
       argv,
       shell: payload.shell,
       script: payload.script ?? payload.command,
-      env: payload.env,
+      env: resolved.persisted,
       detached: payload.detached ?? false,
     });
 
-    this.startProcess(job, argv, cwd, payload.env, payload.detached ?? false);
+    await this.startProcess(job, argv, cwd, resolved.env, payload.detached ?? false);
     return this.store.getJob(job.jobId)!;
   }
 
-  private startProcess(
+  private async resolveEnv(payload: ExecPayload | ShellPayload): Promise<{
+    env: Record<string, string>;
+    persisted: JobRecord['env'];
+  }> {
+    if (payload.environment) {
+      return resolveEnvironment(payload.environment, this.secretProvider);
+    }
+    if (payload.env) {
+      return {
+        env: payload.env,
+        persisted: Object.entries(payload.env).map(([name, value]) => ({ name, value })),
+      };
+    }
+    return { env: {}, persisted: [] };
+  }
+
+  private async startProcess(
     job: JobRecord,
     argv: string[],
     cwd: string,
-    env?: Record<string, string>,
+    env: Record<string, string>,
     detached = false,
-  ): void {
-    const spawnEnv = env ? { ...process.env, ...env } : process.env;
+  ): Promise<void> {
+    const spawnEnv = { ...process.env, ...env };
     let child: ChildProcess;
     let stdoutStream: ReturnType<typeof createWriteStream> | undefined;
     let stderrStream: ReturnType<typeof createWriteStream> | undefined;
@@ -139,14 +181,17 @@ export class JobManager {
       child = spawn(argv[0], argv.slice(1), {
         cwd,
         env: spawnEnv,
-        detached: false,
+        detached: true,
         stdio: ['ignore', 'pipe', 'pipe'],
       });
     }
 
     job.status = detached ? 'detached' : 'running';
     job.pid = child.pid;
-    job.pgid = child.pid;
+    job.pgid = child.pid ? readProcessGroup(child.pid) : undefined;
+    if (child.pid) {
+      job.identity = captureProcessIdentity(child.pid, job.pgid);
+    }
     job.startedAt = new Date().toISOString();
     this.store.saveJob(job);
     runningProcesses.set(job.jobId, child);
@@ -190,11 +235,8 @@ export class JobManager {
       runningProcesses.delete(job.jobId);
     };
 
-    child.on('error', (err) => {
+    child.on('error', () => {
       finalize('failed');
-      if (stderrStream) {
-        stderrStream.write(Buffer.from(`Process error: ${err.message}\n`));
-      }
     });
 
     child.on('close', (code, signal) => {
@@ -225,7 +267,7 @@ export class JobManager {
     const job = this.store.getJob(payload.jobId);
     if (!job) throw new Error(`Job not found: ${payload.jobId}`);
 
-    if (['completed', 'failed', 'cancelled'].includes(job.status)) {
+    if (['completed', 'failed', 'cancelled', 'lost'].includes(job.status)) {
       return job;
     }
 
@@ -239,7 +281,7 @@ export class JobManager {
           reject(new Error('Job disappeared'));
           return;
         }
-        if (['completed', 'failed', 'cancelled', 'detached'].includes(current.status)) {
+        if (['completed', 'failed', 'cancelled', 'detached', 'adopted', 'lost'].includes(current.status)) {
           resolve(current);
           return;
         }
@@ -334,20 +376,26 @@ export class JobManager {
     const jobs = this.store.listJobs().filter((j: JobRecord) => j.status === 'running');
     let recovered = 0;
     for (const job of jobs) {
+      if (job.identity && processAlive(job.identity)) {
+        job.status = 'adopted';
+        this.store.saveJob(job);
+        recovered++;
+        continue;
+      }
       if (job.pid) {
         try {
           process.kill(job.pid, 0);
-          recovered++;
-        } catch {
-          job.status = 'failed';
-          job.completedAt = new Date().toISOString();
+          job.status = 'adopted';
           this.store.saveJob(job);
+          recovered++;
+          continue;
+        } catch {
+          // fall through
         }
-      } else {
-        job.status = 'failed';
-        job.completedAt = new Date().toISOString();
-        this.store.saveJob(job);
       }
+      job.status = 'lost';
+      job.completedAt = new Date().toISOString();
+      this.store.saveJob(job);
     }
     return recovered;
   }
@@ -361,6 +409,10 @@ export class JobManager {
         job.status = 'failed';
         job.completedAt = new Date().toISOString();
         this.store.saveJob(job);
+        continue;
+      }
+      if (job.identity && processAlive(job.identity)) {
+        recovered++;
         continue;
       }
       try {
@@ -382,8 +434,15 @@ export class JobManager {
     if (!job || job.status !== 'detached') return job;
     const pid = job.pgid ?? job.pid;
     if (!pid) return job;
+    if (job.identity && processAlive(job.identity)) {
+      job.status = 'adopted';
+      this.store.saveJob(job);
+      return job;
+    }
     try {
       process.kill(pid, 0);
+      job.status = 'adopted';
+      this.store.saveJob(job);
     } catch {
       job.status = 'completed';
       job.completedAt = new Date().toISOString();
@@ -398,3 +457,5 @@ export class JobManager {
 export function generateJobId(): string {
   return randomUUID();
 }
+
+export { MapSecretProvider };

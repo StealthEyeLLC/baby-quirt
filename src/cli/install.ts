@@ -1,54 +1,81 @@
 #!/usr/bin/env node
-/** Baby Quirt installer — generates keys and installs release. */
+/** Baby Quirt installer — generates supervisor receipt keys and installs release. */
 
-import { mkdirSync, writeFileSync, existsSync, cpSync } from 'node:fs';
+import { mkdirSync, writeFileSync, existsSync, cpSync, readFileSync, chmodSync } from 'node:fs';
 import { join, resolve } from 'node:path';
+import { createHash } from 'node:crypto';
 import { generateEd25519KeyPair } from '../crypto/signing.js';
-import { DEFAULTS } from '../config.js';
+import { DEFAULTS, SUPERVISOR_RECEIPT_KEY_ID } from '../config.js';
 import { atomicSwapSymlinks } from '../install/symlinks.js';
+import { assertSafeVersion, safeExtractTarGz } from '../install/safe-extract.js';
 
-function parseArgs(): { releaseDir: string; version: string } {
+function parseArgs(): { releaseDir: string; version: string; archivePath?: string } {
   const args = process.argv.slice(2);
   let releaseDir = '';
   let version = '0.0.0';
+  let archivePath: string | undefined;
 
   for (let i = 0; i < args.length; i++) {
     if (args[i] === '--release-dir') releaseDir = args[++i];
+    if (args[i] === '--archive') archivePath = args[++i];
     if (args[i] === '--version') version = args[++i];
     if (args[i] === '--help') {
-      console.log('Usage: baby-quirt-install --release-dir <path> [--version <ver>]');
+      console.log(
+        'Usage: baby-quirt-install --release-dir <path> [--archive <tar.gz>] [--version <ver>]',
+      );
       process.exit(0);
     }
   }
 
-  if (!releaseDir) {
-    console.error('--release-dir is required');
+  if (!releaseDir && !archivePath) {
+    console.error('--release-dir or --archive is required');
     process.exit(1);
   }
-  return { releaseDir: resolve(releaseDir), version };
+  return { releaseDir: releaseDir ? resolve(releaseDir) : '', version, archivePath };
 }
 
-function main(): void {
-  const { releaseDir, version } = parseArgs();
+function fingerprintPem(path: string): string {
+  return createHash('sha256').update(readFileSync(path)).digest('hex');
+}
+
+async function main(): Promise<void> {
+  const { releaseDir, version, archivePath } = parseArgs();
+  assertSafeVersion(version);
+
   const configRoot = DEFAULTS.configRoot;
   const stateRoot = DEFAULTS.stateRoot;
   const releaseRoot = DEFAULTS.releaseRoot;
   const currentLink = DEFAULTS.currentLink;
   const previousLink = DEFAULTS.previousLink;
 
-  for (const dir of [configRoot, stateRoot, releaseRoot, join(stateRoot, 'jobs'), join(stateRoot, 'streams')]) {
+  for (const dir of [
+    configRoot,
+    stateRoot,
+    releaseRoot,
+    join(stateRoot, 'jobs'),
+    join(stateRoot, 'streams'),
+    join(stateRoot, 'pty'),
+  ]) {
     mkdirSync(dir, { recursive: true, mode: 0o750 });
   }
 
-  const publicKeyPath = join(configRoot, 'signing-public.pem');
-  const privateKeyPath = join(configRoot, 'signing-private.pem');
-  if (!existsSync(publicKeyPath)) {
-    console.log('Generating Ed25519 signing key pair...');
+  const gatewayPublicPath = join(configRoot, 'gateway-authority-public.pem');
+  if (!existsSync(gatewayPublicPath)) {
+    console.error('Gateway authority public key must be installed before Baby Quirt');
+    process.exit(1);
+  }
+
+  const receiptPublicPath = join(configRoot, 'supervisor-receipt-public.pem');
+  const receiptPrivatePath = join(configRoot, 'supervisor-receipt-private.pem');
+  if (!existsSync(receiptPublicPath)) {
+    console.log('Generating supervisor receipt signing key pair on host...');
     generateEd25519KeyPair({
-      publicKeyPath,
-      privateKeyPath,
-      keyId: 'baby-quirt-signing-v1',
+      publicKeyPath: receiptPublicPath,
+      privateKeyPath: receiptPrivatePath,
+      keyId: SUPERVISOR_RECEIPT_KEY_ID,
     });
+    chmodSync(receiptPrivatePath, 0o600);
+    console.log(`SUPERVISOR_RECEIPT_FINGERPRINT=${fingerprintPem(receiptPublicPath)}`);
   }
 
   const runtimeConfig = {
@@ -65,6 +92,7 @@ function main(): void {
     expectedMachineIdSha256: DEFAULTS.expectedMachineIdSha256,
     oauthIssuer: DEFAULTS.oauthIssuer,
     oauthJwksUri: DEFAULTS.oauthJwksUri,
+    ownerPrincipalFingerprint: fingerprintPem(gatewayPublicPath),
     installedAt: new Date().toISOString(),
   };
   writeFileSync(join(configRoot, 'runtime.json'), JSON.stringify(runtimeConfig, null, 2), {
@@ -73,7 +101,19 @@ function main(): void {
 
   const targetRelease = join(releaseRoot, version);
   mkdirSync(targetRelease, { recursive: true, mode: 0o755 });
-  cpSync(releaseDir, targetRelease, { recursive: true });
+
+  if (archivePath) {
+    const prefix = `baby-quirt-${version}`;
+    await safeExtractTarGz(archivePath, targetRelease, prefix);
+    const extracted = join(targetRelease, prefix);
+    if (!existsSync(extracted)) {
+      console.error('Extracted release directory missing');
+      process.exit(1);
+    }
+    cpSync(extracted, targetRelease, { recursive: true, force: true });
+  } else {
+    cpSync(releaseDir, targetRelease, { recursive: true });
+  }
 
   const swap = atomicSwapSymlinks(currentLink, previousLink, targetRelease);
 
@@ -85,4 +125,7 @@ function main(): void {
   console.log('Run: systemctl daemon-reload && systemctl enable --now baby-quirt.socket');
 }
 
-main();
+main().catch((err) => {
+  console.error(err instanceof Error ? err.message : String(err));
+  process.exit(1);
+});

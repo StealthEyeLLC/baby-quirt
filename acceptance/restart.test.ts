@@ -1,7 +1,7 @@
 import { describe, it, before, after } from 'node:test';
 import assert from 'node:assert/strict';
 import { startTestServer, stopTestServer, type TestServerContext } from '../test/helpers/server.js';
-import { BabyQuirtTestClient } from '../test/helpers/client.js';
+import { createTestClient, type BabyQuirtTestClient } from '../test/helpers/client.js';
 import { BabyQuirtServer } from '../src/server.js';
 import { loadRuntimeConfig } from '../src/config.js';
 
@@ -11,7 +11,7 @@ describe('acceptance: restart recovery', () => {
 
   before(async () => {
     ctx = await startTestServer();
-    client = new BabyQuirtTestClient({ socketPath: ctx.socketPath, configRoot: ctx.configRoot });
+    client = createTestClient(ctx);
   });
 
   after(async () => {
@@ -31,7 +31,8 @@ describe('acceptance: restart recovery', () => {
       stateRoot: ctx.stateRoot,
       configRoot: ctx.configRoot,
       expectedMachineIdSha256: 'test',
-      signingKeyId: 'test',
+      ownerPrincipalFingerprint: ctx.ownerPrincipalFingerprint,
+      skipPeerCredCheck: true,
     });
     const server2 = new BabyQuirtServer(config);
     await server2.start();

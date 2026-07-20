@@ -15,7 +15,7 @@ describe('job manager', () => {
   const jobs = new JobManager(config, store);
 
   it('executes a simple command', async () => {
-    const job = jobs.exec('req-1', { argv: ['echo', 'hello'], cwd: dir });
+    const job = await jobs.exec('req-1', { argv: ['echo', 'hello'], cwd: dir });
     assert.ok(job.jobId);
     assert.equal(job.operation, 'baby.exec');
 
@@ -29,7 +29,7 @@ describe('job manager', () => {
   });
 
   it('executes shell command', async () => {
-    const job = jobs.shell('req-2', { command: 'echo shell-test', cwd: dir });
+    const job = await jobs.shell('req-2', { command: 'echo shell-test', cwd: dir });
     const completed = await jobs.waitForJob({ jobId: job.jobId, timeoutMs: 10_000 });
     assert.equal(completed.status, 'completed');
   });

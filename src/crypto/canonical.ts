@@ -84,7 +84,7 @@ export function redactSecrets(value: unknown, depth = 0): unknown {
   if (typeof value === 'object') {
     const result: Record<string, unknown> = {};
     for (const [k, v] of Object.entries(value as Record<string, unknown>)) {
-      if (/secret|token|password|private|credential|signature/i.test(k)) {
+      if (/secret|token|password|private|credential|signature|secretReference/i.test(k)) {
         result[k] = '[REDACTED]';
       } else {
         result[k] = redactSecrets(v, depth + 1);

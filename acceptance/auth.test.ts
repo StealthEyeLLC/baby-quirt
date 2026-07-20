@@ -2,7 +2,7 @@ import { describe, it, before, after } from 'node:test';
 import assert from 'node:assert/strict';
 import { randomUUID } from 'node:crypto';
 import { startTestServer, stopTestServer, type TestServerContext } from '../test/helpers/server.js';
-import { BabyQuirtTestClient } from '../test/helpers/client.js';
+import { createTestClient, type BabyQuirtTestClient } from '../test/helpers/client.js';
 import { buildOwnerPrincipal } from '../src/auth/principal.js';
 import { ReplayStore } from '../src/state/replay-store.js';
 import { loadRuntimeConfig } from '../src/config.js';
@@ -13,7 +13,7 @@ describe('acceptance: auth adversarial', () => {
 
   before(async () => {
     ctx = await startTestServer();
-    client = new BabyQuirtTestClient({ socketPath: ctx.socketPath, configRoot: ctx.configRoot });
+    client = createTestClient(ctx);
   });
 
   after(async () => {
@@ -49,6 +49,12 @@ describe('acceptance: auth adversarial', () => {
     await client.expectError('baby.health', {}, 'replay_detected', { nonce });
   });
 
+  it('rejects missing owner principal fingerprint', async () => {
+    await client.expectError('baby.health', {}, 'invalid_principal_fingerprint', {
+      principal: buildOwnerPrincipal({ principalFingerprint: 'deadbeef' }),
+    });
+  });
+
   it('returns cached idempotent response for exact retry', async () => {
     const requestId = randomUUID();
     const nonce = randomUUID();
@@ -61,7 +67,7 @@ describe('acceptance: auth adversarial', () => {
 });
 
 describe('acceptance: replay store ordering', () => {
-  it('checks idempotency before nonce commit', () => {
+  it('stores idempotent responses after authenticated execution', () => {
     const store = new ReplayStore(loadRuntimeConfig({ stateRoot: '/tmp/bq-replay-order', expectedMachineIdSha256: 'test' }));
     const hash = 'semantic-hash-1';
     store.storeIdempotentResponse(hash, { ok: true });

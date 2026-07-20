@@ -25,16 +25,20 @@ function main(): void {
     }
   }
 
-  // Fix key permissions
-  const pubKey = join(DEFAULTS.configRoot, 'signing-public.pem');
-  const privKey = join(DEFAULTS.configRoot, 'signing-private.pem');
+  const pubKey = join(DEFAULTS.configRoot, 'gateway-authority-public.pem');
+  const receiptPub = join(DEFAULTS.configRoot, 'supervisor-receipt-public.pem');
+  const receiptPriv = join(DEFAULTS.configRoot, 'supervisor-receipt-private.pem');
   if (existsSync(pubKey)) {
     chmodSync(pubKey, 0o644);
-    repairs.push('Fixed public key permissions');
+    repairs.push('Fixed gateway authority public key permissions');
   }
-  if (existsSync(privKey)) {
-    chmodSync(privKey, 0o600);
-    repairs.push('Fixed private key permissions');
+  if (existsSync(receiptPub)) {
+    chmodSync(receiptPub, 0o644);
+    repairs.push('Fixed supervisor receipt public key permissions');
+  }
+  if (existsSync(receiptPriv)) {
+    chmodSync(receiptPriv, 0o600);
+    repairs.push('Fixed supervisor receipt private key permissions');
   }
 
   // Verify current release link

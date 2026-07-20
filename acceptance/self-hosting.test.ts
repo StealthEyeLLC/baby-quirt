@@ -4,7 +4,7 @@ import { mkdtempSync, rmSync, readFileSync, existsSync } from 'node:fs';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { startTestServer, stopTestServer, type TestServerContext } from '../test/helpers/server.js';
-import { BabyQuirtTestClient } from '../test/helpers/client.js';
+import { createTestClient, type BabyQuirtTestClient } from '../test/helpers/client.js';
 import { loadPublicKey } from '../src/crypto/signing.js';
 import { verifyReceipt } from '../src/receipts/verify.js';
 
@@ -15,7 +15,7 @@ describe('acceptance: self-hosting workflow', () => {
 
   before(async () => {
     ctx = await startTestServer();
-    client = new BabyQuirtTestClient({ socketPath: ctx.socketPath, configRoot: ctx.configRoot });
+    client = createTestClient(ctx);
   });
 
   after(async () => {
@@ -50,7 +50,7 @@ describe('acceptance: self-hosting workflow', () => {
 
     assert.ok(stat.receipt);
     const receipt = stat.receipt as import('../src/receipts/receipt.js').SignedReceipt;
-    const pub = loadPublicKey(join(ctx.configRoot, 'signing-public.pem'));
+    const pub = loadPublicKey(join(ctx.configRoot, 'supervisor-receipt-public.pem'));
     assert.ok(verifyReceipt(receipt, pub), 'receipt signature should verify');
   });
 
@@ -81,7 +81,7 @@ describe('acceptance: artifact bounds', () => {
 
   before(async () => {
     ctx = await startTestServer();
-    client = new BabyQuirtTestClient({ socketPath: ctx.socketPath, configRoot: ctx.configRoot });
+    client = createTestClient(ctx);
   });
 
   after(async () => {

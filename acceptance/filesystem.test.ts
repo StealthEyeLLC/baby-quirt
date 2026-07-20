@@ -4,7 +4,7 @@ import { mkdirSync, symlinkSync, writeFileSync, mkdtempSync, rmSync } from 'node
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { startTestServer, stopTestServer, type TestServerContext } from '../test/helpers/server.js';
-import { BabyQuirtTestClient } from '../test/helpers/client.js';
+import { createTestClient, type BabyQuirtTestClient } from '../test/helpers/client.js';
 import { FileManager } from '../src/files/manager.js';
 
 describe('acceptance: hostile filesystem', () => {
@@ -42,7 +42,7 @@ describe('acceptance: large binary transfer', () => {
 
   before(async () => {
     ctx = await startTestServer();
-    client = new BabyQuirtTestClient({ socketPath: ctx.socketPath, configRoot: ctx.configRoot });
+    client = createTestClient(ctx);
   });
 
   after(async () => {

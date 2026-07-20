@@ -50,14 +50,17 @@ async function main(): Promise<void> {
     ),
   );
 
-  // Signing keys
-  const pubKey = join(DEFAULTS.configRoot, 'signing-public.pem');
-  const privKey = join(DEFAULTS.configRoot, 'signing-private.pem');
+  const pubKey = join(DEFAULTS.configRoot, 'gateway-authority-public.pem');
+  const receiptPub = join(DEFAULTS.configRoot, 'supervisor-receipt-public.pem');
+  const receiptPriv = join(DEFAULTS.configRoot, 'supervisor-receipt-private.pem');
   results.push(
-    check('signing-public', existsSync(pubKey), existsSync(pubKey) ? 'Public key present' : 'Public key missing'),
+    check('gateway-authority-public', existsSync(pubKey), existsSync(pubKey) ? 'Gateway public key present' : 'Gateway public key missing'),
   );
   results.push(
-    check('signing-private', existsSync(privKey), existsSync(privKey) ? 'Private key present' : 'Private key missing'),
+    check('supervisor-receipt-public', existsSync(receiptPub), existsSync(receiptPub) ? 'Supervisor receipt public key present' : 'Supervisor receipt public key missing'),
+  );
+  results.push(
+    check('supervisor-receipt-private', existsSync(receiptPriv), existsSync(receiptPriv) ? 'Supervisor receipt private key present' : 'Supervisor receipt private key missing'),
   );
 
   // Current release link
@@ -88,7 +91,7 @@ async function main(): Promise<void> {
   // Machine identity
   try {
     const { createHash } = await import('node:crypto');
-    const machineId = readFileSync('/etc/machine-id', 'utf8').trim();
+    const machineId = readFileSync('/etc/machine-id');
     const hash = createHash('sha256').update(machineId).digest('hex');
     const match = hash === DEFAULTS.expectedMachineIdSha256;
     results.push(

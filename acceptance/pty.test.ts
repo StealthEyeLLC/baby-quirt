@@ -1,7 +1,7 @@
 import { describe, it, before, after } from 'node:test';
 import assert from 'node:assert/strict';
 import { startTestServer, stopTestServer, type TestServerContext } from '../test/helpers/server.js';
-import { BabyQuirtTestClient } from '../test/helpers/client.js';
+import { createTestClient, type BabyQuirtTestClient } from '../test/helpers/client.js';
 
 describe('acceptance: PTY sessions', () => {
   let ctx: TestServerContext;
@@ -9,7 +9,7 @@ describe('acceptance: PTY sessions', () => {
 
   before(async () => {
     ctx = await startTestServer();
-    client = new BabyQuirtTestClient({ socketPath: ctx.socketPath, configRoot: ctx.configRoot });
+    client = createTestClient(ctx);
   });
 
   after(async () => {

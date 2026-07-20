@@ -3,6 +3,7 @@
 import { DEFAULTS } from '../config.js';
 import type { RuntimeConfig } from '../config.js';
 import { AuthError } from './errors.js';
+import { constantTimeEqual } from '../crypto/canonical.js';
 
 export interface OwnerPrincipal {
   subject: string;
@@ -12,7 +13,7 @@ export interface OwnerPrincipal {
   audience: string;
   principalType: string;
   workspaceAuthority: null;
-  principalFingerprint?: string;
+  principalFingerprint: string;
 }
 
 export function buildOwnerPrincipal(
@@ -26,6 +27,7 @@ export function buildOwnerPrincipal(
     audience: DEFAULTS.oauthResource,
     principalType: 'owner',
     workspaceAuthority: null,
+    principalFingerprint: '',
     ...overrides,
   };
 }
@@ -43,8 +45,7 @@ export function validatePrincipal(
     principalType: String(raw.principalType ?? ''),
     workspaceAuthority:
       raw.workspaceAuthority === undefined ? null : (raw.workspaceAuthority as null),
-    principalFingerprint:
-      raw.principalFingerprint !== undefined ? String(raw.principalFingerprint) : undefined,
+    principalFingerprint: String(raw.principalFingerprint ?? ''),
   };
 
   if (principal.subject !== config.expectedSubject) {
@@ -70,6 +71,15 @@ export function validatePrincipal(
       'invalid_workspace_authority',
       'Workspace authority must be null for unrestricted owner',
     );
+  }
+
+  if (config.ownerPrincipalFingerprint && config.ownerPrincipalFingerprint !== 'test') {
+    if (!principal.principalFingerprint) {
+      throw new AuthError('invalid_principal_fingerprint', 'Owner principal fingerprint is required');
+    }
+    if (!constantTimeEqual(principal.principalFingerprint, config.ownerPrincipalFingerprint)) {
+      throw new AuthError('invalid_principal_fingerprint', 'Owner principal fingerprint does not match');
+    }
   }
 
   return principal;

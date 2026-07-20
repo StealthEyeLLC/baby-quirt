@@ -34,14 +34,14 @@ export class Authenticator {
   }
 
   private loadKeys(): void {
-    if (existsSync(this.config.signingPublicKeyPath)) {
-      this.publicKey = loadPublicKey(this.config.signingPublicKeyPath);
+    if (existsSync(this.config.gatewayAuthorityPublicKeyPath)) {
+      this.publicKey = loadPublicKey(this.config.gatewayAuthorityPublicKeyPath);
     }
     if (
-      this.config.previousSigningPublicKeyPath &&
-      existsSync(this.config.previousSigningPublicKeyPath)
+      this.config.previousGatewayAuthorityPublicKeyPath &&
+      existsSync(this.config.previousGatewayAuthorityPublicKeyPath)
     ) {
-      this.previousPublicKey = loadPublicKey(this.config.previousSigningPublicKeyPath);
+      this.previousPublicKey = loadPublicKey(this.config.previousGatewayAuthorityPublicKeyPath);
     }
   }
 
@@ -53,8 +53,11 @@ export class Authenticator {
       throw new AuthError('unsupported_algorithm', `Algorithm ${authority.algorithm} is not supported`);
     }
 
-    if (authority.keyId && authority.keyId !== this.config.signingKeyId) {
-      throw new AuthError('invalid_key_id', 'Authority key ID does not match configured signing key');
+    if (!authority.keyId) {
+      throw new AuthError('invalid_key_id', 'Authority key ID is required');
+    }
+    if (authority.keyId !== this.config.gatewayAuthorityKeyId) {
+      throw new AuthError('invalid_key_id', 'Authority key ID does not match configured gateway key');
     }
 
     if (request.targetHost !== getHostname()) {
@@ -81,9 +84,14 @@ export class Authenticator {
       throw new AuthError('missing_nonce', 'Authority nonce is required');
     }
 
+    if (authority.gatewayId !== this.config.gatewayId) {
+      throw new AuthError('invalid_gateway_id', 'Authority gateway ID does not match');
+    }
+
     const authorityForSigning = {
       algorithm: authority.algorithm,
       gatewayId: authority.gatewayId,
+      keyId: authority.keyId,
       nonce: authority.nonce,
     };
 
@@ -101,17 +109,8 @@ export class Authenticator {
 
     const hash = requestHash(signingDocument);
 
-    const idempotent = this.replayStore.getIdempotentResponse(hash);
-    if (idempotent !== undefined) {
-      throw new IdempotentReplay(idempotent);
-    }
-
-    if (authority.gatewayId !== this.config.gatewayId) {
-      throw new AuthError('invalid_gateway_id', 'Authority gateway ID does not match');
-    }
-
     if (!this.publicKey) {
-      throw new AuthError('no_signing_key', 'Server signing public key not configured');
+      throw new AuthError('no_signing_key', 'Gateway authority public key not configured');
     }
 
     const valid =
@@ -124,13 +123,18 @@ export class Authenticator {
       throw new AuthError('invalid_signature', 'Authority signature verification failed');
     }
 
-    if (this.config.gatewayUid !== undefined) {
+    if (!this.config.skipPeerCredCheck) {
       if (peerUid === undefined) {
         throw new AuthError('invalid_peer', 'Unix peer credentials unavailable');
       }
-      if (peerUid !== this.config.gatewayUid && peerUid !== 0) {
+      if (peerUid !== this.config.gatewayUid) {
         throw new AuthError('invalid_peer', 'Unix peer credentials do not match gateway');
       }
+    }
+
+    const idempotent = this.replayStore.getIdempotentResponse(hash);
+    if (idempotent !== undefined) {
+      throw new IdempotentReplay(idempotent);
     }
 
     if (!this.replayStore.tryCommitNonce(authority.nonce)) {

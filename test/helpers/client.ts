@@ -18,7 +18,12 @@ import {
 } from '../../src/protocol/frame.js';
 import { buildSigningDocument } from '../../src/crypto/canonical.js';
 import { signEd25519, loadPrivateKey } from '../../src/crypto/signing.js';
-import { loadRuntimeConfig, PROTOCOL_VERSION, DEFAULTS } from '../../src/config.js';
+import {
+  loadRuntimeConfig,
+  PROTOCOL_VERSION,
+  DEFAULTS,
+  GATEWAY_AUTHORITY_KEY_ID,
+} from '../../src/config.js';
 import { buildOwnerPrincipal } from '../../src/auth/principal.js';
 import type { RuntimeConfig } from '../../src/config.js';
 
@@ -26,23 +31,26 @@ export interface TestClientOptions {
   socketPath: string;
   configRoot: string;
   config?: Partial<RuntimeConfig>;
-  keyId?: string;
+  gatewayPrivateKeyPath?: string;
+  ownerPrincipalFingerprint?: string;
 }
 
 export class BabyQuirtTestClient {
-  private readonly privateKeyPath: string;
+  private readonly gatewayPrivateKeyPath: string;
   private readonly config: RuntimeConfig;
-  private readonly keyId: string;
+  private readonly ownerPrincipalFingerprint: string;
 
   constructor(private readonly options: TestClientOptions) {
     this.config = loadRuntimeConfig({
       configRoot: options.configRoot,
       expectedMachineIdSha256: 'test',
       expectedHostname: hostname(),
+      skipPeerCredCheck: true,
       ...options.config,
     });
-    this.privateKeyPath = `${options.configRoot}/signing-private.pem`;
-    this.keyId = options.keyId ?? 'test';
+    this.gatewayPrivateKeyPath =
+      options.gatewayPrivateKeyPath ?? `${options.configRoot}/gateway-authority-private.pem`;
+    this.ownerPrincipalFingerprint = options.ownerPrincipalFingerprint ?? '';
   }
 
   async request(
@@ -56,18 +64,23 @@ export class BabyQuirtTestClient {
       skipHandshake?: boolean;
     } = {},
   ): Promise<ResponsePayload> {
-    if (!existsSync(this.privateKeyPath)) {
-      throw new Error(`Signing key not found: ${this.privateKeyPath}`);
+    if (!existsSync(this.gatewayPrivateKeyPath)) {
+      throw new Error(`Gateway signing key not found: ${this.gatewayPrivateKeyPath}`);
     }
-    const privateKey = loadPrivateKey(this.privateKeyPath);
+    const privateKey = loadPrivateKey(this.gatewayPrivateKeyPath);
     const requestId = overrides.requestId ?? randomUUID();
     const timestamp = overrides.timestamp ?? new Date().toISOString();
     const nonce = overrides.nonce ?? randomUUID();
-    const principal = overrides.principal ?? buildOwnerPrincipal();
+    const principal =
+      overrides.principal ??
+      buildOwnerPrincipal({
+        principalFingerprint: this.ownerPrincipalFingerprint || undefined,
+      });
 
     const authorityForSigning = {
       algorithm: 'ed25519' as const,
       gatewayId: DEFAULTS.gatewayId,
+      keyId: GATEWAY_AUTHORITY_KEY_ID,
       nonce,
     };
 
@@ -86,7 +99,6 @@ export class BabyQuirtTestClient {
     const authority = {
       ...authorityForSigning,
       signature: signEd25519(signingDoc, privateKey),
-      keyId: this.keyId,
     };
 
     const request: RequestPayload = {
@@ -167,6 +179,20 @@ export class BabyQuirtTestClient {
       return { requestId: '', code, message: message.slice(code.length + 2), retryable: false };
     }
   }
+}
+
+export function createTestClient(ctx: {
+  socketPath: string;
+  configRoot: string;
+  gatewayPrivateKeyPath: string;
+  ownerPrincipalFingerprint: string;
+}): BabyQuirtTestClient {
+  return new BabyQuirtTestClient({
+    socketPath: ctx.socketPath,
+    configRoot: ctx.configRoot,
+    gatewayPrivateKeyPath: ctx.gatewayPrivateKeyPath,
+    ownerPrincipalFingerprint: ctx.ownerPrincipalFingerprint,
+  });
 }
 
 export function setupTestEnv(): void {

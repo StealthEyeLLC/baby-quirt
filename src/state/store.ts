@@ -8,10 +8,12 @@ import type { RuntimeConfig } from '../config.js';
 export type JobStatus =
   | 'pending'
   | 'running'
+  | 'adopted'
   | 'completed'
   | 'failed'
   | 'cancelled'
-  | 'detached';
+  | 'detached'
+  | 'lost';
 
 export interface StreamState {
   stdoutPath: string;
@@ -20,6 +22,14 @@ export interface StreamState {
   stderrOffset: number;
   stdoutClosed: boolean;
   stderrClosed: boolean;
+}
+
+export interface ProcessIdentityRecord {
+  pid: number;
+  processStartTime: string;
+  executablePath: string;
+  pgid: number;
+  bootId: string;
 }
 
 export interface JobRecord {
@@ -37,9 +47,10 @@ export interface JobRecord {
   argv?: string[];
   shell?: string;
   script?: string;
-  env?: Record<string, string>;
+  env?: Array<{ name: string; value?: string; secretReference?: string; redacted?: boolean }>;
   detached: boolean;
   pgid?: number;
+  identity?: ProcessIdentityRecord;
   streams: StreamState;
   ptySessionId?: string;
   metadata?: Record<string, unknown>;
@@ -52,9 +63,12 @@ export interface PtySessionRecord {
   cols: number;
   rows: number;
   createdAt: string;
-  status: 'active' | 'closed';
+  status: 'active' | 'closed' | 'lost';
   outputPath: string;
   outputOffset: number;
+  tmuxServer?: string;
+  tmuxSession?: string;
+  tmuxWindow?: string;
 }
 
 export class StateStore {
