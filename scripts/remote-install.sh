@@ -181,8 +181,9 @@ sudo env \
   --release-dir "$EXTRACTED_DIR" \
   --version "$VERSION"
 
-if [ "$(readlink -f "$CURRENT_LINK")" != "$TARGET" ]; then
-  echo "ERROR: current release pointer did not activate the expected target" >&2
+ACTIVE_TARGET=$(sudo readlink -f "$CURRENT_LINK")
+if [ "$ACTIVE_TARGET" != "$TARGET" ]; then
+  echo "ERROR: current release pointer did not activate the expected target: got ${ACTIVE_TARGET:-<unresolved>}, expected $TARGET" >&2
   exit 1
 fi
 
