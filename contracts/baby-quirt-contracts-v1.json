@@ -1,0 +1,130 @@
+{
+  "schemaVersion": "1.0.0",
+  "contractVersion": "1.0.0",
+  "product": {
+    "name": "baby-quirt",
+    "description": "Standalone private Unix-socket host-control runtime for bootstrapping Quirt",
+    "repository": "StealthEyeLLC/baby-quirt",
+    "ownerSubject": "stealtheye-owner",
+    "authorityClass": "unrestricted-owner"
+  },
+  "architecture": {
+    "contract": "architecture",
+    "version": "1.0.0",
+    "topology": [
+      "Authorized Horsey gateway client",
+      "Signed private Baby Quirt protocol (QRT1)",
+      "/run/horsey/baby-quirt.sock",
+      "Standalone UID-0 Baby Quirt daemon"
+    ],
+    "babyQuirtOwns": [
+      "privileged_local_machine_authority",
+      "job_lifecycle",
+      "process_execution",
+      "pty_sessions",
+      "file_operations",
+      "artifact_storage",
+      "release_installation",
+      "rollback_and_repair"
+    ],
+    "babyQuirtMustNotBecome": [
+      "public_control_plane",
+      "oauth_server",
+      "public_mcp_server",
+      "objective_scheduler"
+    ]
+  },
+  "authority": {
+    "contract": "authority",
+    "version": "1.0.0",
+    "ownerSubject": "stealtheye-owner",
+    "authorityClass": "unrestricted-owner",
+    "issuerMatching": "exact_required",
+    "subjectMatching": "exact_required",
+    "gatewayId": "stealtheye-horsey-gateway",
+    "algorithms": ["ed25519", "hmac-sha256"],
+    "securityMechanisms": [
+      "exact_issuer",
+      "exact_subject",
+      "authority_class",
+      "ed25519_signatures",
+      "canonical_encoding",
+      "nonces",
+      "replay_protection",
+      "idempotency",
+      "peer_credentials",
+      "private_socket_access",
+      "signed_receipts",
+      "secret_redaction"
+    ]
+  },
+  "protocol": {
+    "contract": "protocol",
+    "version": "1.0.0",
+    "wireVersion": "1.0.0",
+    "framing": "QRT1",
+    "transport": "unix_socket",
+    "socketPath": "/run/horsey/baby-quirt.sock",
+    "maxFrameSize": 16777216,
+    "compression": ["none"],
+    "frameTypes": ["hello", "welcome", "request", "response", "error", "event", "cancel", "ping", "pong"]
+  },
+  "operations": [
+    { "operation": "baby.health", "description": "Runtime health check" },
+    { "operation": "baby.exec", "description": "Execute exact argv" },
+    { "operation": "baby.shell", "description": "Execute shell command or script" },
+    { "operation": "baby.job.get", "description": "Get job by ID" },
+    { "operation": "baby.job.list", "description": "List jobs" },
+    { "operation": "baby.job.wait", "description": "Wait for job completion" },
+    { "operation": "baby.job.cancel", "description": "Cancel running job" },
+    { "operation": "baby.job.stream.read", "description": "Read job stdout/stderr with offset" },
+    { "operation": "baby.file.stat", "description": "File metadata and SHA-256" },
+    { "operation": "baby.file.read", "description": "Binary-safe file read with offset" },
+    { "operation": "baby.file.write", "description": "Binary-safe file write" },
+    { "operation": "baby.file.patch", "description": "Binary patch at offsets" },
+    { "operation": "baby.file.copy", "description": "Copy file" },
+    { "operation": "baby.file.move", "description": "Move/rename file" },
+    { "operation": "baby.file.remove", "description": "Remove file or directory" },
+    { "operation": "baby.file.list", "description": "List directory entries" },
+    { "operation": "baby.pty.create", "description": "Create interactive PTY session" },
+    { "operation": "baby.pty.input", "description": "Send input to PTY" },
+    { "operation": "baby.pty.resize", "description": "Resize PTY terminal" },
+    { "operation": "baby.pty.read", "description": "Read PTY output with offset" },
+    { "operation": "baby.pty.close", "description": "Close PTY session" },
+    { "operation": "baby.artifact.create", "description": "Create immutable artifact from file" },
+    { "operation": "baby.artifact.upload", "description": "Resumable artifact upload" },
+    { "operation": "baby.artifact.download", "description": "Resumable artifact download" },
+    { "operation": "baby.artifact.list", "description": "List artifacts" },
+    { "operation": "baby.artifact.get", "description": "Get artifact metadata" }
+  ],
+  "paths": {
+    "contract": "paths",
+    "version": "1.0.0",
+    "socketPath": "/run/horsey/baby-quirt.sock",
+    "configRoot": "/etc/baby-quirt",
+    "stateRoot": "/var/lib/baby-quirt",
+    "releaseRoot": "/opt/baby-quirt/releases",
+    "currentLink": "/opt/baby-quirt/current",
+    "previousLink": "/opt/baby-quirt/previous"
+  },
+  "receipt": {
+    "contract": "receipt",
+    "version": "1.0.0",
+    "schemaVersion": "1.0.0",
+    "algorithm": "ed25519",
+    "secretPolicy": "secret_values_forbidden"
+  },
+  "release": {
+    "contract": "release",
+    "version": "1.0.0",
+    "immutableReleases": true,
+    "manifestRequired": true,
+    "digestAlgorithm": "sha256"
+  },
+  "rollback": {
+    "contract": "rollback",
+    "version": "1.0.0",
+    "previousPointerRequired": true,
+    "automaticOnVerificationFailure": true
+  }
+}

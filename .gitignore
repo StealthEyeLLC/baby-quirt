@@ -1,0 +1,16 @@
+node_modules/
+dist/
+*.tgz
+*.tar.gz
+release/
+.env
+*.log
+.DS_Store
+coverage/
+.vscode/
+*.swp
+tmp/
+state/
+keys/
+*.pem
+*.key

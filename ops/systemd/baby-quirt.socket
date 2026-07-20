@@ -1,0 +1,17 @@
+[Unit]
+Description=Baby Quirt private Unix socket
+Documentation=https://github.com/StealthEyeLLC/baby-quirt
+
+[Socket]
+ListenStream=/run/horsey/baby-quirt.sock
+SocketUser=root
+SocketGroup=horsey
+SocketMode=0660
+DirectoryMode=0750
+Accept=no
+RemoveOnStop=yes
+Service=baby-quirt.service
+Backlog=128
+
+[Install]
+WantedBy=sockets.target

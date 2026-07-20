@@ -1,0 +1,41 @@
+{
+  "name": "baby-quirt",
+  "version": "0.1.0",
+  "description": "Baby Quirt — standalone private Unix-socket host-control runtime",
+  "type": "module",
+  "engines": {
+    "node": "24.18.0"
+  },
+  "bin": {
+    "baby-quirt": "./dist/cli/main.js",
+    "baby-quirt-install": "./dist/cli/install.js",
+    "baby-quirt-verify": "./dist/cli/verify.js",
+    "baby-quirt-rollback": "./dist/cli/rollback.js",
+    "baby-quirt-repair": "./dist/cli/repair.js"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "clean": "rm -rf dist",
+    "test": "node --import tsx --test test/**/*.test.ts",
+    "test:integration": "node --import tsx --test integration/**/*.test.ts",
+    "test:all": "npm run test && npm run test:integration",
+    "test:contracts": "node --import tsx scripts/validate-contracts.ts",
+    "lint": "tsc -p tsconfig.json --noEmit",
+    "release:bundle": "bash scripts/release.sh",
+    "start": "node dist/index.js"
+  },
+  "dependencies": {
+    "node-pty": "^1.0.0"
+  },
+  "devDependencies": {
+    "@types/node": "^24.0.0",
+    "tsx": "^4.19.0",
+    "typescript": "^5.8.0"
+  },
+  "license": "UNLICENSED",
+  "private": true,
+  "allowScripts": {
+    "esbuild@0.28.1": true,
+    "node-pty@1.1.0": true
+  }
+}
