@@ -174,7 +174,7 @@ export class PtyManager {
   }
 
   recoverSessions(): number {
-    const sessions = this.store.listPtySessions().filter((s) => s.status === 'active');
+    const sessions = this.store.listPtySessions().filter((s: PtySessionRecord) => s.status === 'active');
     let recovered = 0;
     for (const session of sessions) {
       try {

@@ -182,7 +182,7 @@ export class JobManager {
   listJobs(payload: JobListPayload = {}): JobRecord[] {
     let jobs = this.store.listJobs();
     if (payload.status) {
-      jobs = jobs.filter((j) => j.status === payload.status);
+      jobs = jobs.filter((j: JobRecord) => j.status === payload.status);
     }
     const limit = payload.limit ?? 100;
     return jobs.slice(0, limit);
@@ -292,7 +292,7 @@ export class JobManager {
   }
 
   recoverRunningJobs(): number {
-    const jobs = this.store.listJobs().filter((j) => j.status === 'running');
+    const jobs = this.store.listJobs().filter((j: JobRecord) => j.status === 'running');
     let recovered = 0;
     for (const job of jobs) {
       if (job.pid) {

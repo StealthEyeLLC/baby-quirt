@@ -10,7 +10,7 @@ coverage/
 .vscode/
 *.swp
 tmp/
-state/
+/state/
 keys/
 *.pem
 *.key
