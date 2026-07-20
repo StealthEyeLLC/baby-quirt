@@ -1,0 +1,86 @@
+name: Baby Quirt SSH Smoke
+
+on:
+  push:
+    branches:
+      - ops/baby-quirt-ssh-smoke-20260720
+
+permissions:
+  contents: read
+
+concurrency:
+  group: baby-quirt-ssh-smoke
+  cancel-in-progress: false
+
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    env:
+      VPS_HOST: ${{ vars.BABY_QUIRT_VPS_HOST }}
+      VPS_PORT: ${{ vars.BABY_QUIRT_VPS_PORT }}
+      VPS_USER: ${{ vars.BABY_QUIRT_VPS_USER }}
+      EXPECTED_HOSTNAME: vps-c9f04f5e
+      EXPECTED_MACHINE_ID_SHA256: cd189817b39fea60d338b73878240a6fe7db71374c7a0f35ad60f8eb641e8817
+    steps:
+      - name: Verify fixed connection parameters
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$VPS_HOST" = "51.81.86.225"
+          test "$VPS_PORT" = "22"
+          test "$VPS_USER" = "ubuntu"
+
+      - name: Prepare ephemeral SSH material
+        shell: bash
+        env:
+          SSH_PRIVATE_KEY: ${{ secrets.BABY_QUIRT_VPS_SSH_PRIVATE_KEY }}
+          SSH_KNOWN_HOSTS: ${{ secrets.BABY_QUIRT_VPS_SSH_KNOWN_HOSTS }}
+        run: |
+          set -euo pipefail
+          umask 077
+          test -n "$SSH_PRIVATE_KEY"
+          test -n "$SSH_KNOWN_HOSTS"
+          mkdir -p "$RUNNER_TEMP/baby-quirt-ssh"
+          printf '%s\n' "$SSH_PRIVATE_KEY" > "$RUNNER_TEMP/baby-quirt-ssh/deploy_key"
+          printf '%s\n' "$SSH_KNOWN_HOSTS" > "$RUNNER_TEMP/baby-quirt-ssh/known_hosts"
+          chmod 600 "$RUNNER_TEMP/baby-quirt-ssh/deploy_key"
+          chmod 600 "$RUNNER_TEMP/baby-quirt-ssh/known_hosts"
+          ssh-keygen -y -f "$RUNNER_TEMP/baby-quirt-ssh/deploy_key" >/dev/null
+
+      - name: Read-only SSH identity smoke test
+        id: smoke
+        shell: bash
+        run: |
+          set -euo pipefail
+          SSH_DIR="$RUNNER_TEMP/baby-quirt-ssh"
+          OUTPUT="$(
+            ssh \
+              -i "$SSH_DIR/deploy_key" \
+              -p "$VPS_PORT" \
+              -o BatchMode=yes \
+              -o IdentitiesOnly=yes \
+              -o StrictHostKeyChecking=yes \
+              -o UserKnownHostsFile="$SSH_DIR/known_hosts" \
+              -o ConnectTimeout=15 \
+              "$VPS_USER@$VPS_HOST" \
+              'set -eu; printf "user=%s\n" "$(id -un)"; printf "hostname=%s\n" "$(hostname)"; printf "machine_id_sha256=%s\n" "$(tr -d "\r\n" </etc/machine-id | sha256sum | awk "{print \$1}")"'
+          )"
+          printf '%s\n' "$OUTPUT"
+          test "$(printf '%s\n' "$OUTPUT" | sed -n 's/^user=//p')" = "$VPS_USER"
+          test "$(printf '%s\n' "$OUTPUT" | sed -n 's/^hostname=//p')" = "$EXPECTED_HOSTNAME"
+          test "$(printf '%s\n' "$OUTPUT" | sed -n 's/^machine_id_sha256=//p')" = "$EXPECTED_MACHINE_ID_SHA256"
+          {
+            echo '## Baby Quirt SSH smoke test'
+            echo
+            echo '- Authentication: passed'
+            echo "- User: \`$VPS_USER\`"
+            echo "- Hostname: \`$EXPECTED_HOSTNAME\`"
+            echo "- Normalized machine ID SHA-256: \`$EXPECTED_MACHINE_ID_SHA256\`"
+            echo '- Remote mutations: none'
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Remove ephemeral SSH material
+        if: always()
+        shell: bash
+        run: rm -rf "$RUNNER_TEMP/baby-quirt-ssh"
