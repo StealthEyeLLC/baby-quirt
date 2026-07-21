@@ -1,13 +1,25 @@
 /** Cryptographically signed operation receipts. */
 
+import { existsSync, readFileSync } from 'node:fs';
+import { join } from 'node:path';
 import { signEd25519 } from '../crypto/signing.js';
 import type { KeyObject } from 'node:crypto';
 import { canonicalJson, sha256Hex } from '../crypto/canonical.js';
-import { PROTOCOL_VERSION } from '../config.js';
+import { DEFAULTS, PROTOCOL_VERSION } from '../config.js';
 
-export const RECEIPT_SCHEMA_VERSION = '1.0.0';
+export const RECEIPT_SCHEMA_VERSION = '2.0.0';
 
-export interface ReceiptInput {
+export interface ReceiptReleaseIdentity {
+  status: 'installed' | 'unknown';
+  manifestPath: string;
+  manifestSha256?: string;
+  version?: string;
+  commit?: string;
+  tree?: string;
+  sourceDateEpoch?: number | string;
+}
+
+export interface ReceiptInputV1 {
   requestId: string;
   operation: string;
   subject: string;
@@ -18,12 +30,54 @@ export interface ReceiptInput {
   hostname: string;
 }
 
-export interface SignedReceipt extends ReceiptInput {
-  receiptSchemaVersion: string;
+export interface ReceiptInputV2 extends ReceiptInputV1 {
+  requestDigest: string;
+  requestFingerprint: string;
+  startedAt: string;
+  completedAt: string;
+  release: ReceiptReleaseIdentity;
+}
+
+export interface SignedReceiptV1 extends ReceiptInputV1 {
+  receiptSchemaVersion: '1.0.0';
   protocolVersion: string;
   receiptId: string;
   signature: string;
   keyId: string;
+}
+
+export interface SignedReceiptV2 extends ReceiptInputV2 {
+  receiptSchemaVersion: '2.0.0';
+  protocolVersion: string;
+  receiptId: string;
+  signature: string;
+  keyId: string;
+}
+
+export type SignedReceipt = SignedReceiptV1 | SignedReceiptV2;
+export type ReceiptInput = ReceiptInputV1 | ReceiptInputV2;
+
+export function readReceiptReleaseIdentity(): ReceiptReleaseIdentity {
+  const manifestPath = join(DEFAULTS.currentLink, 'manifest.json');
+  try {
+    if (!existsSync(manifestPath)) return { status: 'unknown', manifestPath };
+    const raw = readFileSync(manifestPath);
+    const manifest = JSON.parse(raw.toString('utf8')) as Record<string, unknown>;
+    return {
+      status: 'installed',
+      manifestPath,
+      manifestSha256: sha256Hex(raw),
+      version: typeof manifest.version === 'string' ? manifest.version : 'unknown',
+      commit: typeof manifest.commit === 'string' ? manifest.commit : 'unknown',
+      tree: typeof manifest.tree === 'string' ? manifest.tree : 'unknown',
+      sourceDateEpoch:
+        typeof manifest.sourceDateEpoch === 'number' || typeof manifest.sourceDateEpoch === 'string'
+          ? manifest.sourceDateEpoch
+          : 'unknown',
+    };
+  } catch {
+    return { status: 'unknown', manifestPath };
+  }
 }
 
 export function buildReceiptDigest(input: ReceiptInput): string {
@@ -31,12 +85,12 @@ export function buildReceiptDigest(input: ReceiptInput): string {
 }
 
 export function signReceipt(
-  input: ReceiptInput,
+  input: ReceiptInputV2,
   privateKey: KeyObject,
   keyId: string,
-): SignedReceipt {
+): SignedReceiptV2 {
   const receiptId = sha256Hex(
-    `${input.requestId}:${input.operation}:${input.timestamp}`,
+    `${input.requestDigest}:${input.resultDigest}:${input.completedAt}`,
   ).slice(0, 32);
   const digest = buildReceiptDigest(input);
   const signingBody = canonicalJson({ ...input, receiptId, digest });

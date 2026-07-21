@@ -1,6 +1,10 @@
 /** Request authentication and authorization. */
 
-import { buildSigningDocument, requestHash } from '../crypto/canonical.js';
+import {
+  buildSigningDocument,
+  requestHash,
+  semanticRequestFingerprint,
+} from '../crypto/canonical.js';
 import { verifyEd25519, loadPublicKey, type AuthorityEnvelope } from '../crypto/signing.js';
 import { existsSync } from 'node:fs';
 import type { RuntimeConfig } from '../config.js';
@@ -16,6 +20,7 @@ export interface AuthenticatedRequest {
   payload: RequestPayload;
   signingDocument: string;
   hash: string;
+  fingerprint: string;
   subject: string;
   authorityClass: string;
 }
@@ -108,6 +113,14 @@ export class Authenticator {
     });
 
     const hash = requestHash(signingDocument);
+    const fingerprint = semanticRequestFingerprint({
+      protocolVersion: request.protocolVersion,
+      operation: request.operation,
+      principal: request.principal as Record<string, unknown>,
+      targetHost: request.targetHost,
+      payload: request.payload,
+      binaryLength: request.binaryLength,
+    });
 
     if (!this.publicKey) {
       throw new AuthError('no_signing_key', 'Gateway authority public key not configured');
@@ -132,9 +145,34 @@ export class Authenticator {
       }
     }
 
-    const idempotent = this.replayStore.getIdempotentResponse(hash);
-    if (idempotent !== undefined) {
-      throw new IdempotentReplay(idempotent);
+    const exactReplay = this.replayStore.getIdempotentResponse(hash);
+    if (exactReplay !== undefined) {
+      throw new IdempotentReplay(exactReplay);
+    }
+
+    const semantic = this.replayStore.checkSemantic(request.requestId, fingerprint);
+    if (semantic.state === 'replay') {
+      throw new IdempotentReplay(semantic.response);
+    }
+    if (semantic.state === 'conflict') {
+      throw new AuthError(
+        'idempotency_conflict',
+        'The request ID was already used with a different logical operation or payload',
+        false,
+        {
+          requestId: request.requestId,
+          existingFingerprint: semantic.existingFingerprint,
+          receivedFingerprint: fingerprint,
+        },
+      );
+    }
+    if (semantic.state === 'pending') {
+      throw new AuthError(
+        'idempotency_in_progress',
+        'The exact logical request is already in progress',
+        true,
+        { requestId: request.requestId, fingerprint },
+      );
     }
 
     if (!this.replayStore.tryCommitNonce(authority.nonce)) {
@@ -145,10 +183,14 @@ export class Authenticator {
       throw new AuthError('replay_detected', 'Nonce has already been used');
     }
 
+    this.replayStore.reserveSemantic(request.requestId, fingerprint, hash);
+    this.replayStore.persist();
+
     return {
       payload: request,
       signingDocument,
       hash,
+      fingerprint,
       subject: principal.subject,
       authorityClass: principal.authorityClass,
     };

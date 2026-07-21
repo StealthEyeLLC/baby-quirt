@@ -95,6 +95,14 @@ These items are source defects or assurance gaps, not current production outages
 9. **PTY input fidelity:** the tmux input path performs shell-style apostrophe escaping even though `execFileSync` does not invoke a shell, which can alter literal input.
 10. **Version metadata:** package metadata remains `0.1.0` while the documented deployed Baby Quirt release is `0.1.3`; release identity should have one canonical source.
 
+## Connected ChatGPT usage
+
+The canonical connected tool is `bbyquirt.call_quirt`. Its exact action description is:
+
+> Run any authorized Baby Quirt operation through the single authenticated Baby Quirt interface.
+
+A fresh conversation must call `baby.describe` and use the returned installed operation definitions rather than assuming the source branch is already deployed. Source-only operations are not production capabilities until an immutable release is activated and a live signed call verifies them. See [Using Baby Quirt from ChatGPT](USING_WITH_CHATGPT.md).
+
 ## Acceptance gate for the next Baby Quirt release
 
 A future release is not production-ready until all of these pass against the extracted archive, not merely the source checkout:

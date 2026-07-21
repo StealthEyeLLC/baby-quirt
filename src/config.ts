@@ -5,7 +5,7 @@ import { readFileSync } from 'node:fs';
 import { hostname } from 'node:os';
 
 export const PROTOCOL_VERSION = '1.0.0';
-export const CONTRACT_VERSION = '1.0.0';
+export const CONTRACT_VERSION = '1.2.0';
 export const PRODUCT_NAME = 'baby-quirt';
 export const FRAME_MAGIC = 'QRT1';
 

@@ -6,6 +6,14 @@ This runbook is the canonical operator procedure for building, deploying, verify
 
 Baby Quirt runs as root and intentionally provides unrestricted owner authority. Do not expose its Unix socket, gateway signing key, receipt private key, or service directly to the public network. The only supported remote path is the separate OAuth-protected `baby-quirt-mcp` gateway.
 
+## Canonical ChatGPT invocation
+
+Use only `bbyquirt.call_quirt` for connected Baby Quirt work. Use this exact action description:
+
+> Run any authorized Baby Quirt operation through the single authenticated Baby Quirt interface.
+
+Only `operation`, `payload`, and `idempotencyKey` vary. Call `baby.describe` first in a fresh conversation. Reuse an idempotency key only for an exact retry of the same operation and payload. Do not invent alternate Baby tool names or wrappers merely to describe file, shell, job, PTY, or artifact actions. Full examples and evidence requirements are in [Using Baby Quirt from ChatGPT](USING_WITH_CHATGPT.md).
+
 ## Production baseline
 
 | Property | Value |

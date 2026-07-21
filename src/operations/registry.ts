@@ -2,18 +2,19 @@
 
 import type { RuntimeConfig } from '../config.js';
 import type { AuthenticatedRequest } from '../auth/authenticator.js';
-import { AuthError } from '../auth/authenticator.js';
 import type { ReplayStore } from '../state/replay-store.js';
 import type { StateStore } from '../state/store.js';
 import { JobManager } from '../jobs/manager.js';
 import { FileManager } from '../files/manager.js';
 import { PtyManager } from '../pty/manager.js';
 import { ArtifactManager } from '../artifacts/manager.js';
-import { signReceipt, resultDigest } from '../receipts/receipt.js';
+import { signReceipt, resultDigest, readReceiptReleaseIdentity } from '../receipts/receipt.js';
 import { existsSync } from 'node:fs';
 import { loadPrivateKey as loadPrivKey } from '../crypto/signing.js';
 import { getHostname, getMachineIdSha256, PROTOCOL_VERSION } from '../config.js';
 import type { ResponsePayload } from '../protocol/frame.js';
+import { buildCapabilityDescription, OPERATION_DEFINITIONS } from './definitions.js';
+import { normalizeOperationError, OperationError } from './errors.js';
 
 export interface OperationResult {
   response: ResponsePayload;
@@ -53,45 +54,50 @@ export class OperationRegistry {
   async dispatch(auth: AuthenticatedRequest): Promise<OperationResult> {
     const { payload, hash } = auth;
     const operation = payload.operation;
-    const body = payload.payload as Record<string, unknown>;
+    const body = (payload.payload ?? {}) as Record<string, unknown>;
+    let result: unknown;
+    const startedAt = new Date().toISOString();
 
     try {
-      const result = await this.executeOperation(operation, payload.requestId, body);
-      const response: ResponsePayload = {
-        requestId: payload.requestId,
-        operation,
-        result,
-      };
-
-      if (this.privateKey) {
-        response.receipt = signReceipt(
-          {
-            requestId: payload.requestId,
-            operation,
-            subject: auth.subject,
-            authorityClass: auth.authorityClass,
-            resultDigest: resultDigest(result),
-            timestamp: new Date().toISOString(),
-            machineIdSha256: getMachineIdSha256() || 'unknown',
-            hostname: getHostname(),
-          },
-          this.privateKey,
-          this.config.supervisorReceiptKeyId,
-        ) as unknown as Record<string, unknown>;
-      }
-
-      this.replayStore.storeIdempotentResponse(hash, response);
-      this.replayStore.persist();
-      this.store.pruneJobs(this.config.maxRetentionJobs);
-
-      return { response };
-    } catch (err) {
-      if (err instanceof AuthError && err.code === 'idempotent_replay') {
-        const cached = JSON.parse(err.message) as ResponsePayload;
-        return { response: cached, cached: true };
-      }
-      throw err;
+      result = await this.executeOperation(operation, payload.requestId, body);
+    } catch (error) {
+      result = normalizeOperationError(error, operation, payload.requestId);
     }
+
+    const completedAt = new Date().toISOString();
+    const response: ResponsePayload = {
+      requestId: payload.requestId,
+      operation,
+      result,
+    };
+
+    if (this.privateKey) {
+      response.receipt = signReceipt(
+        {
+          requestId: payload.requestId,
+          operation,
+          subject: auth.subject,
+          authorityClass: auth.authorityClass,
+          requestDigest: auth.hash,
+          requestFingerprint: auth.fingerprint,
+          resultDigest: resultDigest(result),
+          timestamp: completedAt,
+          startedAt,
+          completedAt,
+          release: readReceiptReleaseIdentity(),
+          machineIdSha256: getMachineIdSha256() || 'unknown',
+          hostname: getHostname(),
+        },
+        this.privateKey,
+        this.config.supervisorReceiptKeyId,
+      ) as unknown as Record<string, unknown>;
+    }
+
+    this.replayStore.storeIdempotentResponse(hash, response, payload.requestId, auth.fingerprint);
+    this.replayStore.persist();
+    this.store.pruneJobs(this.config.maxRetentionJobs);
+
+    return { response };
   }
 
   private async executeOperation(
@@ -100,6 +106,8 @@ export class OperationRegistry {
     body: Record<string, unknown>,
   ): Promise<unknown> {
     switch (operation) {
+      case 'baby.describe':
+        return buildCapabilityDescription(this.config);
       case 'baby.health':
         return this.health();
       case 'baby.exec':
@@ -122,6 +130,8 @@ export class OperationRegistry {
         return this.files.read(body as never);
       case 'baby.file.write':
         return this.files.write(body as never);
+      case 'baby.file.replace':
+        return this.files.replace(body as never);
       case 'baby.file.patch':
         return this.files.patch(body as never);
       case 'baby.file.copy':
@@ -144,8 +154,14 @@ export class OperationRegistry {
         return this.pty.close(body as never);
       case 'baby.artifact.create':
         return this.artifacts.createFromFile(body as never);
+      case 'baby.artifact.begin':
+        return this.artifacts.beginUpload(body as never);
       case 'baby.artifact.upload':
         return this.artifacts.uploadChunk(body as never);
+      case 'baby.artifact.finalize':
+        return this.artifacts.finalize(body as never);
+      case 'baby.artifact.abort':
+        return this.artifacts.abort(body as never);
       case 'baby.artifact.download':
         return this.artifacts.download(body as never);
       case 'baby.artifact.list':
@@ -153,13 +169,12 @@ export class OperationRegistry {
       case 'baby.artifact.get':
         return this.artifacts.get(String(body.artifactId));
       default:
-        return {
-          error: {
-            code: 'unknown_operation',
-            message: `Unknown operation: ${operation}`,
-            retryable: false,
-          },
-        };
+        throw new OperationError(
+          'unknown_operation',
+          `Unknown operation: ${operation}`,
+          false,
+          { operation },
+        );
     }
   }
 
@@ -178,31 +193,4 @@ export class OperationRegistry {
   }
 }
 
-export const OPERATIONS = [
-  'baby.health',
-  'baby.exec',
-  'baby.shell',
-  'baby.job.get',
-  'baby.job.list',
-  'baby.job.wait',
-  'baby.job.cancel',
-  'baby.job.stream.read',
-  'baby.file.stat',
-  'baby.file.read',
-  'baby.file.write',
-  'baby.file.patch',
-  'baby.file.copy',
-  'baby.file.move',
-  'baby.file.remove',
-  'baby.file.list',
-  'baby.pty.create',
-  'baby.pty.input',
-  'baby.pty.resize',
-  'baby.pty.read',
-  'baby.pty.close',
-  'baby.artifact.create',
-  'baby.artifact.upload',
-  'baby.artifact.download',
-  'baby.artifact.list',
-  'baby.artifact.get',
-] as const;
+export const OPERATIONS = OPERATION_DEFINITIONS.map((definition) => definition.operation) as readonly string[];

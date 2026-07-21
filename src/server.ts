@@ -205,7 +205,7 @@ export class BabyQuirtServer {
         return;
       }
       if (err instanceof AuthError) {
-        this.sendError(socket, request.requestId, err.code, err.message, false);
+        this.sendError(socket, request.requestId, err.code, err.message, err.retryable, err.details);
         return;
       }
       const message = err instanceof Error ? err.message : 'Operation failed';
@@ -219,8 +219,9 @@ export class BabyQuirtServer {
     code: string,
     message: string,
     retryable = false,
+    details?: Record<string, unknown>,
   ): void {
-    const error: ErrorPayload = { requestId, code, message, retryable };
+    const error: ErrorPayload = { requestId, code, message, retryable, ...(details ? { details } : {}) };
     socket.write(encodeFrame(FrameType.Error, encodeJsonPayload(error), requestId));
   }
 }
