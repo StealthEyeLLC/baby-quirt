@@ -33,6 +33,15 @@ export interface SigningDocumentInput {
   binaryLength: number;
 }
 
+export interface SemanticRequestInput {
+  protocolVersion: string;
+  operation: string;
+  principal: Record<string, unknown>;
+  targetHost: string;
+  payload: unknown;
+  binaryLength: number;
+}
+
 export function buildSigningDocument(input: SigningDocumentInput): string {
   const doc = {
     protocolVersion: input.protocolVersion,
@@ -46,6 +55,23 @@ export function buildSigningDocument(input: SigningDocumentInput): string {
     binaryLength: input.binaryLength,
   };
   return canonicalJson(doc);
+}
+
+/**
+ * Stable fingerprint for logical idempotency. It intentionally excludes the
+ * request ID, timestamp, nonce, signature, and gateway key rotation metadata.
+ */
+export function semanticRequestFingerprint(input: SemanticRequestInput): string {
+  return sha256Hex(
+    canonicalJson({
+      protocolVersion: input.protocolVersion,
+      operation: input.operation,
+      principal: input.principal,
+      targetHost: input.targetHost,
+      payload: input.payload,
+      binaryLength: input.binaryLength,
+    }),
+  );
 }
 
 export function sha256Hex(data: string | Buffer): string {

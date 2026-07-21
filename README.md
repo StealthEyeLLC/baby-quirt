@@ -42,9 +42,19 @@ Production requires Node.js `24.18.0`, the native Linux peer-credential addon, `
 - Immutable release installation with rollback and repair
 - Restart reconciliation for jobs and PTY sessions
 
+## ChatGPT invocation
+
+All Baby Quirt actions from ChatGPT use one external tool identity: `bbyquirt.call_quirt`.
+
+Use this exact action description:
+
+> Run any authorized Baby Quirt operation through the single authenticated Baby Quirt interface.
+
+Only `operation`, `payload`, and `idempotencyKey` vary. A fresh conversation should call `baby.describe` before guessing operation names or payload fields. The complete canonical client procedure is [Using Baby Quirt from ChatGPT](docs/USING_WITH_CHATGPT.md).
+
 ## Operations
 
-The runtime registers exactly 26 operations under the `baby.*` namespace. The canonical machine-readable list is [contracts/baby-quirt-contracts-v1.json](contracts/baby-quirt-contracts-v1.json); the executable registry is `src/operations/registry.ts`.
+The runtime registers exactly 31 operations under the `baby.*` namespace. The canonical machine-readable list is [contracts/baby-quirt-contracts-v1.json](contracts/baby-quirt-contracts-v1.json); the executable registry is `src/operations/registry.ts`.
 
 ## Runtime layout
 

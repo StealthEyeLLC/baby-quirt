@@ -1,4 +1,4 @@
-/** Binary-safe file operations with symlink and recursion bounds. */
+/** Binary-safe file operations with symlink, recursion, and atomic replacement bounds. */
 
 import {
   lstatSync,
@@ -15,9 +15,14 @@ import {
   closeSync,
   writeSync,
   rmSync,
+  fsyncSync,
+  fchmodSync,
+  fchownSync,
+  constants,
 } from 'node:fs';
-import { dirname, join, resolve } from 'node:path';
-import { createHash } from 'node:crypto';
+import { basename, dirname, isAbsolute, join, relative, resolve, sep } from 'node:path';
+import { createHash, randomUUID } from 'node:crypto';
+import { OperationError } from '../operations/errors.js';
 
 export const FILE_LIST_MAX_DEPTH = 32;
 export const FILE_LIST_MAX_ENTRIES = 4096;
@@ -40,6 +45,18 @@ export interface FileWritePayload {
   encoding?: 'base64' | 'utf8';
   offset?: number;
   create?: boolean;
+}
+
+export interface FileReplacePayload {
+  root: string;
+  path: string;
+  data: string;
+  encoding?: 'base64' | 'utf8';
+  expectedSha256?: string;
+  expectedAbsent?: boolean;
+  preserveMode?: boolean;
+  durable?: boolean;
+  createParents?: boolean;
 }
 
 export interface FilePatchPayload {
@@ -90,13 +107,46 @@ export interface FileStatResult {
 function assertSafePath(path: string): string {
   const resolved = resolve(path);
   if (resolved.includes('\0')) {
-    throw new Error('Path contains null byte');
+    throw new OperationError('invalid_path', 'Path contains null byte');
   }
   return resolved;
 }
 
 function decodeData(data: string, encoding: 'base64' | 'utf8' = 'base64'): Buffer {
   return encoding === 'utf8' ? Buffer.from(data, 'utf8') : Buffer.from(data, 'base64');
+}
+
+function sha256File(path: string): string {
+  return createHash('sha256').update(readFileSync(path)).digest('hex');
+}
+
+function isWithinRoot(root: string, path: string): boolean {
+  const rel = relative(root, path);
+  return rel !== '' && rel !== '..' && !rel.startsWith(`..${sep}`) && !isAbsolute(rel);
+}
+
+function assertNoSymlinkComponents(root: string, targetParent: string, createParents: boolean): void {
+  const rootStat = lstatSync(root);
+  if (!rootStat.isDirectory() || rootStat.isSymbolicLink()) {
+    throw new OperationError('unsafe_path', 'Confinement root must be a real directory');
+  }
+
+  const rel = relative(root, targetParent);
+  const components = rel === '' ? [] : rel.split(sep);
+  let current = root;
+  for (const component of components) {
+    current = join(current, component);
+    if (!existsSync(current)) {
+      if (!createParents) {
+        throw new OperationError('parent_not_found', `Parent directory does not exist: ${current}`);
+      }
+      mkdirSync(current, { mode: 0o750 });
+    }
+    const stat = lstatSync(current);
+    if (stat.isSymbolicLink() || !stat.isDirectory()) {
+      throw new OperationError('unsafe_path', `Path component is not a real directory: ${current}`);
+    }
+  }
 }
 
 export class FileManager {
@@ -120,7 +170,7 @@ export class FileManager {
     } else if (s.isFile()) {
       result.type = 'file';
       if (s.size <= 10 * 1024 * 1024) {
-        result.sha256 = createHash('sha256').update(readFileSync(path)).digest('hex');
+        result.sha256 = sha256File(path);
       }
     } else if (s.isDirectory()) {
       result.type = 'directory';
@@ -178,6 +228,111 @@ export class FileManager {
     return { path, bytesWritten: buf.length };
   }
 
+  replace(payload: FileReplacePayload): {
+    path: string;
+    bytesWritten: number;
+    created: boolean;
+    previousSha256?: string;
+    sha256: string;
+    durable: boolean;
+  } {
+    if (!payload.root || !payload.path) {
+      throw new OperationError('invalid_request', 'root and path are required');
+    }
+    if (payload.expectedAbsent && payload.expectedSha256) {
+      throw new OperationError(
+        'invalid_request',
+        'expectedAbsent and expectedSha256 cannot be used together',
+      );
+    }
+
+    const root = assertSafePath(payload.root);
+    const path = assertSafePath(isAbsolute(payload.path) ? payload.path : join(root, payload.path));
+    if (!isWithinRoot(root, path)) {
+      throw new OperationError('path_outside_root', 'Target path must be strictly beneath root', false, {
+        root,
+        path,
+      });
+    }
+
+    const parent = dirname(path);
+    assertNoSymlinkComponents(root, parent, payload.createParents ?? false);
+
+    const existed = existsSync(path);
+    let previousSha256: string | undefined;
+    let previousMode = 0o600;
+    let previousUid: number | undefined;
+    let previousGid: number | undefined;
+    if (existed) {
+      const stat = lstatSync(path);
+      if (stat.isSymbolicLink() || !stat.isFile()) {
+        throw new OperationError('unsafe_path', 'Target must be a regular file and not a symlink');
+      }
+      previousSha256 = sha256File(path);
+      previousMode = stat.mode & 0o7777;
+      previousUid = stat.uid;
+      previousGid = stat.gid;
+    }
+
+    if (payload.expectedAbsent && existed) {
+      throw new OperationError('precondition_failed', 'Target already exists', false, {
+        expectedAbsent: true,
+        actualSha256: previousSha256,
+      });
+    }
+    if (payload.expectedSha256) {
+      if (!existed || previousSha256 !== payload.expectedSha256) {
+        throw new OperationError('precondition_failed', 'Target SHA-256 does not match', false, {
+          expectedSha256: payload.expectedSha256,
+          actualSha256: previousSha256 ?? null,
+        });
+      }
+    }
+
+    const data = decodeData(payload.data, payload.encoding ?? 'base64');
+    const temporary = join(parent, `.${basename(path)}.baby-quirt-${randomUUID()}.tmp`);
+    const durable = payload.durable ?? true;
+    let fd: number | undefined;
+    try {
+      fd = openSync(
+        temporary,
+        constants.O_CREAT | constants.O_EXCL | constants.O_WRONLY | constants.O_NOFOLLOW,
+        payload.preserveMode === false ? 0o600 : previousMode,
+      );
+      writeFileSync(fd, data);
+      if (payload.preserveMode !== false && existed) {
+        fchmodSync(fd, previousMode);
+        if (previousUid !== undefined && previousGid !== undefined) {
+          fchownSync(fd, previousUid, previousGid);
+        }
+      }
+      if (durable) fsyncSync(fd);
+      closeSync(fd);
+      fd = undefined;
+      renameSync(temporary, path);
+      if (durable) {
+        const directoryFd = openSync(parent, 'r');
+        try {
+          fsyncSync(directoryFd);
+        } finally {
+          closeSync(directoryFd);
+        }
+      }
+    } finally {
+      if (fd !== undefined) closeSync(fd);
+      if (existsSync(temporary)) unlinkSync(temporary);
+    }
+
+    return {
+      path,
+      bytesWritten: data.length,
+      created: !existed,
+      ...(previousSha256 ? { previousSha256 } : {}),
+      sha256: sha256File(path),
+      durable,
+    };
+  }
+
   patch(payload: FilePatchPayload): { path: string; patchesApplied: number } {
     const path = assertSafePath(payload.path);
     const fd = openSync(path, 'r+');
@@ -198,7 +353,7 @@ export class FileManager {
     const source = assertSafePath(payload.source);
     const destination = assertSafePath(payload.destination);
     if (!payload.overwrite && existsSync(destination)) {
-      throw new Error('Destination exists');
+      throw new OperationError('destination_exists', 'Destination exists');
     }
     mkdirSync(dirname(destination), { recursive: true });
     copyFileSync(source, destination);
@@ -209,7 +364,7 @@ export class FileManager {
     const source = assertSafePath(payload.source);
     const destination = assertSafePath(payload.destination);
     if (!payload.overwrite && existsSync(destination)) {
-      throw new Error('Destination exists');
+      throw new OperationError('destination_exists', 'Destination exists');
     }
     mkdirSync(dirname(destination), { recursive: true });
     renameSync(source, destination);
@@ -226,7 +381,7 @@ export class FileManager {
       if (payload.recursive) {
         rmSync(path, { recursive: true, force: true });
       } else {
-        throw new Error('Cannot remove directory without recursive flag');
+        throw new OperationError('recursive_required', 'Cannot remove directory without recursive flag');
       }
     } else {
       unlinkSync(path);

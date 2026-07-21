@@ -61,6 +61,14 @@ The SHA-256 fingerprint of the deployed gateway authority public PEM is:
 - Caddy routes only to the unprivileged `baby-quirt-mcp` loopback listener.
 - The Unix socket must never be proxied, bind-mounted into an untrusted workload, or exposed through a public tunnel.
 
+## Stable client tool identity
+
+The ChatGPT integration uses the single external tool `bbyquirt.call_quirt` with the canonical description:
+
+> Run any authorized Baby Quirt operation through the single authenticated Baby Quirt interface.
+
+Using one tool identity reduces unnecessary permission-surface variation, but it is not a security bypass. The platform remains authoritative over confirmation prompts. Baby Quirt still verifies the complete signed request, exact owner and authority, target host, nonce, peer UID, and result receipt. Changed operations or payloads require a new idempotency key. See [Using Baby Quirt from ChatGPT](USING_WITH_CHATGPT.md).
+
 ## Receipt and response assurance
 
 A successful operation response may include a supervisor receipt containing the request ID, operation, owner identity, authority class, canonical result digest, timestamp, machine identity, hostname, receipt ID, key ID, and Ed25519 signature. The gateway must reject a response if correlation, host identity, key ID, result digest, or signature verification fails.
