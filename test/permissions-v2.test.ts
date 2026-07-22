@@ -33,7 +33,11 @@ function materialize(hostRoot: string, identity: PermissionIdentity): void {
 }
 
 function uidRead(path: string, gid: number): ReturnType<typeof spawnSync> {
-  return spawnSync('/usr/bin/cat', [path], { uid: 997, gid, encoding: 'utf8' });
+  return spawnSync(
+    '/usr/bin/setpriv',
+    ['--reuid=997', `--regid=${gid}`, '--clear-groups', '/usr/bin/cat', path],
+    { encoding: 'utf8' },
+  );
 }
 
 describe('Baby and gateway permission matrix', () => {

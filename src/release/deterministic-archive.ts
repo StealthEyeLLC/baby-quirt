@@ -33,7 +33,7 @@ interface SourceEntry {
 }
 
 function assertAsciiPath(path: string): void {
-  if (!/^[A-Za-z0-9._/-]+$/.test(path) || path.includes('//')) {
+  if (!/^[A-Za-z0-9._@/-]+$/.test(path) || path.includes('//')) {
     throw new Error(`Path cannot be represented by the strict ustar profile: ${path}`);
   }
 }

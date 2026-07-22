@@ -121,7 +121,7 @@ function parseHeader(header: Buffer): ParsedHeader {
   const parts = withoutDirectorySlash.split('/');
   if (
     parts.some((part) => part === '' || part === '.' || part === '..') ||
-    !parts.every((part) => /^[A-Za-z0-9._-]+$/.test(part))
+    !parts.every((part) => /^[A-Za-z0-9._@-]+$/.test(part))
   ) {
     fail(`Unsafe archive path ${path}`);
   }

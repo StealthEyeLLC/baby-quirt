@@ -6,7 +6,7 @@ export const STRICT_ARCHIVE_PROFILE = 'baby-quirt-bounded-link-free-v2';
 export const PINNED_NODE_VERSION = '24.18.0';
 
 const DIGEST = /^[a-f0-9]{64}$/;
-const SAFE_RELATIVE_PATH = /^(?!\/)(?!.*(?:^|\/)\.\.(?:\/|$))(?!.*\\)[A-Za-z0-9._/-]+$/;
+const SAFE_RELATIVE_PATH = /^(?!\/)(?!.*(?:^|\/)\.\.(?:\/|$))(?!.*\\)[A-Za-z0-9._@/-]+$/;
 const SAFE_PREFIX = /^[A-Za-z0-9][A-Za-z0-9._-]*\/$/;
 const VERSION = /^\d+\.\d+\.\d+(?:-[A-Za-z0-9.-]+)?$/;
 

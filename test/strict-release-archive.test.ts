@@ -94,10 +94,13 @@ describe('deterministic strict release archive', () => {
     const release = join(workspace, 'release-root');
     mkdirSync(join(release, 'bin'), { recursive: true });
     mkdirSync(join(release, 'lib', 'empty'), { recursive: true });
+    mkdirSync(join(release, 'ops', 'systemd'), { recursive: true });
     writeFileSync(join(release, 'bin', 'entrypoint'), '#!/bin/sh\necho ok\n');
     chmodSync(join(release, 'bin', 'entrypoint'), 0o755);
     writeFileSync(join(release, 'lib', 'payload.json'), '{"ok":true}\n');
     chmodSync(join(release, 'lib', 'payload.json'), 0o640);
+    writeFileSync(join(release, 'ops', 'systemd', 'worker@.service'), '[Service]\nType=oneshot\n');
+    chmodSync(join(release, 'ops', 'systemd', 'worker@.service'), 0o644);
     chmodSync(release, 0o700);
 
     const first = await createDeterministicTarGz({
@@ -128,6 +131,7 @@ describe('deterministic strict release archive', () => {
     });
     assert.equal(readFileSync(join(result.releaseRoot, 'bin', 'entrypoint'), 'utf8'), '#!/bin/sh\necho ok\n');
     assert.equal(readFileSync(join(result.releaseRoot, 'lib', 'payload.json'), 'utf8'), '{"ok":true}\n');
+    assert.match(readFileSync(join(result.releaseRoot, 'ops', 'systemd', 'worker@.service'), 'utf8'), /Type=oneshot/u);
   });
 
   it('rejects archive identity drift before writing a destination', async () => {
