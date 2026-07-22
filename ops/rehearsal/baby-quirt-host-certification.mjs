@@ -26,6 +26,7 @@ const PLAN_PATH = '/run/baby-quirt-certification/input/plan.json';
 const INPUT_ROOT = '/run/baby-quirt-certification/input';
 const EVIDENCE_ROOT = '/run/baby-quirt-certification/evidence';
 const WORK_ROOT = '/var/tmp/baby-quirt-host-certification';
+const UID_997_ROOT = '/var/tmp/baby-quirt-host-certification-uid-997';
 const NODE_ROOT = '/opt/node-v24.18.0-linux-x64';
 const MAX_COMMAND_OUTPUT = 32 * 1024 * 1024;
 const COMMAND_TIMEOUT_MS = 60 * 60 * 1000;
@@ -276,12 +277,14 @@ async function materializeDependencyCache(plan) {
 async function materializeSource(label, inputName, destination, identity) {
   const bundle = join(INPUT_ROOT, inputName);
   if (sha256File(bundle) !== identity.bundleDigest) throw new Error(`${label} bundle digest mismatch`);
-  const verify = await runCommand(`${label} bundle verify`, '/usr/bin/git', ['bundle', 'verify', bundle]);
-  if (!succeeded(verify)) return false;
   const clone = await runCommand(`${label} isolated clone`, '/usr/bin/git', [
     'clone', '--no-checkout', '--no-local', bundle, destination,
   ]);
   if (!succeeded(clone)) return false;
+  const verify = await runCommand(`${label} bundle verify`, '/usr/bin/git', [
+    '-C', destination, 'bundle', 'verify', bundle,
+  ]);
+  if (!succeeded(verify)) return false;
   const checkout = await runCommand(`${label} exact checkout`, '/usr/bin/git', [
     '-C', destination, 'checkout', '--detach', '--force', identity.commit,
   ]);
@@ -329,9 +332,17 @@ async function hostAssertions() {
   durableJson(join(EVIDENCE_ROOT, 'privilege-facts.json'), facts);
   const nodeVersion = await runCommand('pinned Node version', `${NODE_ROOT}/bin/node`, ['--version']);
 
-  const uidRoot = join(WORK_ROOT, 'uid-997');
+  if (existsSync(UID_997_ROOT)) throw new Error('UID 997 certification path already exists');
+  const uidRoot = UID_997_ROOT;
   mkdirSync(uidRoot, { mode: 0o711 });
   chmodSync(uidRoot, 0o711);
+  const uidGroup = await runCommand('provision fixed GID 997', '/usr/sbin/groupadd', [
+    '--system', '--gid', '997', 'baby-quirt-cert',
+  ]);
+  const uidUser = await runCommand('provision fixed UID 997', '/usr/sbin/useradd', [
+    '--system', '--uid', '997', '--gid', '997', '--no-create-home',
+    '--home-dir', '/nonexistent', '--shell', '/usr/sbin/nologin', 'baby-quirt-cert',
+  ]);
   const uidFile = join(uidRoot, 'owned');
   writeFileSync(uidFile, 'uid-997-ok\n', { mode: 0o600 });
   chownSync(uidFile, 997, 997);
@@ -341,7 +352,7 @@ async function hostAssertions() {
   ]);
   const lifecycle = await runCommand('systemd UID 997 transient service', '/usr/bin/systemd-run', [
     '--quiet', '--wait', '--pipe', '--collect', '--unit=bq-cert-uid997',
-    '--property=User=997', '--property=Group=997', '/usr/bin/id', '-u',
+    '--property=User=baby-quirt-cert', '--property=Group=baby-quirt-cert', '/usr/bin/id', '-u',
   ]);
   const peer = await runCommand('SO_PEERCRED UID 997 probe', '/usr/bin/python3', [
     '/usr/local/libexec/baby-quirt-peer-cred-probe.py',
@@ -349,7 +360,8 @@ async function hostAssertions() {
   return {
     facts,
     nodePinned: succeeded(nodeVersion) && nodeVersion.stdout.trim() === 'v24.18.0',
-    uid997: succeeded(uidRead) && uidRead.stdout.trim() === 'uid-997-ok' &&
+    uid997: succeeded(uidGroup) && succeeded(uidUser) &&
+      succeeded(uidRead) && uidRead.stdout.trim() === 'uid-997-ok' &&
       succeeded(lifecycle) && lifecycle.stdout.trim().endsWith('997'),
     systemdLifecycle: succeeded(lifecycle) && lifecycle.stdout.trim().endsWith('997'),
     soPeerCred: succeeded(peer) && peer.stdout.trim() === 'so-peercred-uid-997-ok',

@@ -19,8 +19,8 @@ describe('one-time nspawn host bootstrap contract', () => {
     assert.match(source, /zfs set readonly=on/u);
     assert.match(source, /zfs snapshot "\$BASE_SNAPSHOT"/u);
     assert.match(source, /status":"runner_reconciled"/u);
-    assert.match(source, /existing golden image is bound to a different certification harness/u);
     assert.match(source, /atomic_install 0644/u);
+    assert.match(source, /RUNNER_ROOT\/ops\/rehearsal\/baby-quirt-host-certification\.mjs/u);
     assert.match(source, /test ! -e "\$ROOT\/runner\.lock"/u);
     assert.doesNotMatch(source, /zfs_arc_max|\/etc\/modprobe\.d|\/dev\/sda|parted|fdisk|mkfs/u);
   });
@@ -48,6 +48,7 @@ describe('one-time nspawn host bootstrap contract', () => {
     assert.match(runner, /'--private-network'/u);
     assert.doesNotMatch(runner, /--bind-ro=\/sys\/fs\/cgroup/u);
     assert.doesNotMatch(runner, /\/opt\/baby-quirt\/current|\/opt\/baby-quirt-mcp\/current/u);
+    assert.match(runner, /baby-quirt-host-certification\.mjs'\)\}:\$\{this\.config\.harnessPathInImage\}/u);
     assert.match(runner, /lockPath: '\/var\/lib\/baby-quirt-nspawn\/runner\.lock'/u);
     assert.doesNotMatch(runner, /lockPath: '\/run\/lock/u);
   });

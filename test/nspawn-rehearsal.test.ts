@@ -255,6 +255,7 @@ function fixture(behavior: Behavior = {}, mutateConfig?: (config: NspawnRunnerCo
   writeFileSync(join(inputRoot, 'baby-quirt.bundle'), baby, { mode: 0o600 });
   writeFileSync(join(inputRoot, 'baby-quirt-mcp.bundle'), gateway, { mode: 0o600 });
   writeFileSync(join(inputRoot, 'npm-cache.tar'), dependencyCache, { mode: 0o600 });
+  writeFileSync(join(inputRoot, 'baby-quirt-host-certification.mjs'), HARNESS, { mode: 0o600 });
   const plan = buildNspawnRunPlan({
     recordVersion: '1.0.0',
     recordType: 'baby-quirt-nspawn-run-plan',
@@ -330,6 +331,12 @@ describe('fixed unrestricted systemd-nspawn rehearsal runner', () => {
       assert.equal(boot.args.some((arg) => arg.includes('/sys/fs/cgroup')), false);
       assert.equal(boot.args.some((arg) => arg.includes('/opt/baby-quirt/current')), false);
       assert.equal(boot.args.some((arg) => arg.includes('/opt/baby-quirt-mcp/current')), false);
+      assert.equal(
+        boot.args.some((arg) =>
+          arg.endsWith('baby-quirt-host-certification.mjs:/usr/local/libexec/baby-quirt-host-certification.mjs')
+        ),
+        true,
+      );
       assert.equal(
         fx.executor.requests.some(
           (request) => request.file === fx.config.binaries.zfs && request.args[0] === 'destroy',

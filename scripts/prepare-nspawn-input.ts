@@ -14,7 +14,7 @@ function main(): void {
   const known = new Set([
     '--run-id', '--requested-at', '--deadline', '--baby-repo', '--baby-commit',
     '--gateway-repo', '--gateway-commit', '--dependency-cache', '--bootstrap-record',
-    '--output-root',
+    '--harness', '--output-root',
   ]);
   const args = process.argv.slice(2);
   if (args.length !== known.size * 2) throw new Error('exact nspawn input options are required');
@@ -31,6 +31,7 @@ function main(): void {
     gatewayCommit: option('--gateway-commit'),
     dependencyCachePath: option('--dependency-cache'),
     bootstrapRecordPath: option('--bootstrap-record'),
+    harnessPath: option('--harness'),
     outputRoot: option('--output-root'),
   });
   process.stdout.write(`${JSON.stringify({

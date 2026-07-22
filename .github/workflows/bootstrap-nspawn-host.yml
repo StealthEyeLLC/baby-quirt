@@ -225,6 +225,7 @@ jobs:
             --gateway-commit '${{ steps.authorization.outputs.gateway_commit }}' \
             --dependency-cache /tmp/npm-cache.tar \
             --bootstrap-record /tmp/bootstrap.json \
+            --harness "$GITHUB_WORKSPACE/baby-source/ops/rehearsal/baby-quirt-host-certification.mjs" \
             --output-root "/tmp/$RUN_ID"
 
       - name: Install inputs and run first standalone certification
@@ -248,6 +249,7 @@ jobs:
              sudo -n install -o root -g root -m 0600 '$REMOTE_INPUT/baby-quirt.bundle' '/var/lib/baby-quirt-nspawn/inputs/$RUN_ID/baby-quirt.bundle' && \
              sudo -n install -o root -g root -m 0600 '$REMOTE_INPUT/baby-quirt-mcp.bundle' '/var/lib/baby-quirt-nspawn/inputs/$RUN_ID/baby-quirt-mcp.bundle' && \
              sudo -n install -o root -g root -m 0600 '$REMOTE_INPUT/npm-cache.tar' '/var/lib/baby-quirt-nspawn/inputs/$RUN_ID/npm-cache.tar' && \
+             sudo -n install -o root -g root -m 0600 '$REMOTE_INPUT/baby-quirt-host-certification.mjs' '/var/lib/baby-quirt-nspawn/inputs/$RUN_ID/baby-quirt-host-certification.mjs' && \
              sudo -n /usr/local/sbin/baby-quirt-nspawn-runner preflight '$RUN_ID' && \
              sudo -n /usr/local/sbin/baby-quirt-nspawn-runner run '$RUN_ID'" \
             | tee /tmp/nspawn-receipt.json

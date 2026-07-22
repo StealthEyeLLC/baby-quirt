@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
+import { createHash } from 'node:crypto';
 import {
   mkdirSync,
   mkdtempSync,
@@ -13,6 +14,12 @@ import { describe, it } from 'node:test';
 import { verifyNspawnRunPlan } from '../src/rehearsal/nspawn-contract.js';
 import { prepareNspawnInput } from '../src/rehearsal/nspawn-input.js';
 
+const HARNESS = 'fixed fixture certification harness\n';
+
+function sha256(value: string): string {
+  return createHash('sha256').update(value).digest('hex');
+}
+
 function git(root: string, args: string[]): string {
   return execFileSync('/usr/bin/git', ['-C', root, ...args], { encoding: 'utf8' }).trim();
 }
@@ -24,7 +31,11 @@ function repository(root: string, name: string): { path: string; commit: string 
   git(path, ['config', 'user.name', 'Fixture']);
   git(path, ['config', 'user.email', 'fixture@example.invalid']);
   writeFileSync(join(path, 'README.md'), `${name}\n`);
-  git(path, ['add', 'README.md']);
+  if (name === 'baby') {
+    mkdirSync(join(path, 'ops', 'rehearsal'), { recursive: true });
+    writeFileSync(join(path, 'ops', 'rehearsal', 'baby-quirt-host-certification.mjs'), HARNESS);
+  }
+  git(path, ['add', '.']);
   git(path, ['commit', '-m', 'fixture']);
   return { path, commit: git(path, ['rev-parse', 'HEAD']) };
 }
@@ -42,7 +53,7 @@ describe('nspawn offline input preparation', () => {
         pool: 'babycert',
         snapshot: 'babycert/base/noble@golden-v1',
         snapshotGuid: '1234567890123456789',
-        harnessDigest: '1'.repeat(64),
+        harnessDigest: sha256(HARNESS),
         runnerDigest: '2'.repeat(64),
         nodeVersion: '24.18.0',
         poolBytes: 12 * 1024 ** 3,
@@ -60,6 +71,7 @@ describe('nspawn offline input preparation', () => {
         gatewayCommit: gateway.commit,
         dependencyCachePath: cache,
         bootstrapRecordPath: bootstrap,
+        harnessPath: join(baby.path, 'ops', 'rehearsal', 'baby-quirt-host-certification.mjs'),
         outputRoot: output,
       });
       assert.equal(plan.inputs.baby.commit, baby.commit);
@@ -70,8 +82,16 @@ describe('nspawn offline input preparation', () => {
         verifyNspawnRunPlan(JSON.parse(readFileSync(join(output, 'plan.json'), 'utf8'))).planDigest,
         plan.planDigest,
       );
-      for (const name of ['baby-quirt.bundle', 'baby-quirt-mcp.bundle']) {
-        execFileSync('/usr/bin/git', ['bundle', 'verify', join(output, name)], { stdio: 'pipe' });
+      assert.equal(readFileSync(join(output, 'baby-quirt-host-certification.mjs'), 'utf8'), HARNESS);
+      for (const [name, repositoryPath] of [
+        ['baby-quirt.bundle', baby.path],
+        ['baby-quirt-mcp.bundle', gateway.path],
+      ] as const) {
+        execFileSync(
+          '/usr/bin/git',
+          ['-C', repositoryPath, 'bundle', 'verify', join(output, name)],
+          { stdio: 'pipe' },
+        );
       }
     } finally {
       rmSync(root, { recursive: true, force: true });
@@ -88,7 +108,7 @@ describe('nspawn offline input preparation', () => {
       writeFileSync(bootstrap, JSON.stringify({
         recordVersion: '1.0.0', recordType: 'baby-quirt-nspawn-bootstrap', pool: 'babycert',
         snapshot: 'babycert/base/noble@golden-v1', snapshotGuid: '1234567890123456789',
-        harnessDigest: '1'.repeat(64), runnerDigest: '2'.repeat(64), nodeVersion: '24.18.0',
+        harnessDigest: sha256(HARNESS), runnerDigest: '2'.repeat(64), nodeVersion: '24.18.0',
         poolBytes: 12 * 1024 ** 3,
       }));
       const cache = join(root, 'npm-cache.tar');
@@ -103,6 +123,7 @@ describe('nspawn offline input preparation', () => {
         gatewayCommit: gateway.commit,
         dependencyCachePath: cache,
         bootstrapRecordPath: bootstrap,
+        harnessPath: join(baby.path, 'ops', 'rehearsal', 'baby-quirt-host-certification.mjs'),
         outputRoot: join(root, 'output'),
       }), /worktree is not clean/u);
     } finally {

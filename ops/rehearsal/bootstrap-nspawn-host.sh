@@ -83,7 +83,9 @@ install_runner_payload() {
     "$RUNNER_ROOT/dist" \
     "$RUNNER_ROOT/dist/src" \
     "$RUNNER_ROOT/dist/src/rehearsal" \
-    "$RUNNER_ROOT/dist/src/crypto"
+    "$RUNNER_ROOT/dist/src/crypto" \
+    "$RUNNER_ROOT/ops" \
+    "$RUNNER_ROOT/ops/rehearsal"
   printf 'baby-quirt-nspawn-v1\n' > "$RUNNER_ROOT/.bootstrap-owned"
   chmod 0644 "$RUNNER_ROOT/.bootstrap-owned"
   for name in nspawn-cli nspawn-contract nspawn-executor nspawn-runner; do
@@ -96,6 +98,9 @@ install_runner_payload() {
       "$SOURCE_ROOT/dist/src/crypto/$name.js" \
       "$RUNNER_ROOT/dist/src/crypto/$name.js"
   done
+  atomic_install 0755 \
+    "$SCRIPT_DIR/baby-quirt-host-certification.mjs" \
+    "$RUNNER_ROOT/ops/rehearsal/baby-quirt-host-certification.mjs"
   atomic_install 0755 "$SCRIPT_DIR/baby-quirt-nspawn-runner" "$RUNNER_BIN"
 }
 
@@ -150,21 +155,19 @@ PY
   test "$(zfs get -H -p -o value guid "$BASE_SNAPSHOT")" = "$SNAPSHOT_GUID" ||
     fail 'golden snapshot GUID differs from the bootstrap record'
   PAYLOAD_HARNESS_DIGEST=$(sha256sum "$SCRIPT_DIR/baby-quirt-host-certification.mjs" | awk '{print $1}')
-  test "$PAYLOAD_HARNESS_DIGEST" = "$EXPECTED_HARNESS_DIGEST" ||
-    fail 'existing golden image is bound to a different certification harness'
 
   install_runner_payload
   RUNNER_DIGEST=$(sha256sum "$SOURCE_ROOT/dist/src/rehearsal/nspawn-runner.js" | awk '{print $1}')
   record_tmp="$CONFIG_ROOT/bootstrap.json.new.$$"
   printf '{"recordVersion":"1.0.0","recordType":"baby-quirt-nspawn-bootstrap","pool":"%s","snapshot":"%s","snapshotGuid":"%s","harnessDigest":"%s","runnerDigest":"%s","nodeVersion":"24.18.0","poolBytes":%s}\n' \
-    "$POOL" "$BASE_SNAPSHOT" "$SNAPSHOT_GUID" "$EXPECTED_HARNESS_DIGEST" "$RUNNER_DIGEST" "$POOL_BYTES" \
+    "$POOL" "$BASE_SNAPSHOT" "$SNAPSHOT_GUID" "$PAYLOAD_HARNESS_DIGEST" "$RUNNER_DIGEST" "$POOL_BYTES" \
     > "$record_tmp"
   chmod 0600 "$record_tmp"
   sync -f "$record_tmp"
   mv -fT -- "$record_tmp" "$CONFIG_ROOT/bootstrap.json"
   sync -f "$CONFIG_ROOT"
-  printf '{"ok":true,"status":"runner_reconciled","pool":"%s","snapshot":"%s","snapshotGuid":"%s","runnerDigest":"%s"}\n' \
-    "$POOL" "$BASE_SNAPSHOT" "$SNAPSHOT_GUID" "$RUNNER_DIGEST"
+  printf '{"ok":true,"status":"runner_reconciled","pool":"%s","snapshot":"%s","snapshotGuid":"%s","harnessDigest":"%s","runnerDigest":"%s"}\n' \
+    "$POOL" "$BASE_SNAPSHOT" "$SNAPSHOT_GUID" "$PAYLOAD_HARNESS_DIGEST" "$RUNNER_DIGEST"
 }
 
 rollback_new_bootstrap() {

@@ -47,6 +47,7 @@ export interface PrepareNspawnInputOptions {
   gatewayCommit: string;
   dependencyCachePath: string;
   bootstrapRecordPath: string;
+  harnessPath: string;
   outputRoot: string;
 }
 
@@ -138,7 +139,7 @@ function sourceIdentity(
     },
     stdio: 'pipe',
   });
-  execFileSync('/usr/bin/git', ['bundle', 'verify', bundlePath], {
+  execFileSync('/usr/bin/git', ['-C', root, 'bundle', 'verify', bundlePath], {
     env: {
       PATH: '/usr/bin:/bin', LANG: 'C.UTF-8', LC_ALL: 'C.UTF-8', TZ: 'UTC',
       GIT_CONFIG_NOSYSTEM: '1', HOME: '/nonexistent',
@@ -176,6 +177,22 @@ export function prepareNspawnInput(options: PrepareNspawnInputOptions): NspawnRu
     options.gatewayCommit,
     gatewayBundle,
   );
+  const harnessSource = resolve(options.harnessPath);
+  const expectedHarnessSource = join(
+    resolve(options.babyRepositoryPath),
+    'ops',
+    'rehearsal',
+    'baby-quirt-host-certification.mjs',
+  );
+  if (harnessSource !== expectedHarnessSource) {
+    throw new Error('certification harness must come from the exact Baby source');
+  }
+  const harnessTarget = join(outputRoot, 'baby-quirt-host-certification.mjs');
+  copyFileSync(harnessSource, harnessTarget);
+  chmodSync(harnessTarget, 0o600);
+  if (sha256File(harnessTarget) !== bootstrap.harnessDigest) {
+    throw new Error('certification harness differs from the reconciled bootstrap record');
+  }
   const cacheTarget = join(outputRoot, 'npm-cache.tar');
   if (basename(options.dependencyCachePath) !== 'npm-cache.tar') {
     throw new Error('dependency cache must use its fixed filename');

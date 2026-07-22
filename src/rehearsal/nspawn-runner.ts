@@ -415,6 +415,11 @@ export class FixedNspawnRehearsalRunner {
       plan.dependencyCacheDigest,
       false,
     );
+    await this.verifyInputFile(
+      join(inputRoot, 'baby-quirt-host-certification.mjs'),
+      plan.harnessDigest,
+      false,
+    );
 
     const pid1 = await this.mustCapture(
       'host PID 1 check',
@@ -509,7 +514,7 @@ export class FixedNspawnRehearsalRunner {
       const state = this.initializeRun(plan);
       try {
         await this.clone(plan, state);
-        await this.mountAndVerify(plan, state);
+        await this.mountAndVerify(state);
         await this.boot(plan, state);
         const result = this.verifyCertificationResult(plan, state);
         if (result.outcome !== 'passed') {
@@ -591,7 +596,7 @@ export class FixedNspawnRehearsalRunner {
     }
   }
 
-  private async mountAndVerify(plan: NspawnRunPlan, state: RunState): Promise<void> {
+  private async mountAndVerify(state: RunState): Promise<void> {
     await this.mustRun({
       file: this.config.binaries.zfs,
       args: ['mount', state.cloneDataset],
@@ -605,9 +610,6 @@ export class FixedNspawnRehearsalRunner {
       if (!stat.isFile() || stat.isSymbolicLink() || stat.uid !== 0 || (stat.mode & 0o022) !== 0) {
         throw new NspawnRunnerError('nspawn_integrity_failed', `unsafe golden image file: ${path}`);
       }
-    }
-    if (await sha256File(harness) !== plan.harnessDigest) {
-      throw new NspawnRunnerError('nspawn_integrity_failed', 'golden image harness digest mismatch');
     }
   }
 
@@ -656,6 +658,7 @@ export class FixedNspawnRehearsalRunner {
       `--property=TasksMax=${this.config.tasksMax}`,
       '--property=CPUWeight=100',
       `--bind-ro=${inputRoot}:/run/baby-quirt-certification/input`,
+      `--bind-ro=${join(inputRoot, 'baby-quirt-host-certification.mjs')}:${this.config.harnessPathInImage}`,
       `--bind=${state.guestEvidenceRoot}:/run/baby-quirt-certification/evidence`,
       '--setenv=BABY_QUIRT_CERTIFICATION_PLAN=/run/baby-quirt-certification/input/plan.json',
     ];
