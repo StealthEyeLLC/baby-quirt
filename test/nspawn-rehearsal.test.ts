@@ -124,6 +124,7 @@ class FakeExecutor implements NspawnCommandExecutor {
       uid997: 'passed',
       soPeerCred: 'passed',
       systemdLifecycle: 'passed',
+      productionShapedCycles: 3,
       testSummary: {
         commands: 12,
         tests: 140,

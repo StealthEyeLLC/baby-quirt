@@ -59,6 +59,7 @@ const CERTIFICATION_RESULT_KEYS = [
   'uid997',
   'soPeerCred',
   'systemdLifecycle',
+  'productionShapedCycles',
   'testSummary',
   'completedAt',
 ] as const;
@@ -686,6 +687,7 @@ export class FixedNspawnRehearsalRunner {
       !['passed', 'failed'].includes(result.uid997 as string) ||
       !['passed', 'failed'].includes(result.soPeerCred as string) ||
       !['passed', 'failed'].includes(result.systemdLifecycle as string) ||
+      result.productionShapedCycles !== 3 ||
       typeof result.completedAt !== 'string' ||
       !Number.isFinite(Date.parse(result.completedAt)) ||
       result.testSummary === null ||
