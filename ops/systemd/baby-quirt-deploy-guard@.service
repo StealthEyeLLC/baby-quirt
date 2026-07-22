@@ -1,0 +1,25 @@
+[Unit]
+Description=Baby Quirt standalone deployment rollback guard for %i
+Documentation=https://github.com/StealthEyeLLC/baby-quirt
+DefaultDependencies=no
+After=local-fs.target
+Before=baby-quirt.service baby-quirt-mcp.service
+
+[Service]
+Type=oneshot
+User=root
+Group=root
+UMask=0077
+ExecStart=/usr/bin/flock --exclusive --nonblock /run/baby-quirt/deploy.lock /usr/libexec/baby-quirt-deploy/current/bin/baby-quirt-deploy-guard evaluate --deployment-id %i
+Environment=NODE_ENV=production
+NoNewPrivileges=false
+ProtectSystem=strict
+ProtectHome=true
+PrivateTmp=true
+PrivateDevices=true
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectControlGroups=true
+RestrictRealtime=true
+LockPersonality=true
+ReadWritePaths=/var/lib/baby-quirt/deployments /run/baby-quirt /opt/baby-quirt /opt/baby-quirt-mcp /etc/baby-quirt /etc/baby-quirt-mcp /etc/systemd/system /run/horsey

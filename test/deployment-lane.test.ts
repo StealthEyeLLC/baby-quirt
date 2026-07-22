@@ -36,4 +36,15 @@ describe('standalone deployment source lane', () => {
     assert.match(strict, /O_EXCL/u);
     assert.doesNotMatch(retired, /tarfile|extractall|\.extract\(/u);
   });
+
+  it('ships a non-networked persistent fixed guard outside active releases', () => {
+    const service = readFileSync('ops/systemd/baby-quirt-deploy-guard@.service', 'utf8');
+    const timer = readFileSync('ops/systemd/baby-quirt-deploy-guard@.timer', 'utf8');
+    assert.match(service, /\/usr\/bin\/flock --exclusive --nonblock \/run\/baby-quirt\/deploy\.lock/u);
+    assert.match(service, /\/usr\/libexec\/baby-quirt-deploy\/current\/bin\/baby-quirt-deploy-guard/u);
+    assert.doesNotMatch(service, /ListenStream|ListenDatagram|DynamicUser/u);
+    assert.match(timer, /^Persistent=true$/mu);
+    assert.match(timer, /^OnBootSec=15s$/mu);
+    assert.match(timer, /^Unit=baby-quirt-deploy-guard@%i\.service$/mu);
+  });
 });
