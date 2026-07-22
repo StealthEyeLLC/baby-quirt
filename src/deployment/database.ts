@@ -725,6 +725,20 @@ export class DeploymentDatabase {
     return row ? mapDeployment(row) : undefined;
   }
 
+  listDeployments(offset = 0, limit = 50): DeploymentRecord[] {
+    if (!Number.isSafeInteger(offset) || offset < 0) {
+      throw new DeploymentError('deployment_invalid', 'offset must be nonnegative');
+    }
+    if (!Number.isSafeInteger(limit) || limit < 1 || limit > 200) {
+      throw new DeploymentError('deployment_invalid', 'limit must be between 1 and 200');
+    }
+    return (
+      this.database
+        .prepare('SELECT * FROM deployments ORDER BY generation DESC, deployment_id LIMIT ? OFFSET ?')
+        .all(limit, offset) as SqlRow[]
+    ).map(mapDeployment);
+  }
+
   private getDeploymentRequired(deploymentId: string): DeploymentRecord {
     const deployment = this.getDeployment(deploymentId);
     if (!deployment) {

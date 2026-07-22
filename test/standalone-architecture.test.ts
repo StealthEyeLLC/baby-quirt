@@ -5,6 +5,7 @@ import { describe, it } from 'node:test';
 
 const root = join(import.meta.dirname, '..');
 const architecture = readFileSync(join(root, 'docs/STANDALONE_DEPLOYMENT_V2.md'), 'utf8');
+const riskRegister = readFileSync(join(root, 'docs/FAILURE_RISK_REGISTER_V2.md'), 'utf8');
 
 function filesBelow(path: string): string[] {
   const absolute = join(root, path);
@@ -38,6 +39,12 @@ describe('standalone deployment architecture', () => {
     ];
     for (const operation of operations) assert.ok(architecture.includes('`' + operation + '`'), operation);
     assert.equal(new Set(operations).size, 11);
+  });
+
+  it('tracks every required failure scenario in the live evidence ledger', () => {
+    const identifiers = [...riskRegister.matchAll(/^\| R(\d{3}) \|/gmu)].map((match) => Number(match[1]));
+    assert.deepEqual(identifiers, Array.from({ length: 94 }, (_, index) => index + 1));
+    assert.equal((riskRegister.match(/Source-gated; exact-head certification required/gmu) ?? []).length, 94);
   });
 
   it('has no executable dependency on Fix, its broker, or the operator', () => {

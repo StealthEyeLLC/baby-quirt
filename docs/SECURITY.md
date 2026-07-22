@@ -22,7 +22,7 @@ Every production request must satisfy all of the following:
 
 - exact principal subject `stealtheye-owner`;
 - exact authority class `unrestricted-owner`;
-- exact issuer, resource, and audience `https://mcp.stealtheye.io`;
+- exact issuer `https://baby-quirt.stealtheye.io` and resource/audience `https://baby-quirt.stealtheye.io/mcp`;
 - principal type `owner` with no workspace authority;
 - exact owner principal fingerprint;
 - exact gateway ID `stealtheye-horsey-gateway`;
@@ -44,7 +44,7 @@ OAuth is enforced by the separate MCP gateway before a QRT1 request is construct
 | Gateway authority private key | `/etc/baby-quirt-mcp/gateway-authority-private.pem` | `fix-mcp:horsey` | `0600` | Sign QRT1 requests; never read by Baby Quirt |
 | Supervisor receipt private key | `/etc/baby-quirt/supervisor-receipt-private.pem` | `root:root` | `0600` | Sign operation receipts |
 | Supervisor receipt public key | `/etc/baby-quirt/supervisor-receipt-public.pem` | `root:horsey` | `0640` | Verify receipts in the gateway |
-| OAuth JWKS | `https://mcp.stealtheye.io/oauth/jwks.json` | Remote | N/A | Verify owner bearer tokens in the gateway |
+| OAuth JWKS | `https://baby-quirt.stealtheye.io/oauth/jwks.json` | Remote | N/A | Verify owner bearer tokens in the gateway |
 
 `/etc/baby-quirt` must be `root:horsey` mode `0750` so the gateway can traverse the directory to read only the two public keys. Neither private key may be committed, uploaded as a release artifact, printed, or made group-readable.
 
@@ -65,7 +65,7 @@ The SHA-256 fingerprint of the deployed gateway authority public PEM is:
 
 The ChatGPT integration uses the single external tool `bbyquirt.call_quirt` with the canonical description:
 
-> Run any authorized Baby Quirt operation through the single authenticated Baby Quirt interface.
+> Run one authorized Baby Quirt operation through the single authenticated Baby Quirt interface and return its durable result with verified signed evidence.
 
 Using one tool identity reduces unnecessary permission-surface variation, but it is not a security bypass. The platform remains authoritative over confirmation prompts. Baby Quirt still verifies the complete signed request, exact owner and authority, target host, nonce, peer UID, and result receipt. Changed operations or payloads require a new idempotency key. See [Using Baby Quirt from ChatGPT](USING_WITH_CHATGPT.md).
 

@@ -88,7 +88,7 @@ The current persistence implementation uses root-owned JSON files and binary str
 4. **Authority validation** — require exact gateway ID, key ID, fresh timestamp, nonce, target host, signature, and machine identity.
 5. **Peer validation** — require the Unix peer UID to equal `997` unless an explicit test-only bypass is enabled.
 6. **Replay and idempotency** — return a cached response for an identical signed request hash or commit a new nonce.
-7. **Dispatch** — route one of the 31 `baby.*` operations through the unified registry.
+7. **Dispatch** — route one of the 42 unique `baby.*` operations through the unified registry.
 8. **Persistence** — update job, stream, PTY, artifact, and replay state.
 9. **Evidence** — sign a receipt over the canonical result digest.
 10. **Recovery** — reconcile running jobs, detached jobs, and tmux-backed PTYs on service restart.
@@ -112,7 +112,7 @@ The remote client exposes one generic external tool, `bbyquirt.call_quirt`. Ever
 
 The canonical action description is:
 
-> Run any authorized Baby Quirt operation through the single authenticated Baby Quirt interface.
+> Run one authorized Baby Quirt operation through the single authenticated Baby Quirt interface and return its durable result with verified signed evidence.
 
 This stable tool identity is a client-integration rule; it does not weaken Baby Quirt authentication, authorization, replay checks, host identity, peer credentials, or receipts. ChatGPT controls its own confirmation UI and may still require confirmation for sensitive payloads. See [Using Baby Quirt from ChatGPT](USING_WITH_CHATGPT.md).
 

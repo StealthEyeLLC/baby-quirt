@@ -37,6 +37,11 @@ describe('one-time nspawn host bootstrap contract', () => {
     assert.match(harness, /SO_PEERCRED UID 997 probe/u);
     assert.match(harness, /npm_config_nodedir: NODE_ROOT/u);
     assert.match(harness, /npm_config_offline: 'true'/u);
+    assert.match(harness, /for \(let cycle = 1; cycle <= 3; cycle \+= 1\)/u);
+    assert.match(harness, /productionShapedCycles: 3/u);
+    assert.match(harness, /Baby success rollback reboot/u);
+    assert.match(harness, /gateway isolated reproducibility build/u);
+    assert.match(harness, /gateway reproducibility byte comparison/u);
   });
 
   it('does not bind a production tree, host cgroup tree, or host network into the machine', () => {

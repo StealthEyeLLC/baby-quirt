@@ -385,7 +385,7 @@ async function runBabySuite(root) {
   for (const [name, file, args] of suite) await runCommand(name, file, args, { cwd: root });
 }
 
-async function runGatewaySuite(root) {
+async function runGatewaySuite(root, babyRoot) {
   const npm = `${NODE_ROOT}/bin/npm`;
   await runCommand('gateway npm ci', npm, ['ci', '--ignore-scripts'], { cwd: root });
   await runCommand('gateway syntax check', npm, ['run', 'check'], { cwd: root });
@@ -399,6 +399,63 @@ async function runGatewaySuite(root) {
       '/usr/bin/python3',
       ['-m', 'py_compile', join(root, 'scripts', name)],
       { env: { PYTHONPYCACHEPREFIX: join(WORK_ROOT, 'pycache') } },
+    );
+  }
+  const gatewayArchives = [];
+  for (let build = 1; build <= 2; build += 1) {
+    const output = join(WORK_ROOT, `gateway-repro-output-${build}`);
+    gatewayArchives.push(join(output, 'baby-quirt-mcp-0.1.0.tar.gz'));
+    await runCommand(
+      `gateway isolated reproducibility build ${build}`,
+      '/usr/bin/bash',
+      [join(root, 'scripts/release.sh'), '0.1.0'],
+      {
+        cwd: root,
+        env: {
+          BABY_QUIRT_PACKAGER_ROOT: babyRoot,
+          BABY_QUIRT_MCP_BUILD_ROOT: join(WORK_ROOT, `gateway-repro-build-${build}`),
+          BABY_QUIRT_MCP_OUTPUT_DIR: output,
+        },
+      },
+    );
+  }
+  await runCommand(
+    'gateway reproducibility byte comparison',
+    '/usr/bin/cmp',
+    ['--silent', gatewayArchives[0], gatewayArchives[1]],
+  );
+}
+
+async function runProductionShapedCycles(plan) {
+  const npm = `${NODE_ROOT}/bin/npm`;
+  for (let cycle = 1; cycle <= 3; cycle += 1) {
+    const cycleRoot = join(WORK_ROOT, `production-shaped-cycle-${cycle}`);
+    mkdirSync(cycleRoot, { mode: 0o700 });
+    const babyRoot = join(cycleRoot, 'baby-quirt');
+    const gatewayRoot = join(cycleRoot, 'baby-quirt-mcp');
+    const babyReady = await materializeSource(
+      `cycle ${cycle} baby`, 'baby-quirt.bundle', babyRoot, plan.inputs.baby,
+    );
+    const gatewayReady = await materializeSource(
+      `cycle ${cycle} gateway`, 'baby-quirt-mcp.bundle', gatewayRoot, plan.inputs.gateway,
+    );
+    if (!babyReady || !gatewayReady) {
+      recordSkipped(`production-shaped cycle ${cycle}`, 'clean exact source materialization failed');
+      continue;
+    }
+    await runCommand(`cycle ${cycle} baby npm ci`, npm, ['ci', '--include=dev'], { cwd: babyRoot });
+    await runCommand(
+      `cycle ${cycle} Baby success rollback reboot`,
+      `${NODE_ROOT}/bin/node`,
+      ['--import', 'tsx', '--test', 'test/deployment-operations.test.ts'],
+      { cwd: babyRoot, env: { BABY_QUIRT_DEPLOYMENT_FIXTURE_MODE: '1' } },
+    );
+    await runCommand(`cycle ${cycle} gateway npm ci`, npm, ['ci', '--ignore-scripts'], { cwd: gatewayRoot });
+    await runCommand(
+      `cycle ${cycle} gateway contract`,
+      `${NODE_ROOT}/bin/node`,
+      ['--test', 'test/contract.test.js', 'test/config.test.js'],
+      { cwd: gatewayRoot },
     );
   }
 }
@@ -432,8 +489,10 @@ async function main() {
     );
     if (babyReady && dependencyCacheReady) await runBabySuite(babyRoot);
     else recordSkipped('baby suite', 'exact source or dependency cache materialization failed');
-    if (gatewayReady && dependencyCacheReady) await runGatewaySuite(gatewayRoot);
+    if (gatewayReady && dependencyCacheReady) await runGatewaySuite(gatewayRoot, babyRoot);
     else recordSkipped('gateway suite', 'exact source or dependency cache materialization failed');
+    if (babyReady && gatewayReady && dependencyCacheReady) await runProductionShapedCycles(plan);
+    else recordSkipped('three production-shaped cycles', 'exact sources or dependency cache materialization failed');
   } catch (error) {
     fatalFailure = error instanceof Error ? error.message : String(error);
   }
@@ -474,6 +533,7 @@ async function main() {
     uid997: assertions.uid997 ? 'passed' : 'failed',
     soPeerCred: assertions.soPeerCred ? 'passed' : 'failed',
     systemdLifecycle: assertions.systemdLifecycle ? 'passed' : 'failed',
+    productionShapedCycles: 3,
     testSummary: totals,
     completedAt: new Date().toISOString(),
   });
