@@ -1,6 +1,6 @@
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
-import { execSync } from 'node:child_process';
+import { execFileSync, execSync } from 'node:child_process';
 import { readFileSync, existsSync, mkdtempSync, rmSync } from 'node:fs';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
@@ -44,7 +44,10 @@ describe('acceptance: reproducible release builds', () => {
         readFileSync(join(root, 'release/baby-quirt-0.0.0-repro-test.manifest.json'), 'utf8'),
       ) as { commit: string };
       assert.equal(manifest.commit, commit);
-      assert.ok(existsSync(join(root, 'release/baby-quirt-0.0.0-repro-test.tar.gz')));
+      const archive = join(root, 'release/baby-quirt-0.0.0-repro-test.tar.gz');
+      assert.ok(existsSync(archive));
+      const archiveListing = execFileSync('tar', ['-tvzf', archive], { encoding: 'utf8' });
+      assert.doesNotMatch(archiveListing, /^[lh]/m, 'release archive must not contain link entries');
     } finally {
       rmSync(buildA, { recursive: true, force: true });
       rmSync(buildB, { recursive: true, force: true });

@@ -44,6 +44,15 @@ NM_ROOT="${BUILD_ROOT}/.release-nm"
 mkdir -p "$NM_ROOT"
 cp package.json package-lock.json "$NM_ROOT/"
 npm ci --omit=dev --ignore-scripts --prefix "$NM_ROOT"
+# npm creates executable-link entries under .bin directories. The production
+# extractor intentionally rejects every symbolic and hard link, so remove all
+# dependency symlinks before packaging and fail if any remain. Runtime modules
+# resolve their actual files directly and do not require npm's command shims.
+find "$NM_ROOT/node_modules" -type l -delete
+if find "$NM_ROOT/node_modules" -type l -print -quit | grep -q .; then
+  echo "ERROR: production dependency tree still contains a symbolic link" >&2
+  exit 1
+fi
 cp -r "$NM_ROOT/node_modules" "$RELEASE_DIR/lib/node_modules"
 rm -rf "$NM_ROOT"
 
@@ -113,6 +122,22 @@ if grep -Fq "${RELEASE_NAME}/lib/dist/src/" "$ARCHIVE_LIST"; then
   echo "ERROR: release archive contains an unexpected nested dist/src runtime" >&2
   exit 1
 fi
+python3 - "$ARCHIVE" <<'PYARCHIVE'
+import sys
+import tarfile
+
+archive = sys.argv[1]
+with tarfile.open(archive, 'r:gz') as bundle:
+    forbidden = [
+        member.name
+        for member in bundle.getmembers()
+        if member.issym() or member.islnk()
+    ]
+if forbidden:
+    for name in forbidden:
+        print(f"ERROR: release archive contains forbidden link entry: {name}", file=sys.stderr)
+    raise SystemExit(1)
+PYARCHIVE
 
 DIGEST=$(sha256sum "$ARCHIVE" | awk '{print $1}')
 printf '%s  %s\n' "$DIGEST" "$(basename "$ARCHIVE")" > "$DIGEST_FILE"
