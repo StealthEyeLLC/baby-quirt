@@ -258,6 +258,11 @@ jobs:
         if: always() && env.RUN_ID != ''
         run: |
           set -euo pipefail
+          ssh -i ~/.ssh/nspawn_bootstrap_key -p '${{ vars.BABY_QUIRT_VPS_PORT || 22 }}' \
+            -o BatchMode=yes -o StrictHostKeyChecking=yes \
+            '${{ vars.BABY_QUIRT_VPS_USER || 'ubuntu' }}@${{ vars.BABY_QUIRT_VPS_HOST }}' \
+            'sudo -n cat /etc/baby-quirt-nspawn/evidence-public.pem' \
+            > /tmp/baby-quirt-nspawn-evidence-public.pem
           if ssh -i ~/.ssh/nspawn_bootstrap_key -p '${{ vars.BABY_QUIRT_VPS_PORT || 22 }}' \
             -o BatchMode=yes -o StrictHostKeyChecking=yes \
             '${{ vars.BABY_QUIRT_VPS_USER || 'ubuntu' }}@${{ vars.BABY_QUIRT_VPS_HOST }}' \
@@ -269,6 +274,78 @@ jobs:
               > /tmp/baby-quirt-nspawn-evidence.tar.gz
           fi
 
+      - name: Independently verify signed host evidence
+        if: always() && env.RUN_ID != ''
+        run: |
+          set -euo pipefail
+          test -s /tmp/nspawn-receipt.json
+          test -s /tmp/baby-quirt-nspawn-evidence-public.pem
+          test -s /tmp/baby-quirt-nspawn-evidence.tar.gz
+          mkdir -p /tmp/baby-quirt-nspawn-evidence-verify
+          tar -xzf /tmp/baby-quirt-nspawn-evidence.tar.gz \
+            -C /tmp/baby-quirt-nspawn-evidence-verify
+          node --input-type=module <<'NODE' | tee /tmp/nspawn-receipt-verification.json
+          import { createHash } from 'node:crypto';
+          import { lstatSync, readFileSync, readdirSync } from 'node:fs';
+          import { join } from 'node:path';
+          import { loadPublicKey } from './dist/src/crypto/signing.js';
+          import { verifySignedNspawnRunReceipt } from './dist/src/rehearsal/nspawn-contract.js';
+
+          const root = '/tmp/baby-quirt-nspawn-evidence-verify';
+          const outputLines = readFileSync('/tmp/nspawn-receipt.json', 'utf8')
+            .trim().split('\n').filter(Boolean);
+          const receipt = JSON.parse(outputLines.at(-1));
+          const verified = verifySignedNspawnRunReceipt(
+            receipt,
+            loadPublicKey('/tmp/baby-quirt-nspawn-evidence-public.pem'),
+          );
+          const stored = JSON.parse(readFileSync(join(root, 'receipt.json'), 'utf8'));
+          if (stored.recordDigest !== verified.recordDigest || stored.signature !== verified.signature) {
+            throw new Error('stored receipt differs from signed runner output');
+          }
+          const actualFiles = [];
+          const visit = (directory, prefix = '') => {
+            for (const name of readdirSync(directory).sort()) {
+              const relative = prefix ? `${prefix}/${name}` : name;
+              const path = join(directory, name);
+              const stat = lstatSync(path);
+              if (stat.isSymbolicLink()) throw new Error(`linked evidence entry: ${relative}`);
+              if (stat.isDirectory()) visit(path, relative);
+              else if (stat.isFile()) actualFiles.push(relative);
+              else throw new Error(`special evidence entry: ${relative}`);
+            }
+          };
+          visit(root);
+          const expectedFiles = verified.evidenceFiles.map((entry) => entry.path).sort();
+          const unsignedActualFiles = actualFiles.filter((path) => path !== 'receipt.json').sort();
+          if (JSON.stringify(unsignedActualFiles) !== JSON.stringify(expectedFiles)) {
+            throw new Error('evidence file set differs from signed receipt');
+          }
+          for (const entry of verified.evidenceFiles) {
+            if (!/^(?!\/)(?!.*(?:^|\/)\.\.(?:\/|$))(?!.*\\)[A-Za-z0-9._@/-]+$/.test(entry.path)) {
+              throw new Error(`unsafe signed evidence path: ${entry.path}`);
+            }
+            const bytes = readFileSync(join(root, entry.path));
+            if (bytes.length !== entry.size) throw new Error(`evidence size differs: ${entry.path}`);
+            const digest = createHash('sha256').update(bytes).digest('hex');
+            if (digest !== entry.digest) throw new Error(`evidence digest differs: ${entry.path}`);
+          }
+          const result = JSON.parse(readFileSync(join(root, 'guest/certification-result.json'), 'utf8'));
+          if (
+            result.runId !== verified.runId ||
+            result.planDigest !== verified.planDigest ||
+            result.outcome !== verified.outcome
+          ) throw new Error('guest result differs from signed receipt');
+          console.log(JSON.stringify({
+            verified: true,
+            signatureAlgorithm: verified.signatureAlgorithm,
+            signingKeyId: verified.signingKeyId,
+            recordDigest: verified.recordDigest,
+            evidenceFiles: verified.evidenceFiles.length,
+            outcome: verified.outcome,
+          }));
+          NODE
+
       - name: Upload certification evidence
         if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
@@ -279,6 +356,8 @@ jobs:
             /tmp/bootstrap.json
             /tmp/nspawn-receipt.json
             /tmp/baby-quirt-nspawn-evidence.tar.gz
+            /tmp/baby-quirt-nspawn-evidence-public.pem
+            /tmp/nspawn-receipt-verification.json
           if-no-files-found: warn
           retention-days: 30
 

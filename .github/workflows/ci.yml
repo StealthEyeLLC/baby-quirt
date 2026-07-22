@@ -42,7 +42,7 @@ jobs:
 
       - name: Complete test suite
         run: |
-          npm run test
+          sudo env PATH="$PATH" HOME="$HOME" npm run test
           npm run test:integration
           npm run test:acceptance
           npm run test:contracts

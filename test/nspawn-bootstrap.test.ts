@@ -71,6 +71,9 @@ describe('one-time nspawn host bootstrap contract', () => {
     assert.match(workflow, /--confirm-create-babycert-v1/u);
     assert.match(workflow, /baby-quirt-nspawn-runner preflight '\$RUN_ID'/u);
     assert.match(workflow, /baby-quirt-nspawn-runner run '\$RUN_ID'/u);
+    assert.match(workflow, /evidence-public\.pem/u);
+    assert.match(workflow, /verifySignedNspawnRunReceipt/u);
+    assert.match(workflow, /nspawn-receipt-verification\.json/u);
     assert.doesNotMatch(workflow, /systemctl restart|release pointer/u);
   });
 });
