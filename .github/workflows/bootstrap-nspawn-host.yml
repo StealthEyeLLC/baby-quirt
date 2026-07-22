@@ -120,9 +120,10 @@ jobs:
           set -euo pipefail
           npm ci --include=dev --no-audit --no-fund
           npm run lint
-          sudo "$(command -v node)" --import tsx --test \
+          node --import tsx --test \
             test/nspawn-bootstrap.test.ts \
-            test/nspawn-input.test.ts \
+            test/nspawn-input.test.ts
+          sudo "$(command -v node)" --import tsx --test \
             test/nspawn-rehearsal.test.ts
           npm run build
           bash -n ops/rehearsal/bootstrap-nspawn-host.sh ops/rehearsal/baby-quirt-nspawn-runner
