@@ -57,6 +57,7 @@ describe('one-time nspawn host bootstrap contract', () => {
     assert.match(workflow, /git diff-tree --no-commit-id --name-only -r HEAD/u);
     assert.match(workflow, /\.github\/nspawn-bootstrap-authorization\.json/u);
     assert.match(workflow, /now < expires <= now \+ datetime\.timedelta\(hours=24\)/u);
+    assert.equal(workflow.includes('\\\\$1'), false, 'remote awk fields must not expand in the local shell');
     assert.match(workflow, /StrictHostKeyChecking=yes/u);
     assert.match(workflow, /token: \$\{\{ secrets\.quirt_all_gh_token \}\}/u);
     assert.equal((workflow.match(/persist-credentials: false/gu) ?? []).length, 3);

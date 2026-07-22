@@ -179,13 +179,13 @@ jobs:
             -o BatchMode=yes -o StrictHostKeyChecking=yes \
             '${{ vars.BABY_QUIRT_VPS_USER || 'ubuntu' }}@${{ vars.BABY_QUIRT_VPS_HOST }}' \
             "test \"\$(hostname)\" = '$EXPECTED_HOSTNAME' && \
-             test \"\$(tr -d '\\r\\n' </etc/machine-id | sha256sum | awk '{print \\$1}')\" = '$EXPECTED_MACHINE_ID' && \
+             test \"\$(tr -d '\\r\\n' </etc/machine-id | sha256sum | awk '{print \$1}')\" = '$EXPECTED_MACHINE_ID' && \
              test \"\$(ps -p 1 -o comm= | tr -d ' ')\" = systemd && \
              test \"\$(stat -fc %T /sys/fs/cgroup)\" = cgroup2fs && \
              test \"\$(/opt/node-v24.18.0-linux-x64/bin/node --version)\" = v24.18.0 && \
              sudo -n true && \
              { sudo -n test -f /etc/baby-quirt-nspawn/bootstrap.json || \
-               test \"\$(df -B1 --output=avail / | awk 'NR==2 {print \\$1}')\" -ge 27917287424; }"
+               test \"\$(df -B1 --output=avail / | awk 'NR==2 {print \$1}')\" -ge 27917287424; }"
 
       - name: Upload and execute exact one-time bootstrap
         env:
