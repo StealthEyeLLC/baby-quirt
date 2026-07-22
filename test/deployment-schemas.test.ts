@@ -40,6 +40,7 @@ describe('deployment v2 schemas', () => {
   it('binds immutable release identity, reproducibility, native layout, and exclusions', () => {
     const schema = load('release-manifest.schema.json');
     for (const required of [
+      'recordVersion',
       'commit',
       'tree',
       'sourceDateEpoch',
@@ -51,6 +52,7 @@ describe('deployment v2 schemas', () => {
       'files',
       'sbom',
       'reproducibility',
+      'manifestDigest',
       'compatibilityDigest',
       'stateMigration',
       'rollback',

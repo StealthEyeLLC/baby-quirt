@@ -8,20 +8,28 @@ import { generateEd25519KeyPair } from '../crypto/signing.js';
 import { DEFAULTS, SUPERVISOR_RECEIPT_KEY_ID } from '../config.js';
 import { atomicSwapSymlinks } from '../install/symlinks.js';
 import { assertSafeVersion, safeExtractTarGz } from '../install/safe-extract.js';
+import type { ExtractableReleaseManifest } from '../release/archive-contract.js';
 
-function parseArgs(): { releaseDir: string; version: string; archivePath?: string } {
+function parseArgs(): {
+  releaseDir: string;
+  version: string;
+  archivePath?: string;
+  manifestPath?: string;
+} {
   const args = process.argv.slice(2);
   let releaseDir = '';
   let version = '0.0.0';
   let archivePath: string | undefined;
+  let manifestPath: string | undefined;
 
   for (let i = 0; i < args.length; i++) {
     if (args[i] === '--release-dir') releaseDir = args[++i];
     if (args[i] === '--archive') archivePath = args[++i];
+    if (args[i] === '--manifest') manifestPath = args[++i];
     if (args[i] === '--version') version = args[++i];
     if (args[i] === '--help') {
       console.log(
-        'Usage: baby-quirt-install --release-dir <path> [--archive <tar.gz>] [--version <ver>]',
+        'Usage: baby-quirt-install --release-dir <path> [--archive <tar.gz> --manifest <json>] [--version <ver>]',
       );
       process.exit(0);
     }
@@ -31,7 +39,16 @@ function parseArgs(): { releaseDir: string; version: string; archivePath?: strin
     console.error('--release-dir or --archive is required');
     process.exit(1);
   }
-  return { releaseDir: releaseDir ? resolve(releaseDir) : '', version, archivePath };
+  if (archivePath && !manifestPath) {
+    console.error('--manifest is required with --archive');
+    process.exit(1);
+  }
+  return {
+    releaseDir: releaseDir ? resolve(releaseDir) : '',
+    version,
+    archivePath,
+    manifestPath,
+  };
 }
 
 function fingerprintPem(path: string): string {
@@ -39,7 +56,7 @@ function fingerprintPem(path: string): string {
 }
 
 async function main(): Promise<void> {
-  const { releaseDir, version, archivePath } = parseArgs();
+  const { releaseDir, version, archivePath, manifestPath } = parseArgs();
   assertSafeVersion(version);
 
   const configRoot = process.env.BABY_QUIRT_CONFIG_ROOT ?? DEFAULTS.configRoot;
@@ -100,11 +117,15 @@ async function main(): Promise<void> {
   });
 
   const targetRelease = join(releaseRoot, version);
-  mkdirSync(targetRelease, { recursive: true, mode: 0o755 });
+  if (existsSync(targetRelease)) {
+    console.error('Release target already exists; immutable release paths are create-once');
+    process.exit(1);
+  }
 
   if (archivePath) {
     const prefix = `baby-quirt-${version}`;
-    await safeExtractTarGz(archivePath, targetRelease, prefix);
+    const manifest = JSON.parse(readFileSync(manifestPath!, 'utf8')) as ExtractableReleaseManifest;
+    await safeExtractTarGz(archivePath, targetRelease, prefix, { manifest });
     if (!existsSync(join(targetRelease, 'bin', 'baby-quirt-daemon'))) {
       console.error('Extracted release directory missing');
       process.exit(1);

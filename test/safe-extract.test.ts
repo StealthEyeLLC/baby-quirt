@@ -1,38 +1,66 @@
-import { describe, it } from 'node:test';
+import { afterEach, describe, it } from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdtempSync, writeFileSync, rmSync, readFileSync, mkdirSync } from 'node:fs';
+import {
+  existsSync,
+  mkdirSync,
+  mkdtempSync,
+  readFileSync,
+  rmSync,
+  writeFileSync,
+} from 'node:fs';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
-import { execFileSync } from 'node:child_process';
 import { safeExtractTarGz } from '../src/install/safe-extract.js';
+import { PINNED_NODE_VERSION, type ExtractableReleaseManifest } from '../src/release/archive-contract.js';
+import { createDeterministicTarGz } from '../src/release/deterministic-archive.js';
 
-describe('safe archive extraction', () => {
-  const dir = mkdtempSync(join(tmpdir(), 'bq-safe-'));
+const roots: string[] = [];
+afterEach(() => {
+  for (const root of roots.splice(0)) rmSync(root, { recursive: true, force: true });
+});
 
-  it('extracts a valid archive', async () => {
-    const source = mkdtempSync(join(tmpdir(), 'bq-src-'));
-    const prefix = 'baby-quirt-test';
-    const root = join(source, prefix);
-    mkdirSync(root, { recursive: true });
-    writeFileSync(join(root, 'hello.txt'), 'hello');
-    const archive = join(dir, 'good.tar.gz');
-    execFileSync('tar', ['-czf', archive, '-C', source, prefix]);
-    const dest = mkdtempSync(join(tmpdir(), 'bq-dest-'));
-    await safeExtractTarGz(archive, dest, prefix);
-    assert.equal(readFileSync(join(dest, 'hello.txt'), 'utf8'), 'hello');
-    rmSync(dest, { recursive: true, force: true });
-    rmSync(source, { recursive: true, force: true });
-  });
-
-  it('rejects traversal entries', async () => {
-    const source = mkdtempSync(join(tmpdir(), 'bq-evil-'));
-    writeFileSync(join(source, 'escape.txt'), 'x');
-    const archive = join(dir, 'evil.tar.gz');
-    execFileSync('tar', ['-czf', archive, '-C', source, '--transform', 's,^,../,', 'escape.txt']);
-    await assert.rejects(
-      () => safeExtractTarGz(archive, mkdtempSync(join(tmpdir(), 'bq-bad-')), 'prefix'),
-      /Unsafe|outside|traversal|Forbidden/,
+describe('safe archive extraction compatibility wrapper', () => {
+  it('installs one strictly verified create-once inactive target', async () => {
+    const root = mkdtempSync(join(tmpdir(), 'bq-safe-wrapper-'));
+    roots.push(root);
+    const source = join(root, 'source');
+    mkdirSync(source);
+    writeFileSync(join(source, 'hello.txt'), 'hello');
+    const archivePath = join(root, 'candidate.tar.gz');
+    const archive = await createDeterministicTarGz({
+      releaseRoot: source,
+      topLevelPrefix: 'baby-quirt-0.3.0-fixture',
+      archivePath,
+      sourceDateEpoch: 1_700_000_000,
+    });
+    const manifest: ExtractableReleaseManifest = {
+      schemaVersion: '2.0.0',
+      product: 'baby-quirt',
+      repository: 'StealthEyeLLC/baby-quirt',
+      releaseVersion: '0.3.0-fixture',
+      sourceDateEpoch: 1_700_000_000,
+      nodeVersion: PINNED_NODE_VERSION,
+      archive: archive.archive,
+      files: archive.files,
+    };
+    const destination = join(root, 'releases', '0.3.0-fixture');
+    mkdirSync(join(root, 'releases'));
+    await safeExtractTarGz(
+      archivePath,
+      destination,
+      'baby-quirt-0.3.0-fixture',
+      { manifest },
     );
-    rmSync(source, { recursive: true, force: true });
+    assert.equal(readFileSync(join(destination, 'hello.txt'), 'utf8'), 'hello');
+    await assert.rejects(
+      safeExtractTarGz(
+        archivePath,
+        destination,
+        'baby-quirt-0.3.0-fixture',
+        { manifest },
+      ),
+      /already exists/u,
+    );
+    assert.equal(existsSync(destination), true);
   });
 });

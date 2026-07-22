@@ -1,48 +1,39 @@
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import { spawnSync } from 'node:child_process';
 
-describe('production deployment lane', () => {
-  it('keeps the remote scripts syntactically valid and first-install capable', () => {
+describe('standalone deployment source lane', () => {
+  it('retires the SSH installer, SSH rollback, and production deploy workflow fail closed', () => {
     for (const script of ['scripts/remote-install.sh', 'scripts/remote-rollback.sh']) {
       const syntax = spawnSync('bash', ['-n', script], { encoding: 'utf8' });
       assert.equal(syntax.status, 0, `${script}: ${syntax.stderr}`);
+      const run = spawnSync('bash', [script], { encoding: 'utf8' });
+      assert.equal(run.status, 64, script);
+      assert.match(run.stderr, /standalone Baby deployment/u);
     }
-
-    const install = readFileSync('scripts/remote-install.sh', 'utf8');
-    assert.match(install, /tr -d '\\r\\n' <\/etc\/machine-id/);
-    assert.match(install, /bootstrap-safe-extract\.py/);
-    assert.doesNotMatch(install, /CURRENT_LINK.*safe-extract/);
-    assert.doesNotMatch(install, /CURRENT_LINK.*cli\/install/);
-    assert.match(install, /gateway-authority-public\.pem/);
-    assert.ok(install.includes('ACTIVE_TARGET=$(sudo readlink -f "$CURRENT_LINK")'));
-    assert.ok(!install.includes('ACTIVE_TARGET=$(readlink -f "$CURRENT_LINK")'));
+    assert.equal(existsSync('.github/workflows/deploy.yml'), false);
   });
 
-  it('packages runtime files at the exact paths consumed by first install', () => {
+  it('packages the compiled runtime and native addon at their exact relocatable paths', () => {
     const bundle = readFileSync('scripts/build-bundle.sh', 'utf8');
-    assert.match(bundle, /test -d dist\/src/);
-    assert.match(bundle, /cp -r dist\/src\/\. "\$RELEASE_DIR\/lib\/dist\/"/);
-    assert.doesNotMatch(bundle, /cp -r dist "\$RELEASE_DIR\/lib\/"/);
-    for (const required of [
-      'lib/dist/index.js',
-      'lib/dist/cli/install.js',
-      'lib/dist/cli/verify.js',
-      'lib/dist/cli/rollback.js',
-      'bin/baby-quirt-daemon',
-    ]) {
-      assert.match(bundle, new RegExp(required.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')));
-    }
-    assert.match(bundle, /unexpected nested dist\/src runtime/);
+    assert.match(bundle, /test -d dist\/src/u);
+    assert.match(bundle, /cp -R dist\/src\/\. "\$RELEASE_DIR\/lib\/dist\/"/u);
+    assert.match(bundle, /lib\/build\/Release\/peer_cred\.node/u);
+    assert.doesNotMatch(bundle, /lib\/native\/build\/Release/u);
+    assert.match(bundle, /RELEASE_ROOT=.*SCRIPT_DIR\/\.\./u);
+    assert.doesNotMatch(bundle, /current\/lib\/dist/u);
+    assert.match(bundle, /production dependency graph contains a link/u);
   });
 
-  it('pins deploy checkout and all upload-artifact actions', () => {
-    const workflow = readFileSync('.github/workflows/deploy.yml', 'utf8');
-    const uploadPin = 'actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02';
-    assert.equal(workflow.split(uploadPin).length - 1, 3);
-    assert.match(workflow, /ref: \$\{\{ needs\.build\.outputs\.commit \}\}/);
-    assert.match(workflow, /git merge-base --is-ancestor/);
-    assert.match(workflow, /BABY_QUIRT_EXPECTED_GATEWAY_PUBLIC_KEY_SHA256/);
+  it('uses one bounded strict archive implementation', () => {
+    const wrapper = readFileSync('src/install/safe-extract.ts', 'utf8');
+    const strict = readFileSync('src/release/strict-extractor.ts', 'utf8');
+    const retired = readFileSync('scripts/bootstrap-safe-extract.py', 'utf8');
+    assert.match(wrapper, /strictExtractRelease/u);
+    assert.match(strict, /createGunzip/u);
+    assert.match(strict, /O_NOFOLLOW/u);
+    assert.match(strict, /O_EXCL/u);
+    assert.doesNotMatch(retired, /tarfile|extractall|\.extract\(/u);
   });
 });
