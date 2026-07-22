@@ -1,0 +1,10 @@
+{
+  "recordVersion": "1.0.0",
+  "action": "create-babycert-v1-and-run-first-certification",
+  "babyCommit": "979a6639d4bd983501d901accfd2f77c9deeedf0",
+  "babyTree": "7761ab5c54d34c4ec90c4a8f5ab28187267a1780",
+  "gatewayCommit": "dba10fad59fd671d3743348d5f761263d5bc5a03",
+  "gatewayTree": "dca6b511e9147fe5421801b8f920092aad30d85e",
+  "expiresAt": "2026-07-23T08:00:00.000Z",
+  "hostMachineIdSha256": "cd189817b39fea60d338b73878240a6fe7db71374c7a0f35ad60f8eb641e8817"
+}
