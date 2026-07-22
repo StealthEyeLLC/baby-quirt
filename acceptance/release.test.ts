@@ -10,6 +10,8 @@ describe('acceptance: reproducible release builds', () => {
     const root = join(import.meta.dirname, '..');
     const epoch = execSync('git log -1 --format=%ct', { cwd: root, encoding: 'utf8' }).trim();
     const commit = execSync('git rev-parse HEAD', { cwd: root, encoding: 'utf8' }).trim();
+    const releaseWrapper = readFileSync(join(root, 'scripts/release.sh'), 'utf8');
+    assert.match(releaseWrapper, /npm ci --include=dev/, 'release wrapper must install build-time dependencies even under production npm defaults');
     const baseEnv = {
       ...process.env,
       SOURCE_DATE_EPOCH: epoch,

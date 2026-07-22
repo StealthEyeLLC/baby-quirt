@@ -9,7 +9,7 @@ export BABY_QUIRT_SOURCE_COMMIT="${BABY_QUIRT_SOURCE_COMMIT:-$(git rev-parse HEA
 
 echo "==> Building Baby Quirt ${VERSION} from commit ${BABY_QUIRT_SOURCE_COMMIT}"
 
-npm ci
+npm ci --include=dev
 npm run build:native
 npm run build
 npm run test
