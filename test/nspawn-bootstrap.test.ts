@@ -48,12 +48,12 @@ describe('one-time nspawn host bootstrap contract', () => {
 
   it('boots automatically only from an exact, isolated authorization commit', () => {
     const workflow = readFileSync('.github/workflows/bootstrap-nspawn-host.yml', 'utf8');
-    assert.match(workflow, /^on:\n  push:\n    branches: \[build\/standalone-deployment-system-v2\]$/mu);
+    assert.match(workflow, /^  push:\n    branches: \[build\/standalone-deployment-system-v2\]$/mu);
+    assert.match(workflow, /^  pull_request:\n    branches: \[main\]\n    types: \[opened, reopened\]$/mu);
     assert.doesNotMatch(workflow, /workflow_dispatch/u);
-    assert.match(
-      workflow,
-      /if: "\$\{\{ github\.event\.head_commit\.message == 'chore: authorize one-time nspawn host bootstrap' \}\}"/u,
-    );
+    assert.match(workflow, /github\.event\.head_commit\.message == 'chore: authorize one-time nspawn host bootstrap'/u);
+    assert.match(workflow, /github\.event\.pull_request\.head\.ref == 'build\/standalone-deployment-system-v2'/u);
+    assert.match(workflow, /ref: \$\{\{ github\.event\.pull_request\.head\.sha \|\| github\.sha \}\}/u);
     assert.match(workflow, /git diff-tree --no-commit-id --name-only -r HEAD/u);
     assert.match(workflow, /\.github\/nspawn-bootstrap-authorization\.json/u);
     assert.match(workflow, /now < expires <= now \+ datetime\.timedelta\(hours=24\)/u);
