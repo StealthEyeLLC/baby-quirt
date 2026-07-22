@@ -21,6 +21,12 @@ import { mapHostPath } from '../src/deployment/snapshot.js';
 
 function materialize(hostRoot: string, identity: PermissionIdentity): void {
   chmodSync(hostRoot, 0o755);
+  for (const logicalPath of ['/etc', '/var', '/var/lib', '/run']) {
+    const path = mapHostPath(hostRoot, logicalPath);
+    mkdirSync(path, { recursive: true, mode: 0o755 });
+    chmodSync(path, 0o755);
+    chownSync(path, identity.rootUid, identity.rootGid);
+  }
   for (const entry of permissionMatrix(identity)) {
     if (entry.kind === 'socket') continue;
     const path = mapHostPath(hostRoot, entry.path);
