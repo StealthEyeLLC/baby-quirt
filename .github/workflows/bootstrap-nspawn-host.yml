@@ -22,6 +22,7 @@ jobs:
         with:
           ref: ${{ github.sha }}
           fetch-depth: 0
+          persist-credentials: false
 
       - name: Validate the isolated authorization commit
         id: authorization
@@ -69,6 +70,8 @@ jobs:
           ref: ${{ steps.authorization.outputs.gateway_commit }}
           fetch-depth: 0
           path: gateway
+          token: ${{ secrets.quirt_all_gh_token }}
+          persist-credentials: false
 
       - name: Checkout exact Baby implementation source
         uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.0
@@ -77,6 +80,7 @@ jobs:
           ref: ${{ steps.authorization.outputs.baby_commit }}
           fetch-depth: 0
           path: baby-source
+          persist-credentials: false
 
       - name: Verify exact source identities
         run: |

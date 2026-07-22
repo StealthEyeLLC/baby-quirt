@@ -58,6 +58,8 @@ describe('one-time nspawn host bootstrap contract', () => {
     assert.match(workflow, /\.github\/nspawn-bootstrap-authorization\.json/u);
     assert.match(workflow, /now < expires <= now \+ datetime\.timedelta\(hours=24\)/u);
     assert.match(workflow, /StrictHostKeyChecking=yes/u);
+    assert.match(workflow, /token: \$\{\{ secrets\.quirt_all_gh_token \}\}/u);
+    assert.equal((workflow.match(/persist-credentials: false/gu) ?? []).length, 3);
     assert.match(workflow, /--confirm-create-babycert-v1/u);
     assert.match(workflow, /baby-quirt-nspawn-runner preflight '\$RUN_ID'/u);
     assert.match(workflow, /baby-quirt-nspawn-runner run '\$RUN_ID'/u);
