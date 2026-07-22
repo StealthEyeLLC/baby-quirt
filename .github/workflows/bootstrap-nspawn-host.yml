@@ -1,8 +1,6 @@
 name: One-time nspawn host bootstrap
 
 on:
-  push:
-    branches: [build/standalone-deployment-system-v2]
   pull_request:
     branches: [main]
     types: [opened, reopened]
@@ -16,11 +14,7 @@ concurrency:
 
 jobs:
   bootstrap-and-certify:
-    if: >-
-      (github.event_name == 'push' &&
-      github.event.head_commit.message == 'chore: authorize one-time nspawn host bootstrap') ||
-      (github.event_name == 'pull_request' &&
-      github.event.pull_request.head.ref == 'build/standalone-deployment-system-v2')
+    if: github.event.pull_request.head.ref == 'build/standalone-deployment-system-v2'
     runs-on: ubuntu-latest
     timeout-minutes: 360
     steps:

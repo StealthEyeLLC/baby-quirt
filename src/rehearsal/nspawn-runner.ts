@@ -126,7 +126,7 @@ export const DEFAULT_NSPAWN_RUNNER_CONFIG: Readonly<NspawnRunnerConfig> = Object
   inputsRoot: '/var/lib/baby-quirt-nspawn/inputs',
   machinesRoot: '/var/lib/baby-quirt-nspawn/machines',
   evidenceRoot: '/var/lib/baby-quirt-nspawn/evidence',
-  lockPath: '/run/lock/baby-quirt-nspawn.lock',
+  lockPath: '/var/lib/baby-quirt-nspawn/runner.lock',
   harnessPathInImage: '/usr/local/libexec/baby-quirt-host-certification.mjs',
   signingKeyId: 'baby-quirt-nspawn-evidence-v1',
   cloneRefquotaBytes: 9 * GIB,

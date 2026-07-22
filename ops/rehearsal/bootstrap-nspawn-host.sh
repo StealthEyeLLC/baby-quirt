@@ -35,6 +35,70 @@ require_file() {
   test -f "$1" && test ! -L "$1" || fail "missing or linked bootstrap input: $1"
 }
 
+validate_payload() {
+  for path in \
+    "$SCRIPT_DIR/baby-quirt-host-certification.mjs" \
+    "$SCRIPT_DIR/baby-quirt-peer-cred-probe.py" \
+    "$SCRIPT_DIR/baby-quirt-host-certification.service" \
+    "$SCRIPT_DIR/baby-quirt-nspawn-runner" \
+    "$SOURCE_ROOT/dist/src/rehearsal/nspawn-cli.js" \
+    "$SOURCE_ROOT/dist/src/rehearsal/nspawn-contract.js" \
+    "$SOURCE_ROOT/dist/src/rehearsal/nspawn-executor.js" \
+    "$SOURCE_ROOT/dist/src/rehearsal/nspawn-runner.js" \
+    "$SOURCE_ROOT/dist/src/crypto/canonical.js" \
+    "$SOURCE_ROOT/dist/src/crypto/signing.js"
+  do
+    require_file "$path"
+  done
+}
+
+safe_owned_directory() {
+  path=$1
+  test -d "$path" && test ! -L "$path" || fail "unsafe owned directory: $path"
+  test "$(readlink -f -- "$path")" = "$path" || fail "non-canonical owned directory: $path"
+  test "$(stat -c %u -- "$path")" -eq 0 || fail "non-root owned directory: $path"
+  mode=$(stat -c %a -- "$path")
+  test "$((8#$mode & 8#22))" -eq 0 || fail "writable owned directory: $path"
+}
+
+owned_marker() {
+  marker=$1
+  test -f "$marker" && test ! -L "$marker" || fail "missing ownership marker: $marker"
+  test "$(cat -- "$marker")" = 'baby-quirt-nspawn-v1' || fail "invalid ownership marker: $marker"
+}
+
+atomic_install() {
+  mode=$1
+  source=$2
+  target=$3
+  temporary="$target.new.$$"
+  rm -f -- "$temporary"
+  install -o root -g root -m "$mode" "$source" "$temporary"
+  mv -fT -- "$temporary" "$target"
+}
+
+install_runner_payload() {
+  install -d -o root -g root -m 0755 \
+    "$RUNNER_ROOT" \
+    "$RUNNER_ROOT/dist" \
+    "$RUNNER_ROOT/dist/src" \
+    "$RUNNER_ROOT/dist/src/rehearsal" \
+    "$RUNNER_ROOT/dist/src/crypto"
+  printf 'baby-quirt-nspawn-v1\n' > "$RUNNER_ROOT/.bootstrap-owned"
+  chmod 0644 "$RUNNER_ROOT/.bootstrap-owned"
+  for name in nspawn-cli nspawn-contract nspawn-executor nspawn-runner; do
+    atomic_install 0644 \
+      "$SOURCE_ROOT/dist/src/rehearsal/$name.js" \
+      "$RUNNER_ROOT/dist/src/rehearsal/$name.js"
+  done
+  for name in canonical signing; do
+    atomic_install 0644 \
+      "$SOURCE_ROOT/dist/src/crypto/$name.js" \
+      "$RUNNER_ROOT/dist/src/crypto/$name.js"
+  done
+  atomic_install 0755 "$SCRIPT_DIR/baby-quirt-nspawn-runner" "$RUNNER_BIN"
+}
+
 already_bootstrapped() {
   test -f "$CONFIG_ROOT/bootstrap.json" || return 1
   command -v zpool >/dev/null 2>&1 || fail 'bootstrap marker exists but zpool is unavailable'
@@ -45,9 +109,62 @@ already_bootstrapped() {
   test -x "$RUNNER_BIN" || fail 'fixed nspawn runner is missing'
   test -s "$CONFIG_ROOT/evidence-private.pem" || fail 'nspawn evidence private key is missing'
   test -s "$CONFIG_ROOT/evidence-public.pem" || fail 'nspawn evidence public key is missing'
-  printf '{"ok":true,"status":"already_bootstrapped","pool":"%s","snapshot":"%s","snapshotGuid":"%s"}\n' \
-    "$POOL" "$BASE_SNAPSHOT" "$(zfs get -H -p -o value guid "$BASE_SNAPSHOT")"
   return 0
+}
+
+refresh_existing_runner() {
+  for path in "$ROOT" "$CONFIG_ROOT" "$RUNNER_ROOT" "$RUNNER_ROOT/dist" "$RUNNER_ROOT/dist/src"; do
+    safe_owned_directory "$path"
+  done
+  owned_marker "$ROOT/.bootstrap-owned"
+  owned_marker "$CONFIG_ROOT/.bootstrap-owned"
+  owned_marker "$RUNNER_ROOT/.bootstrap-owned"
+  test ! -e "$ROOT/runner.lock" || fail 'nspawn runner is active or has an unreconciled lock'
+  test ! -e /run/lock/baby-quirt-nspawn.lock || fail 'legacy nspawn runner lock requires recovery'
+
+  fields=$(python3 - "$CONFIG_ROOT/bootstrap.json" <<'PY'
+import json
+import re
+import sys
+
+with open(sys.argv[1], encoding='utf-8') as handle:
+    record = json.load(handle)
+expected = {
+    'recordVersion', 'recordType', 'pool', 'snapshot', 'snapshotGuid',
+    'harnessDigest', 'runnerDigest', 'nodeVersion', 'poolBytes',
+}
+assert set(record) == expected
+assert record['recordVersion'] == '1.0.0'
+assert record['recordType'] == 'baby-quirt-nspawn-bootstrap'
+assert record['pool'] == 'babycert'
+assert record['snapshot'] == 'babycert/base/noble@golden-v1'
+assert re.fullmatch(r'[1-9][0-9]{0,19}', record['snapshotGuid'])
+assert re.fullmatch(r'[a-f0-9]{64}', record['harnessDigest'])
+assert re.fullmatch(r'[a-f0-9]{64}', record['runnerDigest'])
+assert record['nodeVersion'] == '24.18.0'
+assert record['poolBytes'] == 12884901888
+print(record['snapshotGuid'], record['harnessDigest'], sep='\t')
+PY
+)
+  IFS=$'\t' read -r SNAPSHOT_GUID EXPECTED_HARNESS_DIGEST <<< "$fields"
+  test "$(zfs get -H -p -o value guid "$BASE_SNAPSHOT")" = "$SNAPSHOT_GUID" ||
+    fail 'golden snapshot GUID differs from the bootstrap record'
+  PAYLOAD_HARNESS_DIGEST=$(sha256sum "$SCRIPT_DIR/baby-quirt-host-certification.mjs" | awk '{print $1}')
+  test "$PAYLOAD_HARNESS_DIGEST" = "$EXPECTED_HARNESS_DIGEST" ||
+    fail 'existing golden image is bound to a different certification harness'
+
+  install_runner_payload
+  RUNNER_DIGEST=$(sha256sum "$SOURCE_ROOT/dist/src/rehearsal/nspawn-runner.js" | awk '{print $1}')
+  record_tmp="$CONFIG_ROOT/bootstrap.json.new.$$"
+  printf '{"recordVersion":"1.0.0","recordType":"baby-quirt-nspawn-bootstrap","pool":"%s","snapshot":"%s","snapshotGuid":"%s","harnessDigest":"%s","runnerDigest":"%s","nodeVersion":"24.18.0","poolBytes":%s}\n' \
+    "$POOL" "$BASE_SNAPSHOT" "$SNAPSHOT_GUID" "$EXPECTED_HARNESS_DIGEST" "$RUNNER_DIGEST" "$POOL_BYTES" \
+    > "$record_tmp"
+  chmod 0600 "$record_tmp"
+  sync -f "$record_tmp"
+  mv -fT -- "$record_tmp" "$CONFIG_ROOT/bootstrap.json"
+  sync -f "$CONFIG_ROOT"
+  printf '{"ok":true,"status":"runner_reconciled","pool":"%s","snapshot":"%s","snapshotGuid":"%s","runnerDigest":"%s"}\n' \
+    "$POOL" "$BASE_SNAPSHOT" "$SNAPSHOT_GUID" "$RUNNER_DIGEST"
 }
 
 rollback_new_bootstrap() {
@@ -82,7 +199,11 @@ test "$(id -u)" -eq 0 || fail 'bootstrap must run as root'
 exec 9>'/run/lock/baby-quirt-nspawn-bootstrap.lock'
 flock --exclusive --nonblock 9 || fail 'another nspawn bootstrap is active'
 
-already_bootstrapped && exit 0
+validate_payload
+if already_bootstrapped; then
+  refresh_existing_runner
+  exit 0
+fi
 
 # Complete the read-only gate before the first durable mutation.
 . /etc/os-release
@@ -103,21 +224,6 @@ AVAILABLE=$(df -B1 --output=avail / | awk 'NR==2 {print $1}')
 test "$AVAILABLE" -ge "$((POOL_BYTES + HOST_RESERVE_BYTES))" || fail 'at least 26 GiB of host disk must be available'
 MEMORY=$(awk '/^MemTotal:/ {printf "%.0f\n", $2 * 1024}' /proc/meminfo)
 test "$MEMORY" -ge 8589934592 || fail 'at least 8 GiB of host RAM is required'
-
-for path in \
-  "$SCRIPT_DIR/baby-quirt-host-certification.mjs" \
-  "$SCRIPT_DIR/baby-quirt-peer-cred-probe.py" \
-  "$SCRIPT_DIR/baby-quirt-host-certification.service" \
-  "$SCRIPT_DIR/baby-quirt-nspawn-runner" \
-  "$SOURCE_ROOT/dist/src/rehearsal/nspawn-cli.js" \
-  "$SOURCE_ROOT/dist/src/rehearsal/nspawn-contract.js" \
-  "$SOURCE_ROOT/dist/src/rehearsal/nspawn-executor.js" \
-  "$SOURCE_ROOT/dist/src/rehearsal/nspawn-runner.js" \
-  "$SOURCE_ROOT/dist/src/crypto/canonical.js" \
-  "$SOURCE_ROOT/dist/src/crypto/signing.js"
-do
-  require_file "$path"
-done
 
 trap rollback_new_bootstrap ERR INT TERM
 
@@ -211,18 +317,8 @@ openssl pkey -in "$CONFIG_ROOT/evidence-private.pem" -pubout -out "$CONFIG_ROOT/
 chmod 0600 "$CONFIG_ROOT/evidence-private.pem"
 chmod 0644 "$CONFIG_ROOT/evidence-public.pem"
 
-install -d -m 0755 \
-  "$RUNNER_ROOT/dist/src/rehearsal" \
-  "$RUNNER_ROOT/dist/src/crypto"
-printf 'baby-quirt-nspawn-v1\n' > "$RUNNER_ROOT/.bootstrap-owned"
 CREATED_RUNNER=1
-for name in nspawn-cli nspawn-contract nspawn-executor nspawn-runner; do
-  install -m 0644 "$SOURCE_ROOT/dist/src/rehearsal/$name.js" "$RUNNER_ROOT/dist/src/rehearsal/$name.js"
-done
-for name in canonical signing; do
-  install -m 0644 "$SOURCE_ROOT/dist/src/crypto/$name.js" "$RUNNER_ROOT/dist/src/crypto/$name.js"
-done
-install -m 0755 "$SCRIPT_DIR/baby-quirt-nspawn-runner" "$RUNNER_BIN"
+install_runner_payload
 
 HARNESS_DIGEST=$(sha256sum "$SCRIPT_DIR/baby-quirt-host-certification.mjs" | awk '{print $1}')
 RUNNER_DIGEST=$(sha256sum "$SOURCE_ROOT/dist/src/rehearsal/nspawn-runner.js" | awk '{print $1}')
