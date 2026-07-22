@@ -1,7 +1,7 @@
 import { createRequire } from 'node:module';
 import { basename, join, resolve } from 'node:path';
 import { execFileSync } from 'node:child_process';
-import { lstatSync, readFileSync, statSync } from 'node:fs';
+import { lstatSync, readFileSync, realpathSync, statSync } from 'node:fs';
 import {
   assertReleaseVersion,
   GIT_OBJECT_PATTERN,
@@ -15,7 +15,7 @@ import { digestJson, fileMode, readJson, sha256, sha256File, walkRegularFiles } 
 import { assertInternalReleaseManifest } from './internal-manifest.js';
 import { assertTestEvidence, loadAndVerifyReleaseManifest } from './manifest.js';
 import type { JsonValue } from './json.js';
-import { assertReleaseTreeModes } from './permissions.js';
+import { assertReleaseTreeModes, HOST_PERMISSION_CONTRACT } from './permissions.js';
 
 export interface VerifyCandidateInput {
   candidateRoot: string;
@@ -144,9 +144,10 @@ function verifyRuntimeDependencies(root: string): void {
 export async function verifyReleaseCandidate(input: VerifyCandidateInput): Promise<CandidateVerificationReport> {
   assertExpectedIdentity(input);
   const checks: CandidateVerificationCheck[] = [];
-  const root = resolve(input.candidateRoot);
+  const requestedRoot = resolve(input.candidateRoot);
+  const root = realpathSync(requestedRoot);
   const rootStat = lstatSync(root);
-  if (!rootStat.isDirectory() || rootStat.isSymbolicLink()
+  if (root !== requestedRoot || !rootStat.isDirectory() || rootStat.isSymbolicLink()
     || basename(root) !== `baby-quirt-${input.expectedVersion}`) {
     throw new Error('Candidate root is not the exact real release directory');
   }
@@ -225,8 +226,12 @@ export async function verifyReleaseCandidate(input: VerifyCandidateInput): Promi
   const fileListDigest = digestJson(actualRecords as unknown as JsonValue);
   if (manifest.archive.fileListDigest !== fileListDigest) throw new Error('Candidate file-list digest mismatch');
   check(checks, 'file-inventory', 'Every declared file hash, size, and mode matches with no extras', fileListDigest);
+  const configuration = manifest.configuration as Record<string, JsonValue>;
+  if (configuration.permissionContractDigest !== digestJson(HOST_PERMISSION_CONTRACT as unknown as JsonValue)) {
+    throw new Error('Candidate host permission contract digest mismatch');
+  }
   assertReleaseTreeModes(root, manifest.requiredFiles);
-  check(checks, 'permission-contract', 'All release directories and files match immutable manifest modes');
+  check(checks, 'permission-contract', 'Host contract digest and all immutable release modes match');
   assertRelocatableEntrypoints(root);
   check(checks, 'relocatable-entrypoints', 'Real packaged entrypoints are executable and pointer-independent');
   probePackagedEntrypoint(root);

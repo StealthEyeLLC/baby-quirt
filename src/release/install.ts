@@ -9,6 +9,7 @@ import {
   lstatSync,
   mkdirSync,
   openSync,
+  realpathSync,
   readdirSync,
   renameSync,
   rmSync,
@@ -97,13 +98,17 @@ export function installInactiveRelease(input: {
 }): InactiveInstallResult {
   const version = input.manifest.releaseVersion;
   assertReleaseVersion(version);
-  const source = resolve(input.verifiedCandidateRoot);
+  const requestedSource = resolve(input.verifiedCandidateRoot);
+  const source = realpathSync(requestedSource);
   const releaseRoot = resolve(input.releaseRoot);
   const target = join(releaseRoot, version);
   if (dirname(target) !== releaseRoot || basename(target) !== version) throw new Error('Inactive release target escaped root');
-  if (basename(source) !== `baby-quirt-${version}`) throw new Error('Verified candidate root does not match release identity');
+  if (source !== requestedSource || basename(source) !== `baby-quirt-${version}`) {
+    throw new Error('Verified candidate root does not match a real release identity');
+  }
   mkdirSync(releaseRoot, { recursive: true, mode: 0o755 });
   assertReleaseRoot(releaseRoot);
+  if (realpathSync(releaseRoot) !== releaseRoot) throw new Error('Release root must not traverse symbolic links');
   if (existsSync(target)) throw new Error(`Immutable release target already exists: ${target}`);
   const temporary = join(releaseRoot, `.incoming-${version}-${process.pid}`);
   const claim = join(releaseRoot, `.installing-${version}`);

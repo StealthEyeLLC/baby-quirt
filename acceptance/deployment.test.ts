@@ -9,6 +9,7 @@ import {
   readFileSync,
   rmSync,
   statSync,
+  symlinkSync,
   writeFileSync,
 } from 'node:fs';
 import { join } from 'node:path';
@@ -165,6 +166,34 @@ describe('acceptance: inactive immutable release installation', () => {
       );
       assert.equal(readFileSync(claim, 'utf8'), 'other-installer');
       assert.equal(existsSync(join(releaseRoot, version)), false);
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
+  });
+
+  it('rejects candidate and release roots that traverse symbolic-link parents', () => {
+    const root = mkdtempSync(join(tmpdir(), 'bq-install-symlink-parent-'));
+    try {
+      const version = '0.3.3-test';
+      const realParent = join(root, 'real-parent');
+      const linkedParent = join(root, 'linked-parent');
+      const candidateRoot = join(realParent, `baby-quirt-${version}`);
+      mkdirSync(candidateRoot, { recursive: true });
+      const payload = join(candidateRoot, 'payload.txt');
+      writeFileSync(payload, 'candidate-bytes');
+      chmodSync(payload, 0o444);
+      symlinkSync(realParent, linkedParent, 'dir');
+      assert.throws(
+        () => installInactiveRelease({
+          verifiedCandidateRoot: join(linkedParent, `baby-quirt-${version}`),
+          releaseRoot: join(root, 'releases'),
+          manifest: fixtureManifest(version, candidateRoot),
+          ownerUid: process.getuid?.() ?? 0,
+          ownerGid: process.getgid?.() ?? 0,
+        }),
+        /real release identity/,
+      );
+      assert.equal(existsSync(join(root, 'releases')), false);
     } finally {
       rmSync(root, { recursive: true, force: true });
     }
