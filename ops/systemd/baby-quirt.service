@@ -21,7 +21,8 @@ KillSignal=SIGTERM
 NoNewPrivileges=false
 ProtectSystem=strict
 ProtectHome=true
-ReadWritePaths=/var/lib/baby-quirt /run/horsey /opt/baby-quirt /etc/baby-quirt /tmp
+ReadWritePaths=/var/lib/baby-quirt /run/horsey /tmp
+ReadOnlyPaths=/opt/baby-quirt /etc/baby-quirt
 PrivateTmp=false
 
 [Install]

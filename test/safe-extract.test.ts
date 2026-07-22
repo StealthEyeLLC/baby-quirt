@@ -16,10 +16,13 @@ describe('safe archive extraction', () => {
     mkdirSync(root, { recursive: true });
     writeFileSync(join(root, 'hello.txt'), 'hello');
     const archive = join(dir, 'good.tar.gz');
-    execFileSync('tar', ['-czf', archive, '-C', source, prefix]);
+    execFileSync('tar', [
+      '--format=ustar', '--owner=0', '--group=0', '--numeric-owner',
+      '-czf', archive, '-C', source, prefix,
+    ]);
     const dest = mkdtempSync(join(tmpdir(), 'bq-dest-'));
     await safeExtractTarGz(archive, dest, prefix);
-    assert.equal(readFileSync(join(dest, 'hello.txt'), 'utf8'), 'hello');
+    assert.equal(readFileSync(join(dest, prefix, 'hello.txt'), 'utf8'), 'hello');
     rmSync(dest, { recursive: true, force: true });
     rmSync(source, { recursive: true, force: true });
   });
@@ -28,10 +31,13 @@ describe('safe archive extraction', () => {
     const source = mkdtempSync(join(tmpdir(), 'bq-evil-'));
     writeFileSync(join(source, 'escape.txt'), 'x');
     const archive = join(dir, 'evil.tar.gz');
-    execFileSync('tar', ['-czf', archive, '-C', source, '--transform', 's,^,../,', 'escape.txt']);
+    execFileSync('tar', [
+      '--format=ustar', '--owner=0', '--group=0', '--numeric-owner',
+      '-czf', archive, '-C', source, '--transform', 's,^,../,', 'escape.txt',
+    ]);
     await assert.rejects(
       () => safeExtractTarGz(archive, mkdtempSync(join(tmpdir(), 'bq-bad-')), 'prefix'),
-      /Unsafe|outside|traversal|Forbidden/,
+      /unsafe|outside|traversal|forbidden/i,
     );
     rmSync(source, { recursive: true, force: true });
   });

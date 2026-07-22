@@ -1,7 +1,5 @@
 /** Machine-readable Baby Quirt operation definitions and discovery response. */
 
-import { existsSync, readFileSync } from 'node:fs';
-import { join } from 'node:path';
 import type { RuntimeConfig } from '../config.js';
 import {
   CONTRACT_VERSION,
@@ -11,6 +9,7 @@ import {
   getHostname,
   getMachineIdSha256,
 } from '../config.js';
+import { readRuntimeReleaseIdentity } from '../release/runtime-identity.js';
 
 export const CANONICAL_BBY_TOOL = 'bbyquirt.call_quirt';
 export const CANONICAL_BBY_ACTION_DESCRIPTION =
@@ -181,21 +180,7 @@ export const OPERATION_DEFINITIONS: readonly OperationDefinition[] = [
 ] as const;
 
 export function readReleaseIdentity(): Record<string, unknown> {
-  const manifestPath = join(DEFAULTS.currentLink, 'manifest.json');
-  try {
-    if (!existsSync(manifestPath)) return { status: 'unknown', manifestPath };
-    const manifest = JSON.parse(readFileSync(manifestPath, 'utf8')) as Record<string, unknown>;
-    return {
-      status: 'installed',
-      manifestPath,
-      version: manifest.version ?? 'unknown',
-      commit: manifest.commit ?? 'unknown',
-      tree: manifest.tree ?? 'unknown',
-      sourceDateEpoch: manifest.sourceDateEpoch ?? 'unknown',
-    };
-  } catch {
-    return { status: 'unknown', manifestPath };
-  }
+  return { ...readRuntimeReleaseIdentity() };
 }
 
 export function buildCapabilityDescription(config: RuntimeConfig): Record<string, unknown> {

@@ -78,7 +78,9 @@ describe('acceptance: protocol-only self-hosting end-to-end', () => {
       client = createTestClient(ctx);
 
       const sourceCommit = execSync('git rev-parse HEAD', { cwd: REPO_ROOT, encoding: 'utf8' }).trim();
+      const sourceTree = execSync('git show -s --format=%T HEAD', { cwd: REPO_ROOT, encoding: 'utf8' }).trim();
       assert.equal(sourceCommit.length, 40);
+      assert.equal(sourceTree.length, 40);
 
       const installEnv = [
         `BABY_QUIRT_CONFIG_ROOT=${configRoot}`,
@@ -166,21 +168,18 @@ describe('acceptance: protocol-only self-hosting end-to-end', () => {
       await shellWait(client, 'git add -A && git commit -m "selfhost initial"', projectDir);
       await shellWait(client, 'git push -u origin main', projectDir);
 
-      // Provision install gateway key via protocol
-      const gatewayPub = readFileSync(
-        join(REPO_ROOT, 'ops/bootstrap/gateway-authority-public.pem'),
-        'utf8',
-      );
-      await writeFile(client, join(configRoot, 'gateway-authority-public.pem'), gatewayPub);
-
       const buildRelease = async (version: string): Promise<string> => {
+        const buildRoot = mkdtempSync(join(sandbox, 'release-build-'));
         const script = [
           `cd ${REPO_ROOT}`,
           `export BABY_QUIRT_SOURCE_COMMIT=${sourceCommit}`,
-          'npm run build',
+          `export BABY_QUIRT_SOURCE_TREE=${sourceTree}`,
+          `export BABY_QUIRT_BUILD_ROOT=${buildRoot}`,
+          'export BABY_QUIRT_KEEP_BUILD_ROOT=1',
+          `export SOURCE_DATE_EPOCH=$(git log -1 --format=%ct ${sourceCommit})`,
           `bash scripts/build-bundle.sh ${version}`,
           `cd release && sha256sum -c baby-quirt-${version}.sha256`,
-          `python3 -c "import json; m=json.load(open('baby-quirt-${version}.manifest.json')); assert m['commit']=='${sourceCommit}', m['commit']"`,
+          `tar -xOzf baby-quirt-${version}.tar.gz baby-quirt-${version}/manifest.json | python3 -c "import json,sys; m=json.load(sys.stdin); assert m['source']['commit']=='${sourceCommit}'; assert m['source']['tree']=='${sourceTree}'"`,
         ].join(' && ');
         const result = await shellWait(client, script, REPO_ROOT, 600_000);
         const digest = readFileSync(
@@ -193,45 +192,27 @@ describe('acceptance: protocol-only self-hosting end-to-end', () => {
         return digest;
       };
 
-      // 13–16: release v1 build, verify, install, activate
+      // 13–16: two distinct, tree-bound inactive candidate bundles
       const digestV1 = await buildRelease(RELEASE_V1);
-      const installV1 = await shellWait(
-        client,
-        `${installEnv} node ${join(REPO_ROOT, 'dist/src/cli/install.js')} --archive ${join(REPO_ROOT, `release/baby-quirt-${RELEASE_V1}.tar.gz`)} --version ${RELEASE_V1}`,
-        REPO_ROOT,
-      );
-      assert.match(installV1.stdout, /Installed Baby Quirt/);
-      assert.ok(existsSync(currentLink));
-
-      // 17: health verification
-      const verifyV1 = await shellWait(
-        client,
-        `${installEnv} node ${join(REPO_ROOT, 'dist/src/cli/verify.js')}`,
-        REPO_ROOT,
-      );
-      assert.match(verifyV1.stdout, /"passed": true/);
-
-      // 18: second release
       const digestV2 = await buildRelease(RELEASE_V2);
       assert.notEqual(digestV1, digestV2);
-      await shellWait(
-        client,
-        `${installEnv} node ${join(REPO_ROOT, 'dist/src/cli/install.js')} --archive ${join(REPO_ROOT, `release/baby-quirt-${RELEASE_V2}.tar.gz`)} --version ${RELEASE_V2}`,
-        REPO_ROOT,
-      );
 
-      // 19–20: rollback and repair
-      await shellWait(
+      // 17–20: product rollback refuses and repair remains read-only
+      const rollbackRefusal = await shellWait(
         client,
-        `${installEnv} node ${join(REPO_ROOT, 'dist/src/cli/rollback.js')}`,
+        `set +e; output=$(${installEnv} node ${join(REPO_ROOT, 'dist/src/cli/rollback.js')} 2>&1); status=$?; set -e; test "$status" -eq 2; printf '%s' "$output"`,
         REPO_ROOT,
       );
+      assert.match(rollbackRefusal.stdout, /generation-bound StealthEye deployment guard/);
       const repair = await shellWait(
         client,
         `${installEnv} node ${join(REPO_ROOT, 'dist/src/cli/repair.js')}`,
         REPO_ROOT,
       );
-      assert.match(repair.stdout, /repair/);
+      assert.match(repair.stdout, /"action": "repair_assessment"/);
+      assert.match(repair.stdout, /"apply": false/);
+      assert.equal(existsSync(currentLink), false);
+      assert.equal(existsSync(previousLink), false);
 
       // 21–22: detached job across daemon restart with durable offsets
       const detached = await client.request('baby.exec', {

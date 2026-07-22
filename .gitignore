@@ -4,6 +4,8 @@ build/
 *.tgz
 *.tar.gz
 release/
+!/src/release/
+!/src/release/**
 .env
 *.log
 .DS_Store

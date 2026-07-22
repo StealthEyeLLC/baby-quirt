@@ -1,160 +1,163 @@
 #!/usr/bin/env bash
-# Build deterministic release bundle (no tests)
+# Produce one deterministic, tree-bound Baby Quirt archive. No signing or activation.
 set -euo pipefail
 
-ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd -P)"
 cd "$ROOT"
 
 VERSION="${1:-$(node -p "require('./package.json').version")}"
 RELEASE_NAME="baby-quirt-${VERSION}"
 BUILD_ROOT="${BABY_QUIRT_BUILD_ROOT:-$(mktemp -d)}"
 RELEASE_DIR="${BUILD_ROOT}/${RELEASE_NAME}"
-ARCHIVE="$ROOT/release/${RELEASE_NAME}.tar.gz"
-DIGEST_FILE="$ROOT/release/${RELEASE_NAME}.sha256"
-MANIFEST_FILE="$ROOT/release/${RELEASE_NAME}.manifest.json"
+ARCHIVE="${BABY_QUIRT_ARCHIVE_OUTPUT:-$ROOT/release/${RELEASE_NAME}.tar.gz}"
+DIGEST_FILE="${BABY_QUIRT_DIGEST_OUTPUT:-$ROOT/release/${RELEASE_NAME}.sha256}"
 
 export LC_ALL=C
 export TZ=UTC
-export SOURCE_DATE_EPOCH="${SOURCE_DATE_EPOCH:-$(git log -1 --format=%ct 2>/dev/null || echo 0)}"
-export GZIP=-n
 
-COMMIT="${BABY_QUIRT_SOURCE_COMMIT:-$(git rev-parse HEAD 2>/dev/null || echo unknown)}"
-if [ "$COMMIT" = "unknown" ] || [ "${#COMMIT}" -ne 40 ]; then
-  echo "ERROR: BABY_QUIRT_SOURCE_COMMIT must be a 40-character git commit SHA"
+COMMIT="${BABY_QUIRT_SOURCE_COMMIT:-$(git rev-parse HEAD)}"
+TREE="${BABY_QUIRT_SOURCE_TREE:-$(git show -s --format=%T "$COMMIT")}"
+SOURCE_DATE_EPOCH="${SOURCE_DATE_EPOCH:-$(git log -1 --format=%ct "$COMMIT")}"
+export SOURCE_DATE_EPOCH
+[[ "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+(-[A-Za-z0-9.]+)?$ ]] || {
+  echo "ERROR: release version is invalid" >&2
+  exit 1
+}
+if [ "$VERSION" = "0.2.1" ] || [ "$VERSION" = "0.2.2" ]; then
+  echo "ERROR: reserved releases 0.2.1 and 0.2.2 may not be built or reused" >&2
   exit 1
 fi
+[[ "$COMMIT" =~ ^[a-f0-9]{40}$ ]] || {
+  echo "ERROR: BABY_QUIRT_SOURCE_COMMIT must be an exact commit SHA" >&2
+  exit 1
+}
+[[ "$TREE" =~ ^[a-f0-9]{40}$ ]] || {
+  echo "ERROR: BABY_QUIRT_SOURCE_TREE must be an exact Git tree SHA" >&2
+  exit 1
+}
+[[ "$SOURCE_DATE_EPOCH" =~ ^[0-9]+$ ]] || {
+  echo "ERROR: SOURCE_DATE_EPOCH must be a non-negative integer" >&2
+  exit 1
+}
+test "$(node -p 'process.versions.node')" = "24.18.0" || {
+  echo "ERROR: release builds require exact Node 24.18.0" >&2
+  exit 1
+}
+test "$COMMIT" = "$(git rev-parse HEAD)" || {
+  echo "ERROR: release source commit must equal the checked-out HEAD" >&2
+  exit 1
+}
+test "$TREE" = "$(git show -s --format=%T "$COMMIT")" || {
+  echo "ERROR: release source tree does not match the exact commit" >&2
+  exit 1
+}
+test "$SOURCE_DATE_EPOCH" = "$(git log -1 --format=%ct "$COMMIT")" || {
+  echo "ERROR: SOURCE_DATE_EPOCH must equal the exact source commit timestamp" >&2
+  exit 1
+}
+test -z "$(git status --porcelain --untracked-files=normal)" || {
+  echo "ERROR: release builds require a clean exact source tree" >&2
+  exit 1
+}
 
 npm run build
 npm run build:native
 
-rm -rf "$RELEASE_DIR" "$ARCHIVE" "$DIGEST_FILE" "$MANIFEST_FILE"
-mkdir -p "$RELEASE_DIR/bin" "$RELEASE_DIR/lib/dist" "$RELEASE_DIR/lib/native/build/Release" "$RELEASE_DIR/ops"
+test ! -e "$RELEASE_DIR"
+mkdir -p \
+  "$RELEASE_DIR/bin" \
+  "$RELEASE_DIR/lib/dist" \
+  "$RELEASE_DIR/lib/build/Release" \
+  "$RELEASE_DIR/lib/native/src" \
+  "$RELEASE_DIR/libexec" \
+  "$RELEASE_DIR/ops"
 
-# TypeScript is compiled with rootDir='.', so runtime source lands under dist/src.
-# Flatten only that runtime subtree into lib/dist so all installed entrypoints are
-# stable at lib/dist/{index,cli,...}.js. Compiled build-only scripts are excluded.
 test -d dist/src
 cp -r dist/src/. "$RELEASE_DIR/lib/dist/"
 cp package.json package-lock.json binding.gyp "$RELEASE_DIR/lib/"
-mkdir -p "$RELEASE_DIR/lib/native/src"
 cp native/src/peer_cred.cc "$RELEASE_DIR/lib/native/src/"
-cp build/Release/peer_cred.node "$RELEASE_DIR/lib/native/build/Release/peer_cred.node"
+cp build/Release/peer_cred.node "$RELEASE_DIR/lib/build/Release/peer_cred.node"
 
 NM_ROOT="${BUILD_ROOT}/.release-nm"
-mkdir -p "$NM_ROOT"
+mkdir "$NM_ROOT"
 cp package.json package-lock.json "$NM_ROOT/"
-npm ci --omit=dev --ignore-scripts --prefix "$NM_ROOT"
-# npm creates executable-link entries under .bin directories. The production
-# extractor intentionally rejects every symbolic and hard link, so remove all
-# dependency symlinks before packaging and fail if any remain. Runtime modules
-# resolve their actual files directly and do not require npm's command shims.
-find "$NM_ROOT/node_modules" -type l -delete
+mkdir "$BUILD_ROOT/.release-home"
+HOME="$BUILD_ROOT/.release-home" \
+  NPM_CONFIG_CACHE="${BABY_QUIRT_NPM_CACHE:-$BUILD_ROOT/.release-npm-cache}" \
+  npm --cache "${BABY_QUIRT_NPM_CACHE:-$BUILD_ROOT/.release-npm-cache}" \
+  ci --omit=dev --ignore-scripts --prefix "$NM_ROOT"
 if find "$NM_ROOT/node_modules" -type l -print -quit | grep -q .; then
-  echo "ERROR: production dependency tree still contains a symbolic link" >&2
+  echo "ERROR: production dependency tree contains a symbolic link" >&2
   exit 1
 fi
 cp -r "$NM_ROOT/node_modules" "$RELEASE_DIR/lib/node_modules"
-rm -rf "$NM_ROOT"
+rm -rf -- "$NM_ROOT"
+rm -rf -- "$BUILD_ROOT/.release-home" "$BUILD_ROOT/.release-npm-cache"
 
-cat > "$RELEASE_DIR/bin/baby-quirt-daemon" << 'EOF'
-#!/usr/bin/env bash
-exec /opt/node-v24.18.0-linux-x64/bin/node /opt/baby-quirt/current/lib/dist/index.js
-EOF
-chmod 0755 "$RELEASE_DIR/bin/baby-quirt-daemon"
+write_wrapper() {
+  local target="$1"
+  local relative_entrypoint="$2"
+  local temporary="${BUILD_ROOT}/wrapper.$$.tmp"
+  {
+    printf '%s\n' '#!/usr/bin/env bash'
+    printf '%s\n' 'set -euo pipefail'
+    printf '%s\n' 'RELEASE_ROOT="$(CDPATH= cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd -P)"'
+    printf '%s\n' 'NODE="${BABY_QUIRT_NODE_PATH:-/opt/node-v24.18.0-linux-x64/bin/node}"'
+    printf 'exec "$NODE" "$RELEASE_ROOT/%s" "$@"\n' "$relative_entrypoint"
+  } > "$temporary"
+  install -m 0755 "$temporary" "$target"
+  rm -f -- "$temporary"
+}
 
-cat > "$RELEASE_DIR/bin/baby-quirt" << 'EOF'
-#!/usr/bin/env bash
-exec /opt/node-v24.18.0-linux-x64/bin/node /opt/baby-quirt/current/lib/dist/cli/main.js "$@"
-EOF
-chmod 0755 "$RELEASE_DIR/bin/baby-quirt"
-
-for cmd in install verify rollback repair; do
-  cat > "$RELEASE_DIR/bin/baby-quirt-${cmd}" << EOF
-#!/usr/bin/env bash
-exec /opt/node-v24.18.0-linux-x64/bin/node /opt/baby-quirt/current/lib/dist/cli/${cmd}.js "\$@"
-EOF
-  chmod 0755 "$RELEASE_DIR/bin/baby-quirt-${cmd}"
-done
+write_wrapper "$RELEASE_DIR/bin/baby-quirt-daemon" 'lib/dist/index.js'
+write_wrapper "$RELEASE_DIR/bin/baby-quirt" 'lib/dist/cli/main.js'
+write_wrapper "$RELEASE_DIR/bin/baby-quirt-install" 'lib/dist/cli/install.js'
+write_wrapper "$RELEASE_DIR/bin/baby-quirt-verify" 'lib/dist/cli/verify.js'
+write_wrapper "$RELEASE_DIR/bin/baby-quirt-repair" 'lib/dist/cli/repair.js'
+write_wrapper "$RELEASE_DIR/bin/baby-quirt-rollback" 'lib/dist/cli/rollback.js'
+write_wrapper "$RELEASE_DIR/bin/baby-quirt-verify-candidate" 'lib/dist/cli/verify-candidate.js'
 
 cp -r ops/systemd "$RELEASE_DIR/ops/"
 cp -r ops/tmpfiles "$RELEASE_DIR/ops/"
 cp -r schemas "$RELEASE_DIR/"
 cp -r contracts "$RELEASE_DIR/"
+install -m 0555 scripts/bootstrap-safe-extract.py "$RELEASE_DIR/libexec/bootstrap-safe-extract.py"
+
+node dist/src/cli/write-internal-manifest.js \
+  --release-root "$RELEASE_DIR" \
+  --version "$VERSION" \
+  --commit "$COMMIT" \
+  --tree "$TREE" \
+  --source-date-epoch "$SOURCE_DATE_EPOCH"
 
 find "$RELEASE_DIR" -exec touch -h -d "@${SOURCE_DATE_EPOCH}" {} +
+find "$RELEASE_DIR" -type d -exec chmod 0555 {} +
+find "$RELEASE_DIR" -type f -exec chmod 0444 {} +
+find "$RELEASE_DIR/bin" -type f -exec chmod 0555 {} +
+chmod 0555 "$RELEASE_DIR/libexec/bootstrap-safe-extract.py"
 
-cat > "$RELEASE_DIR/manifest.json" << EOF
-{
-  "product": "baby-quirt",
-  "version": "${VERSION}",
-  "nodeVersion": "24.18.0",
-  "sourceDateEpoch": ${SOURCE_DATE_EPOCH},
-  "commit": "${COMMIT}"
-}
-EOF
-
-mkdir -p "$ROOT/release"
-tar --sort=name \
+mkdir -p "$(dirname "$ARCHIVE")" "$(dirname "$DIGEST_FILE")"
+test ! -L "$ARCHIVE"
+test ! -L "$DIGEST_FILE"
+rm -f -- "$ARCHIVE" "$DIGEST_FILE"
+tar --format=ustar \
+  --sort=name \
   --mtime="@${SOURCE_DATE_EPOCH}" \
   --owner=0 --group=0 --numeric-owner \
-  -cf - -C "$BUILD_ROOT" "${RELEASE_NAME}" | gzip -n > "$ARCHIVE"
+  --no-acls --no-selinux --no-xattrs \
+  -cf - -C "$BUILD_ROOT" "$RELEASE_NAME" | gzip -n -9 > "$ARCHIVE"
 
-# Fail the build before publication if the archive does not contain the exact
-# runtime paths consumed by first-install, systemd, verification, and rollback.
-ARCHIVE_LIST="${BUILD_ROOT}/archive.list"
-tar -tzf "$ARCHIVE" > "$ARCHIVE_LIST"
-for required in \
-  "bin/baby-quirt-daemon" \
-  "lib/dist/index.js" \
-  "lib/dist/cli/install.js" \
-  "lib/dist/cli/verify.js" \
-  "lib/dist/cli/rollback.js" \
-  "ops/systemd/baby-quirt.socket" \
-  "ops/systemd/baby-quirt.service" \
-  "ops/tmpfiles/baby-quirt.conf" \
-  "manifest.json"; do
-  if ! grep -Fxq "${RELEASE_NAME}/${required}" "$ARCHIVE_LIST"; then
-    echo "ERROR: release archive is missing required runtime path: $required" >&2
-    exit 1
-  fi
-done
-if grep -Fq "${RELEASE_NAME}/lib/dist/src/" "$ARCHIVE_LIST"; then
-  echo "ERROR: release archive contains an unexpected nested dist/src runtime" >&2
-  exit 1
-fi
-python3 - "$ARCHIVE" <<'PYARCHIVE'
-import sys
-import tarfile
+STRICT_ROOT="${BUILD_ROOT}/strict-validation"
+python3 scripts/bootstrap-safe-extract.py "$ARCHIVE" "$STRICT_ROOT" "$RELEASE_NAME"
+test -f "$STRICT_ROOT/$RELEASE_NAME/manifest.json"
+test -f "$STRICT_ROOT/$RELEASE_NAME/lib/build/Release/peer_cred.node"
+test ! -e "$STRICT_ROOT/$RELEASE_NAME/lib/native/build/Release/peer_cred.node"
 
-archive = sys.argv[1]
-with tarfile.open(archive, 'r:gz') as bundle:
-    forbidden = [
-        member.name
-        for member in bundle.getmembers()
-        if member.issym() or member.islnk()
-    ]
-if forbidden:
-    for name in forbidden:
-        print(f"ERROR: release archive contains forbidden link entry: {name}", file=sys.stderr)
-    raise SystemExit(1)
-PYARCHIVE
-
-DIGEST=$(sha256sum "$ARCHIVE" | awk '{print $1}')
+DIGEST="$(sha256sum "$ARCHIVE" | awk '{print $1}')"
 printf '%s  %s\n' "$DIGEST" "$(basename "$ARCHIVE")" > "$DIGEST_FILE"
 
-cat > "$MANIFEST_FILE" << EOF
-{
-  "product": "baby-quirt",
-  "version": "${VERSION}",
-  "commit": "${COMMIT}",
-  "archive": "$(basename "$ARCHIVE")",
-  "sha256": "${DIGEST}",
-  "sourceDateEpoch": ${SOURCE_DATE_EPOCH}
-}
-EOF
-
 if [ "${BABY_QUIRT_KEEP_BUILD_ROOT:-0}" != "1" ]; then
-  rm -rf "$BUILD_ROOT"
+  rm -rf -- "$BUILD_ROOT"
 fi
 
-echo "$DIGEST"
+printf '%s\n' "$DIGEST"

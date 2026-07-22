@@ -7,11 +7,23 @@ import { tmpdir } from 'node:os';
 import { getSocketPeerCred } from '../src/net/peer-cred.js';
 
 describe('peer-cred native addon', () => {
-  it('returns peer UID over a live unix socket', async () => {
+  it('returns peer UID over a live unix socket', async (t) => {
     const dir = mkdtempSync(join(tmpdir(), 'bq-peercred-'));
     const socketPath = join(dir, 'peer.sock');
     const server = createServer({ path: socketPath });
-    await new Promise<void>((resolve) => server.listen(socketPath, resolve));
+    try {
+      await new Promise<void>((resolve, reject) => {
+        server.once('error', reject);
+        server.listen(socketPath, resolve);
+      });
+    } catch (error) {
+      rmSync(dir, { recursive: true, force: true });
+      if ((error as NodeJS.ErrnoException).code === 'EPERM') {
+        t.skip('sandbox does not permit Unix-socket creation; host rehearsal remains mandatory');
+        return;
+      }
+      throw error;
+    }
 
     const credPromise = new Promise<ReturnType<typeof getSocketPeerCred>>((resolve) => {
       server.once('connection', (socket) => {

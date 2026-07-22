@@ -1,60 +1,37 @@
-/** Release pointer symlink management. */
+/** Read-only release pointer inspection. Pointer mutation belongs to the Fix broker/guard. */
 
-import { readlinkSync, rmSync, symlinkSync, lstatSync } from 'node:fs';
+import { lstatSync, readlinkSync, realpathSync } from 'node:fs';
 
-export function readSymlinkTarget(linkPath: string): string | null {
+export interface ReleasePointerObservation {
+  path: string;
+  target: string | null;
+  resolvedTarget: string | null;
+  safeSymlink: boolean;
+}
+
+export function readReleasePointer(path: string): ReleasePointerObservation {
   try {
-    return readlinkSync(linkPath);
+    const stat = lstatSync(path);
+    if (!stat.isSymbolicLink()) {
+      return { path, target: null, resolvedTarget: null, safeSymlink: false };
+    }
+    return {
+      path,
+      target: readlinkSync(path),
+      resolvedTarget: realpathSync(path),
+      safeSymlink: true,
+    };
   } catch {
-    return null;
+    return { path, target: null, resolvedTarget: null, safeSymlink: false };
   }
 }
 
-export function symlinkExists(linkPath: string): boolean {
-  try {
-    lstatSync(linkPath);
-    return true;
-  } catch {
-    return false;
+export function assertReleasePointer(path: string, expectedResolvedTarget: string): ReleasePointerObservation {
+  const observation = readReleasePointer(path);
+  if (!observation.safeSymlink || observation.resolvedTarget !== expectedResolvedTarget) {
+    throw new Error(`Release pointer CAS readback mismatch: ${path}`);
   }
+  return observation;
 }
 
-export function atomicSwapSymlinks(
-  currentLink: string,
-  previousLink: string,
-  newCurrentTarget: string,
-): { previous: string | null; current: string } {
-  const oldCurrent = symlinkExists(currentLink) ? readSymlinkTarget(currentLink) : null;
-
-  if (oldCurrent) {
-    rmSync(previousLink, { force: true });
-    symlinkSync(oldCurrent, previousLink);
-  }
-
-  rmSync(currentLink, { force: true });
-  symlinkSync(newCurrentTarget, currentLink);
-
-  return { previous: oldCurrent, current: newCurrentTarget };
-}
-
-export function rollbackSymlinks(currentLink: string, previousLink: string): {
-  current: string;
-  previous: string | null;
-} {
-  if (!symlinkExists(previousLink)) {
-    throw new Error('No previous release to roll back to');
-  }
-
-  const previousTarget = readlinkSync(previousLink);
-  const currentTarget = symlinkExists(currentLink) ? readlinkSync(currentLink) : null;
-
-  rmSync(currentLink, { force: true });
-  symlinkSync(previousTarget, currentLink);
-
-  if (currentTarget) {
-    rmSync(previousLink, { force: true });
-    symlinkSync(currentTarget, previousLink);
-  }
-
-  return { current: previousTarget, previous: currentTarget };
-}
+export const POINTER_MUTATION_AUTHORITY = 'fix-privilege-broker/generation-bound-deployment-guard';

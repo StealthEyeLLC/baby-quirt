@@ -78,60 +78,53 @@ jobs:
           node-version: '24.18.0'
           cache: npm
 
-      - name: Record source commit
-        run: echo "BABY_QUIRT_SOURCE_COMMIT=${{ github.event.pull_request.head.sha || github.sha }}" >> "$GITHUB_ENV"
-
-      - name: Verify runtime dependencies
-        run: bash scripts/verify-runtime-deps.sh
-
-      - name: Build release bundle
+      - name: Prepare exact non-production release identity
         run: |
-          chmod +x scripts/*.sh
-          bash scripts/build-release.sh 0.1.0
+          COMMIT="${{ github.event.pull_request.head.sha || github.sha }}"
+          test "$COMMIT" = "$(git rev-parse HEAD)"
+          TREE="$(git show -s --format=%T "$COMMIT")"
+          printf 'BABY_QUIRT_SOURCE_COMMIT=%s\n' "$COMMIT" >> "$GITHUB_ENV"
+          printf 'BABY_QUIRT_SOURCE_TREE=%s\n' "$TREE" >> "$GITHUB_ENV"
+          printf 'BABY_QUIRT_RELEASE_SIGNING_PRIVATE_KEY=%s\n' /tmp/baby-quirt-ci-release-private.pem >> "$GITHUB_ENV"
+          printf 'BABY_QUIRT_RELEASE_SIGNING_PUBLIC_KEY=%s\n' /tmp/baby-quirt-ci-release-public.pem >> "$GITHUB_ENV"
+          printf 'BABY_QUIRT_RELEASE_SIGNING_KEY_ID=%s\n' ci-ephemeral-untrusted-v1 >> "$GITHUB_ENV"
+          printf 'BABY_QUIRT_COMPATIBLE_GATEWAY_MANIFEST_DIGEST=%064d\n' 0 >> "$GITHUB_ENV"
+          openssl genpkey -algorithm Ed25519 -out /tmp/baby-quirt-ci-release-private.pem
+          openssl pkey -in /tmp/baby-quirt-ci-release-private.pem -pubout -out /tmp/baby-quirt-ci-release-public.pem
 
-      - name: Reproducibility build A
-        run: |
-          BUILD_A=$(mktemp -d)
-          BABY_QUIRT_BUILD_ROOT="$BUILD_A" BABY_QUIRT_SOURCE_COMMIT="${{ github.event.pull_request.head.sha || github.sha }}" \
-            bash scripts/build-bundle.sh 0.1.0 > /tmp/digest-a.txt
-          cp release/baby-quirt-0.1.0.sha256 /tmp/sha-a.txt
-
-      - name: Reproducibility build B
-        run: |
-          BUILD_B=$(mktemp -d)
-          BABY_QUIRT_BUILD_ROOT="$BUILD_B" BABY_QUIRT_SOURCE_COMMIT="${{ github.event.pull_request.head.sha || github.sha }}" \
-            bash scripts/build-bundle.sh 0.1.0 > /tmp/digest-b.txt
-          cp release/baby-quirt-0.1.0.sha256 /tmp/sha-b.txt
-          diff /tmp/sha-a.txt /tmp/sha-b.txt
+      - name: Run frozen gates and build candidate twice
+        run: bash scripts/release.sh 0.3.0-ci
 
       - name: Verify artifact contents
         run: |
           ls -la release/
-          test "$(find release -maxdepth 1 -type f -name 'baby-quirt-0.1.0*' | wc -l)" -eq 3
-          test -f release/baby-quirt-0.1.0.tar.gz
-          test -f release/baby-quirt-0.1.0.sha256
-          test -f release/baby-quirt-0.1.0.manifest.json
-          COMMIT=$(python3 -c "import json; print(json.load(open('release/baby-quirt-0.1.0.manifest.json'))['commit'])")
-          test "${#COMMIT}" -eq 40
-          test "$COMMIT" = "${{ github.event.pull_request.head.sha || github.sha }}"
+          test "$(find release -maxdepth 1 -type f -name 'baby-quirt-0.3.0-ci*' | wc -l)" -eq 6
+          for suffix in tar.gz sha256 manifest.json spdx.json test-evidence.json candidate-report.json; do
+            test -f "release/baby-quirt-0.3.0-ci.$suffix"
+          done
+          python3 - <<'PY'
+          import hashlib, json, os, pathlib
+          root = pathlib.Path('release')
+          manifest = json.loads((root / 'baby-quirt-0.3.0-ci.manifest.json').read_text())
+          report = json.loads((root / 'baby-quirt-0.3.0-ci.candidate-report.json').read_text())
+          evidence = json.loads((root / 'baby-quirt-0.3.0-ci.test-evidence.json').read_text())
+          archive = root / 'baby-quirt-0.3.0-ci.tar.gz'
+          assert manifest['source']['commit'] == os.environ['BABY_QUIRT_SOURCE_COMMIT']
+          assert manifest['source']['tree'] == os.environ['BABY_QUIRT_SOURCE_TREE']
+          assert manifest['archive']['sha256'] == hashlib.sha256(archive.read_bytes()).hexdigest()
+          assert manifest['reproducibility']['byteIdentical'] is True
+          assert report['passed'] is True
+          assert evidence['testCount'] > 0 and all(suite['passed'] for suite in evidence['suites'])
+          assert not list(root.glob('*.pem'))
+          PY
 
-      - name: Upload release artifact
+      - name: Upload non-production candidate evidence
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
-          name: baby-quirt-release
-          path: release/baby-quirt-0.1.0.tar.gz
+          name: baby-quirt-ci-candidate-${{ github.event.pull_request.head.sha || github.sha }}
+          path: release/baby-quirt-0.3.0-ci*
           retention-days: 30
 
-      - name: Upload release digest
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
-        with:
-          name: baby-quirt-release-digest
-          path: release/baby-quirt-0.1.0.sha256
-          retention-days: 30
-
-      - name: Upload release manifest
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
-        with:
-          name: baby-quirt-release-manifest
-          path: release/baby-quirt-0.1.0.manifest.json
-          retention-days: 30
+      - name: Remove ephemeral signing material
+        if: always()
+        run: rm -f /tmp/baby-quirt-ci-release-private.pem /tmp/baby-quirt-ci-release-public.pem

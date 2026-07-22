@@ -1,22 +1,7 @@
 #!/usr/bin/env node
-/** Baby Quirt rollback — restores previous release pointer. */
+/** Baby Quirt cannot roll back its own production deployment. */
 
-import { DEFAULTS } from '../config.js';
-import { rollbackSymlinks } from '../install/symlinks.js';
-
-function main(): void {
-  const currentLink = process.env.BABY_QUIRT_CURRENT_LINK ?? DEFAULTS.currentLink;
-  const previousLink = process.env.BABY_QUIRT_PREVIOUS_LINK ?? DEFAULTS.previousLink;
-  const result = rollbackSymlinks(currentLink, previousLink);
-
-  console.log(JSON.stringify({
-    action: 'rollback',
-    current: result.current,
-    previous: result.previous,
-    timestamp: new Date().toISOString(),
-  }, null, 2));
-
-  console.log('Run: systemctl restart baby-quirt.service');
-}
-
-main();
+process.stderr.write(
+  'ERROR: production rollback is owned by the generation-bound StealthEye deployment guard through the Fix privilege broker\n',
+);
+process.exitCode = 2;

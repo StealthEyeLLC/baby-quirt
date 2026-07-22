@@ -1,0 +1,784 @@
+{
+  "$id": "https://stealtheye.io/schemas/deployment/release-manifest-v1.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "archive": {
+      "additionalProperties": false,
+      "properties": {
+        "fileListDigest": {
+          "pattern": "^[a-f0-9]{64}$",
+          "type": "string"
+        },
+        "filename": {
+          "pattern": "^[A-Za-z0-9._-]+\\.tar\\.gz$",
+          "type": "string"
+        },
+        "format": {
+          "const": "tar.gz"
+        },
+        "sha256": {
+          "pattern": "^[a-f0-9]{64}$",
+          "type": "string"
+        },
+        "sizeBytes": {
+          "maximum": 1073741824,
+          "minimum": 1,
+          "type": "integer"
+        },
+        "topLevelPrefix": {
+          "pattern": "^[A-Za-z0-9._-]+$",
+          "type": "string"
+        }
+      },
+      "required": [
+        "filename",
+        "sha256",
+        "sizeBytes",
+        "format",
+        "topLevelPrefix"
+      ],
+      "type": "object"
+    },
+    "attestation": {
+      "additionalProperties": false,
+      "properties": {
+        "algorithm": {
+          "const": "Ed25519"
+        },
+        "keyId": {
+          "maxLength": 128,
+          "minLength": 1,
+          "type": "string"
+        },
+        "signedDigest": {
+          "pattern": "^[a-f0-9]{64}$",
+          "type": "string"
+        },
+        "value": {
+          "pattern": "^[A-Za-z0-9_-]{40,512}$",
+          "type": "string"
+        }
+      },
+      "required": [
+        "algorithm",
+        "keyId",
+        "signedDigest",
+        "value"
+      ],
+      "type": "object"
+    },
+    "build": {
+      "additionalProperties": false,
+      "properties": {
+        "commandDigest": {
+          "pattern": "^[a-f0-9]{64}$",
+          "type": "string"
+        },
+        "dependencyResolutionDigest": {
+          "pattern": "^[a-f0-9]{64}$",
+          "type": "string"
+        },
+        "environmentDigest": {
+          "pattern": "^[a-f0-9]{64}$",
+          "type": "string"
+        },
+        "locale": {
+          "const": "C"
+        },
+        "lockfileDigest": {
+          "pattern": "^[a-f0-9]{64}$",
+          "type": "string"
+        },
+        "provenanceDigest": {
+          "pattern": "^[a-f0-9]{64}$",
+          "type": "string"
+        },
+        "runtime": {
+          "maxLength": 128,
+          "type": "string"
+        },
+        "timezone": {
+          "const": "UTC"
+        }
+      },
+      "required": [
+        "runtime",
+        "lockfileDigest",
+        "commandDigest",
+        "environmentDigest",
+        "provenanceDigest",
+        "locale",
+        "timezone"
+      ],
+      "type": "object"
+    },
+    "buildProvenance": {
+      "additionalProperties": true,
+      "maxProperties": 64,
+      "type": "object"
+    },
+    "caddyFragments": {
+      "items": {
+        "additionalProperties": false,
+        "properties": {
+          "group": {
+            "maxLength": 128,
+            "type": "string"
+          },
+          "kind": {
+            "enum": [
+              "file",
+              "directory",
+              "executable",
+              "native_addon",
+              "systemd_unit",
+              "tmpfiles",
+              "caddy_fragment",
+              "schema",
+              "contract"
+            ]
+          },
+          "mode": {
+            "pattern": "^[0-7]{4}$",
+            "type": "string"
+          },
+          "owner": {
+            "maxLength": 128,
+            "type": "string"
+          },
+          "path": {
+            "maxLength": 4096,
+            "minLength": 1,
+            "type": "string"
+          },
+          "sha256": {
+            "pattern": "^[a-f0-9]{64}$",
+            "type": "string"
+          },
+          "sizeBytes": {
+            "maximum": 1099511627776,
+            "minimum": 0,
+            "type": "integer"
+          }
+        },
+        "required": [
+          "path",
+          "sha256",
+          "sizeBytes",
+          "mode"
+        ],
+        "type": "object"
+      },
+      "maxItems": 8,
+      "type": "array"
+    },
+    "compatiblePeers": {
+      "items": {
+        "additionalProperties": false,
+        "properties": {
+          "manifestDigest": {
+            "pattern": "^[a-f0-9]{64}$",
+            "type": "string"
+          },
+          "product": {
+            "enum": [
+              "baby-quirt",
+              "baby-quirt-mcp"
+            ]
+          },
+          "role": {
+            "enum": [
+              "required",
+              "rollback",
+              "optional"
+            ]
+          }
+        },
+        "required": [
+          "product",
+          "manifestDigest",
+          "role"
+        ],
+        "type": "object"
+      },
+      "maxItems": 64,
+      "minItems": 1,
+      "type": "array"
+    },
+    "configuration": {
+      "additionalProperties": false,
+      "properties": {
+        "permissionContractDigest": {
+          "pattern": "^[a-f0-9]{64}$",
+          "type": "string"
+        },
+        "schemaDigest": {
+          "pattern": "^[a-f0-9]{64}$",
+          "type": "string"
+        },
+        "schemaVersion": {
+          "maxLength": 64,
+          "type": "string"
+        }
+      },
+      "required": [
+        "schemaVersion",
+        "schemaDigest",
+        "permissionContractDigest"
+      ],
+      "type": "object"
+    },
+    "entrypoints": {
+      "items": {
+        "additionalProperties": false,
+        "properties": {
+          "arguments": {
+            "items": {
+              "maxLength": 4096,
+              "type": "string"
+            },
+            "maxItems": 64,
+            "type": "array"
+          },
+          "name": {
+            "pattern": "^[a-z0-9._-]+$",
+            "type": "string"
+          },
+          "path": {
+            "maxLength": 4096,
+            "pattern": "^[^/][^\\u0000]*$",
+            "type": "string"
+          },
+          "runsAs": {
+            "maxLength": 128,
+            "type": "string"
+          }
+        },
+        "required": [
+          "name",
+          "path"
+        ],
+        "type": "object"
+      },
+      "maxItems": 32,
+      "minItems": 1,
+      "type": "array"
+    },
+    "knownLimitations": {
+      "items": {
+        "maxLength": 2048,
+        "type": "string"
+      },
+      "maxItems": 128,
+      "type": "array"
+    },
+    "manifestDigest": {
+      "pattern": "^[a-f0-9]{64}$",
+      "type": "string"
+    },
+    "nativeAddons": {
+      "items": {
+        "additionalProperties": false,
+        "properties": {
+          "abi": {
+            "maxLength": 64,
+            "type": "string"
+          },
+          "loadProbe": {
+            "maxLength": 1024,
+            "type": "string"
+          },
+          "path": {
+            "maxLength": 4096,
+            "pattern": "^[^/].*\\.node$",
+            "type": "string"
+          },
+          "sha256": {
+            "pattern": "^[a-f0-9]{64}$",
+            "type": "string"
+          }
+        },
+        "required": [
+          "path",
+          "sha256",
+          "loadProbe"
+        ],
+        "type": "object"
+      },
+      "maxItems": 32,
+      "type": "array"
+    },
+    "operationContract": {
+      "additionalProperties": false,
+      "properties": {
+        "count": {
+          "maximum": 10000,
+          "minimum": 0,
+          "type": "integer"
+        },
+        "optionalOperationsDigest": {
+          "pattern": "^[a-f0-9]{64}$",
+          "type": "string"
+        },
+        "requiredOperationsDigest": {
+          "pattern": "^[a-f0-9]{64}$",
+          "type": "string"
+        },
+        "version": {
+          "maxLength": 64,
+          "type": "string"
+        }
+      },
+      "required": [
+        "version",
+        "count",
+        "requiredOperationsDigest"
+      ],
+      "type": "object"
+    },
+    "product": {
+      "enum": [
+        "baby-quirt",
+        "baby-quirt-mcp",
+        "stealtheye-deploy-controller"
+      ]
+    },
+    "qrt1Version": {
+      "const": "1.0.0"
+    },
+    "receiptVersions": {
+      "items": {
+        "enum": [
+          "1.0.0",
+          "2.0.0"
+        ]
+      },
+      "minItems": 1,
+      "type": "array",
+      "uniqueItems": true
+    },
+    "releaseVersion": {
+      "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+(?:-[A-Za-z0-9.]+)?$",
+      "type": "string"
+    },
+    "reproducibility": {
+      "additionalProperties": false,
+      "properties": {
+        "archiveDigestA": {
+          "pattern": "^[a-f0-9]{64}$",
+          "type": "string"
+        },
+        "archiveDigestB": {
+          "pattern": "^[a-f0-9]{64}$",
+          "type": "string"
+        },
+        "builderA": {
+          "maxLength": 256,
+          "type": "string"
+        },
+        "builderB": {
+          "maxLength": 256,
+          "type": "string"
+        },
+        "byteIdentical": {
+          "const": true
+        }
+      },
+      "required": [
+        "builderA",
+        "builderB",
+        "archiveDigestA",
+        "archiveDigestB",
+        "byteIdentical"
+      ],
+      "type": "object"
+    },
+    "requiredFiles": {
+      "items": {
+        "additionalProperties": false,
+        "properties": {
+          "group": {
+            "maxLength": 128,
+            "type": "string"
+          },
+          "kind": {
+            "enum": [
+              "file",
+              "directory",
+              "executable",
+              "native_addon",
+              "systemd_unit",
+              "tmpfiles",
+              "caddy_fragment",
+              "schema",
+              "contract"
+            ]
+          },
+          "mode": {
+            "pattern": "^[0-7]{4}$",
+            "type": "string"
+          },
+          "owner": {
+            "maxLength": 128,
+            "type": "string"
+          },
+          "path": {
+            "maxLength": 4096,
+            "minLength": 1,
+            "type": "string"
+          },
+          "sha256": {
+            "pattern": "^[a-f0-9]{64}$",
+            "type": "string"
+          },
+          "sizeBytes": {
+            "maximum": 1099511627776,
+            "minimum": 0,
+            "type": "integer"
+          }
+        },
+        "required": [
+          "path",
+          "sha256",
+          "sizeBytes",
+          "mode"
+        ],
+        "type": "object"
+      },
+      "maxItems": 20000,
+      "minItems": 1,
+      "type": "array"
+    },
+    "rollback": {
+      "additionalProperties": false,
+      "properties": {
+        "knownGoodRequired": {
+          "type": "boolean"
+        },
+        "requiredRestorePaths": {
+          "items": {
+            "maxLength": 4096,
+            "pattern": "^/[^\\u0000]*$",
+            "type": "string"
+          },
+          "maxItems": 256,
+          "type": "array"
+        },
+        "snapshotSchemaVersion": {
+          "const": "1.0.0"
+        },
+        "statePolicy": {
+          "enum": [
+            "preserve",
+            "migrate_with_reverse",
+            "restore_snapshot",
+            "manual_only"
+          ]
+        }
+      },
+      "required": [
+        "knownGoodRequired",
+        "snapshotSchemaVersion",
+        "statePolicy",
+        "requiredRestorePaths"
+      ],
+      "type": "object"
+    },
+    "sbom": {
+      "additionalProperties": false,
+      "properties": {
+        "filename": {
+          "maxLength": 512,
+          "type": "string"
+        },
+        "format": {
+          "enum": [
+            "SPDX-JSON",
+            "CycloneDX-JSON"
+          ]
+        },
+        "sha256": {
+          "pattern": "^[a-f0-9]{64}$",
+          "type": "string"
+        }
+      },
+      "required": [
+        "format",
+        "filename",
+        "sha256"
+      ],
+      "type": "object"
+    },
+    "schemaVersion": {
+      "const": "1.0.0"
+    },
+    "source": {
+      "additionalProperties": false,
+      "properties": {
+        "commit": {
+          "pattern": "^[a-f0-9]{40}$",
+          "type": "string"
+        },
+        "ref": {
+          "maxLength": 512,
+          "type": "string"
+        },
+        "repository": {
+          "pattern": "^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$",
+          "type": "string"
+        },
+        "sourceDateEpoch": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "tree": {
+          "pattern": "^[a-f0-9]{40}$",
+          "type": "string"
+        }
+      },
+      "required": [
+        "repository",
+        "commit",
+        "tree",
+        "sourceDateEpoch"
+      ],
+      "type": "object"
+    },
+    "state": {
+      "additionalProperties": false,
+      "properties": {
+        "downgradePolicy": {
+          "enum": [
+            "no_change",
+            "backward_compatible",
+            "snapshot_restore_required",
+            "unsupported"
+          ]
+        },
+        "migrationIds": {
+          "items": {
+            "maxLength": 128,
+            "type": "string"
+          },
+          "maxItems": 128,
+          "type": "array"
+        },
+        "persistentOutsideRelease": {
+          "const": true
+        },
+        "schemaDigest": {
+          "pattern": "^[a-f0-9]{64}$",
+          "type": "string"
+        },
+        "schemaVersion": {
+          "maxLength": 64,
+          "type": "string"
+        }
+      },
+      "required": [
+        "schemaVersion",
+        "schemaDigest",
+        "migrationIds",
+        "persistentOutsideRelease"
+      ],
+      "type": "object"
+    },
+    "systemdUnits": {
+      "items": {
+        "additionalProperties": false,
+        "properties": {
+          "group": {
+            "maxLength": 128,
+            "type": "string"
+          },
+          "kind": {
+            "enum": [
+              "file",
+              "directory",
+              "executable",
+              "native_addon",
+              "systemd_unit",
+              "tmpfiles",
+              "caddy_fragment",
+              "schema",
+              "contract"
+            ]
+          },
+          "mode": {
+            "pattern": "^[0-7]{4}$",
+            "type": "string"
+          },
+          "owner": {
+            "maxLength": 128,
+            "type": "string"
+          },
+          "path": {
+            "maxLength": 4096,
+            "minLength": 1,
+            "type": "string"
+          },
+          "sha256": {
+            "pattern": "^[a-f0-9]{64}$",
+            "type": "string"
+          },
+          "sizeBytes": {
+            "maximum": 1099511627776,
+            "minimum": 0,
+            "type": "integer"
+          }
+        },
+        "required": [
+          "path",
+          "sha256",
+          "sizeBytes",
+          "mode"
+        ],
+        "type": "object"
+      },
+      "maxItems": 32,
+      "type": "array"
+    },
+    "target": {
+      "additionalProperties": false,
+      "properties": {
+        "architecture": {
+          "const": "amd64"
+        },
+        "nodePath": {
+          "maxLength": 4096,
+          "pattern": "^/[^\\u0000]*$",
+          "type": "string"
+        },
+        "os": {
+          "const": "linux"
+        },
+        "runtime": {
+          "maxLength": 128,
+          "type": "string"
+        }
+      },
+      "required": [
+        "os",
+        "architecture",
+        "runtime"
+      ],
+      "type": "object"
+    },
+    "testEvidence": {
+      "additionalProperties": false,
+      "properties": {
+        "indexDigest": {
+          "pattern": "^[a-f0-9]{64}$",
+          "type": "string"
+        },
+        "requiredGateDigest": {
+          "pattern": "^[a-f0-9]{64}$",
+          "type": "string"
+        },
+        "suiteCount": {
+          "minimum": 1,
+          "type": "integer"
+        },
+        "testCount": {
+          "minimum": 1,
+          "type": "integer"
+        }
+      },
+      "required": [
+        "indexDigest",
+        "suiteCount",
+        "testCount"
+      ],
+      "type": "object"
+    },
+    "tmpfiles": {
+      "oneOf": [
+        {
+          "additionalProperties": false,
+          "properties": {
+            "group": {
+              "maxLength": 128,
+              "type": "string"
+            },
+            "kind": {
+              "enum": [
+                "file",
+                "directory",
+                "executable",
+                "native_addon",
+                "systemd_unit",
+                "tmpfiles",
+                "caddy_fragment",
+                "schema",
+                "contract"
+              ]
+            },
+            "mode": {
+              "pattern": "^[0-7]{4}$",
+              "type": "string"
+            },
+            "owner": {
+              "maxLength": 128,
+              "type": "string"
+            },
+            "path": {
+              "maxLength": 4096,
+              "minLength": 1,
+              "type": "string"
+            },
+            "sha256": {
+              "pattern": "^[a-f0-9]{64}$",
+              "type": "string"
+            },
+            "sizeBytes": {
+              "maximum": 1099511627776,
+              "minimum": 0,
+              "type": "integer"
+            }
+          },
+          "required": [
+            "path",
+            "sha256",
+            "sizeBytes",
+            "mode"
+          ],
+          "type": "object"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "type": [
+        "object",
+        "null"
+      ]
+    }
+  },
+  "required": [
+    "schemaVersion",
+    "product",
+    "releaseVersion",
+    "source",
+    "archive",
+    "manifestDigest",
+    "build",
+    "target",
+    "entrypoints",
+    "requiredFiles",
+    "configuration",
+    "state",
+    "operationContract",
+    "receiptVersions",
+    "qrt1Version",
+    "compatiblePeers",
+    "rollback",
+    "sbom",
+    "testEvidence",
+    "reproducibility",
+    "attestation",
+    "knownLimitations"
+  ],
+  "title": "StealthEye Release Manifest v1",
+  "type": "object"
+}

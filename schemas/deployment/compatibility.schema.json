@@ -1,0 +1,467 @@
+{
+  "$id": "https://stealtheye.io/schemas/deployment/compatibility-v1.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "artifacts": {
+      "additionalProperties": false,
+      "properties": {
+        "contentAddressed": {
+          "const": true
+        },
+        "immutableAfterFinalize": {
+          "const": true
+        },
+        "resumable": {
+          "const": true
+        }
+      },
+      "required": [
+        "contentAddressed",
+        "immutableAfterFinalize",
+        "resumable"
+      ],
+      "type": "object"
+    },
+    "attestation": {
+      "additionalProperties": false,
+      "properties": {
+        "algorithm": {
+          "const": "Ed25519"
+        },
+        "keyId": {
+          "maxLength": 128,
+          "minLength": 1,
+          "type": "string"
+        },
+        "signedDigest": {
+          "pattern": "^[a-f0-9]{64}$",
+          "type": "string"
+        },
+        "value": {
+          "pattern": "^[A-Za-z0-9_-]{40,512}$",
+          "type": "string"
+        }
+      },
+      "required": [
+        "algorithm",
+        "keyId",
+        "signedDigest",
+        "value"
+      ],
+      "type": "object"
+    },
+    "compatible": {
+      "type": "boolean"
+    },
+    "declarationId": {
+      "pattern": "^cmp_[a-z0-9-]{8,96}$",
+      "type": "string"
+    },
+    "digest": {
+      "pattern": "^[a-f0-9]{64}$",
+      "type": "string"
+    },
+    "downgrade": {
+      "additionalProperties": false,
+      "properties": {
+        "gatewayToLegacyRuntime": {
+          "const": "supported"
+        },
+        "runtimeToLegacyGateway": {
+          "const": "forbidden"
+        }
+      },
+      "required": [
+        "gatewayToLegacyRuntime",
+        "runtimeToLegacyGateway"
+      ],
+      "type": "object"
+    },
+    "gateway": {
+      "additionalProperties": false,
+      "properties": {
+        "manifestDigest": {
+          "pattern": "^[a-f0-9]{64}$",
+          "type": "string"
+        },
+        "releaseVersion": {
+          "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+(?:-[A-Za-z0-9.]+)?$",
+          "type": "string"
+        },
+        "sourceCommit": {
+          "pattern": "^[a-f0-9]{40}$",
+          "type": "string"
+        },
+        "sourceTree": {
+          "pattern": "^[a-f0-9]{40}$",
+          "type": "string"
+        }
+      },
+      "required": [
+        "manifestDigest",
+        "releaseVersion",
+        "sourceCommit",
+        "sourceTree"
+      ],
+      "type": "object"
+    },
+    "idempotency": {
+      "additionalProperties": false,
+      "properties": {
+        "keyReuseConflict": {
+          "const": true
+        },
+        "retentionMs": {
+          "minimum": 1,
+          "type": "integer"
+        },
+        "semanticFingerprint": {
+          "const": true
+        }
+      },
+      "required": [
+        "semanticFingerprint",
+        "keyReuseConflict"
+      ],
+      "type": "object"
+    },
+    "identity": {
+      "additionalProperties": false,
+      "properties": {
+        "gatewayKeyId": {
+          "maxLength": 128,
+          "type": "string"
+        },
+        "gatewayUid": {
+          "const": 997
+        },
+        "machineIdSha256": {
+          "pattern": "^[a-f0-9]{64}$",
+          "type": "string"
+        },
+        "supervisorReceiptKeyId": {
+          "maxLength": 128,
+          "type": "string"
+        }
+      },
+      "required": [
+        "machineIdSha256",
+        "gatewayUid",
+        "gatewayKeyId",
+        "supervisorReceiptKeyId"
+      ],
+      "type": "object"
+    },
+    "migration": {
+      "additionalProperties": false,
+      "properties": {
+        "gatewayFirst": {
+          "const": true
+        },
+        "oauthStatePolicy": {
+          "enum": [
+            "preserve",
+            "migrate_reversibly"
+          ]
+        },
+        "stateMigrationIds": {
+          "items": {
+            "maxLength": 128,
+            "type": "string"
+          },
+          "maxItems": 64,
+          "type": "array"
+        }
+      },
+      "required": [
+        "gatewayFirst",
+        "oauthStatePolicy",
+        "stateMigrationIds"
+      ],
+      "type": "object"
+    },
+    "oauth": {
+      "additionalProperties": false,
+      "properties": {
+        "identityProvider": {
+          "const": "github"
+        },
+        "issuer": {
+          "const": "https://baby-quirt.stealtheye.io"
+        },
+        "requiredScope": {
+          "const": "fix.apply"
+        },
+        "resource": {
+          "const": "https://baby-quirt.stealtheye.io/mcp"
+        }
+      },
+      "required": [
+        "issuer",
+        "resource",
+        "requiredScope",
+        "identityProvider"
+      ],
+      "type": "object"
+    },
+    "operations": {
+      "additionalProperties": false,
+      "properties": {
+        "contractVersion": {
+          "maxLength": 64,
+          "type": "string"
+        },
+        "gatewayCatalogCount": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "optional": {
+          "items": {
+            "pattern": "^baby\\.[a-z0-9._-]+$",
+            "type": "string"
+          },
+          "type": "array",
+          "uniqueItems": true
+        },
+        "required": {
+          "items": {
+            "pattern": "^baby\\.[a-z0-9._-]+$",
+            "type": "string"
+          },
+          "minItems": 1,
+          "type": "array",
+          "uniqueItems": true
+        },
+        "requiredDigest": {
+          "pattern": "^[a-f0-9]{64}$",
+          "type": "string"
+        },
+        "runtimeCount": {
+          "minimum": 0,
+          "type": "integer"
+        }
+      },
+      "required": [
+        "contractVersion",
+        "runtimeCount",
+        "gatewayCatalogCount",
+        "required",
+        "optional"
+      ],
+      "type": "object"
+    },
+    "protocol": {
+      "additionalProperties": false,
+      "properties": {
+        "maximumFrameSize": {
+          "maximum": 67108864,
+          "minimum": 1024,
+          "type": "integer"
+        },
+        "qrt1Version": {
+          "const": "1.0.0"
+        }
+      },
+      "required": [
+        "qrt1Version",
+        "maximumFrameSize"
+      ],
+      "type": "object"
+    },
+    "publicTool": {
+      "additionalProperties": false,
+      "properties": {
+        "arguments": {
+          "const": [
+            "operation",
+            "payload",
+            "idempotencyKey"
+          ]
+        },
+        "count": {
+          "const": 1
+        },
+        "name": {
+          "const": "call_quirt"
+        },
+        "version": {
+          "maxLength": 64,
+          "type": "string"
+        }
+      },
+      "required": [
+        "name",
+        "count",
+        "arguments"
+      ],
+      "type": "object"
+    },
+    "reasons": {
+      "items": {
+        "maxLength": 2048,
+        "type": "string"
+      },
+      "maxItems": 128,
+      "type": "array"
+    },
+    "receipts": {
+      "additionalProperties": false,
+      "properties": {
+        "gatewayAccepts": {
+          "items": {
+            "enum": [
+              "1.0.0",
+              "2.0.0"
+            ]
+          },
+          "minItems": 1,
+          "type": "array",
+          "uniqueItems": true
+        },
+        "requiredAfterUpgrade": {
+          "const": "2.0.0"
+        },
+        "runtimeEmits": {
+          "items": {
+            "enum": [
+              "1.0.0",
+              "2.0.0"
+            ]
+          },
+          "minItems": 1,
+          "type": "array",
+          "uniqueItems": true
+        }
+      },
+      "required": [
+        "runtimeEmits",
+        "gatewayAccepts",
+        "requiredAfterUpgrade"
+      ],
+      "type": "object"
+    },
+    "rollback": {
+      "additionalProperties": false,
+      "properties": {
+        "gatewayKnownGoodManifest": {
+          "pattern": "^[a-f0-9]{64}$",
+          "type": "string"
+        },
+        "pairVerified": {
+          "const": true
+        },
+        "runtimeKnownGoodManifest": {
+          "pattern": "^[a-f0-9]{64}$",
+          "type": "string"
+        }
+      },
+      "required": [
+        "runtimeKnownGoodManifest",
+        "gatewayKnownGoodManifest",
+        "pairVerified"
+      ],
+      "type": "object"
+    },
+    "runtime": {
+      "additionalProperties": false,
+      "properties": {
+        "manifestDigest": {
+          "pattern": "^[a-f0-9]{64}$",
+          "type": "string"
+        },
+        "releaseVersion": {
+          "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+(?:-[A-Za-z0-9.]+)?$",
+          "type": "string"
+        },
+        "sourceCommit": {
+          "pattern": "^[a-f0-9]{40}$",
+          "type": "string"
+        },
+        "sourceTree": {
+          "pattern": "^[a-f0-9]{40}$",
+          "type": "string"
+        }
+      },
+      "required": [
+        "manifestDigest",
+        "releaseVersion",
+        "sourceCommit",
+        "sourceTree"
+      ],
+      "type": "object"
+    },
+    "schemaVersion": {
+      "const": "1.0.0"
+    },
+    "socket": {
+      "additionalProperties": false,
+      "properties": {
+        "group": {
+          "const": "horsey"
+        },
+        "mode": {
+          "const": "0660"
+        },
+        "owner": {
+          "const": "root"
+        },
+        "path": {
+          "const": "/run/horsey/baby-quirt.sock"
+        }
+      },
+      "required": [
+        "path",
+        "owner",
+        "group",
+        "mode"
+      ],
+      "type": "object"
+    },
+    "streams": {
+      "additionalProperties": false,
+      "properties": {
+        "binarySafe": {
+          "const": true
+        },
+        "maximumChunkBytes": {
+          "minimum": 1,
+          "type": "integer"
+        },
+        "offsetModel": {
+          "const": "byte-offset"
+        }
+      },
+      "required": [
+        "offsetModel",
+        "binarySafe"
+      ],
+      "type": "object"
+    }
+  },
+  "required": [
+    "schemaVersion",
+    "declarationId",
+    "runtime",
+    "gateway",
+    "protocol",
+    "operations",
+    "receipts",
+    "identity",
+    "socket",
+    "idempotency",
+    "streams",
+    "artifacts",
+    "oauth",
+    "publicTool",
+    "migration",
+    "downgrade",
+    "rollback",
+    "compatible",
+    "reasons",
+    "digest",
+    "attestation"
+  ],
+  "title": "Baby Quirt Gateway Compatibility Declaration v1",
+  "type": "object"
+}

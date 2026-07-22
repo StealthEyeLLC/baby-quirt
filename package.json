@@ -10,6 +10,7 @@
     "baby-quirt": "./dist/cli/main.js",
     "baby-quirt-install": "./dist/cli/install.js",
     "baby-quirt-verify": "./dist/cli/verify.js",
+    "baby-quirt-verify-candidate": "./dist/cli/verify-candidate.js",
     "baby-quirt-rollback": "./dist/cli/rollback.js",
     "baby-quirt-repair": "./dist/cli/repair.js"
   },
@@ -28,6 +29,7 @@
     "start": "node dist/index.js"
   },
   "dependencies": {
+    "ajv": "8.17.1",
     "node-addon-api": "^8.3.0"
   },
   "devDependencies": {
