@@ -9,7 +9,7 @@ import {
 } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { after, before, describe, it, mock } from 'node:test';
+import { describe, it } from 'node:test';
 import { canonicalJson, sha256Hex } from '../src/crypto/canonical.js';
 import {
   buildNspawnRunPlan,
@@ -301,17 +301,7 @@ function fixture(behavior: Behavior = {}, mutateConfig?: (config: NspawnRunnerCo
   };
 }
 
-describe('fixed unrestricted systemd-nspawn rehearsal runner', { concurrency: false }, () => {
-  before(() => {
-    // These are hermetic executor tests. Simulate the real runner's required
-    // root host explicitly instead of inheriting the CI worker's account.
-    mock.method(process, 'getuid', () => 0);
-  });
-
-  after(() => {
-    mock.restoreAll();
-  });
-
+describe('fixed unrestricted systemd-nspawn rehearsal runner', () => {
   it('boots real root without a user namespace and preserves signed evidence after clone destruction', async () => {
     const fx = fixture();
     try {

@@ -120,7 +120,7 @@ jobs:
           set -euo pipefail
           npm ci --include=dev --no-audit --no-fund
           npm run lint
-          node --import tsx --test \
+          sudo "$(command -v node)" --import tsx --test \
             test/nspawn-bootstrap.test.ts \
             test/nspawn-input.test.ts \
             test/nspawn-rehearsal.test.ts
