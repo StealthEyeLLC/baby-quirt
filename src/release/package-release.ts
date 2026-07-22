@@ -23,7 +23,10 @@ function assertDigest(value: string, label: string): void {
 
 function validateSpec(spec: PackageReleaseSpec): void {
   if (spec.schemaVersion !== '2.0.0') throw new Error('Unsupported release package spec');
-  if (spec.repository !== `StealthEyeLLC/${spec.product}`) {
+  const expectedRepository = spec.product === 'baby-quirt-controller'
+    ? 'StealthEyeLLC/baby-quirt'
+    : `StealthEyeLLC/${spec.product}`;
+  if (spec.repository !== expectedRepository) {
     throw new Error('Release product/repository mismatch');
   }
   assertReleaseVersion(spec.releaseVersion);

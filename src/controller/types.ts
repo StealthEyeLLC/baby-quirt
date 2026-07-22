@@ -31,6 +31,11 @@ export interface CandidateManifestDigests {
   gateway: string;
 }
 
+export interface CandidatePointerTargets {
+  baby: string;
+  gateway: string;
+}
+
 export interface DeploymentGuardPayload {
   recordVersion: typeof CONTROLLER_RECORD_VERSION;
   recordType: 'baby-quirt-deployment-guard';
@@ -40,6 +45,7 @@ export interface DeploymentGuardPayload {
   planDigest: string;
   snapshotDigest: string;
   candidateManifestDigests: CandidateManifestDigests;
+  candidatePointerTargets: CandidatePointerTargets;
   expectedPointers: ExpectedPointers;
   deadline: string;
   evidenceDigest: string;
@@ -61,6 +67,7 @@ export interface SuccessMarkerPayload {
   planDigest: string;
   snapshotDigest: string;
   candidateManifestDigests: CandidateManifestDigests;
+  candidatePointerTargets: CandidatePointerTargets;
   evidenceDigest: string;
   acceptedAt: string;
   signingKeyId: string;
@@ -81,6 +88,7 @@ export interface ControllerEvidencePayload {
   planDigest: string;
   snapshotDigest: string;
   candidateManifestDigests: CandidateManifestDigests;
+  candidatePointerTargets: CandidatePointerTargets;
   disposition: ControllerDisposition;
   detailsDigest: string;
   occurredAt: string;

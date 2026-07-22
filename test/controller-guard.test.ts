@@ -124,6 +124,10 @@ function harness(): Harness {
         baby: digest(`baby:${generation}`),
         gateway: digest(`gateway:${generation}`),
       },
+      candidatePointerTargets: {
+        baby: '/opt/baby-quirt/releases/0.3.0',
+        gateway: '/opt/baby-quirt-mcp/releases/0.3.0',
+      },
       expectedPointers,
       deadline: '2026-07-22T18:00:00.000Z',
       evidenceDigest: digest(`evidence:${generation}`),
@@ -199,6 +203,7 @@ describe('fixed standalone deployment controller and guard', () => {
         planDigest: guard.planDigest,
         snapshotDigest: guard.snapshotDigest,
         candidateManifestDigests: guard.candidateManifestDigests,
+        candidatePointerTargets: guard.candidatePointerTargets,
         evidenceDigest: guard.evidenceDigest,
         acceptedAt: '2026-07-22T17:30:00.000Z',
         signingKeyId: 'baby-deployment-authority-v2',
@@ -257,6 +262,7 @@ describe('fixed standalone deployment controller and guard', () => {
         planDigest: first.planDigest,
         snapshotDigest: first.snapshotDigest,
         candidateManifestDigests: first.candidateManifestDigests,
+        candidatePointerTargets: first.candidatePointerTargets,
         evidenceDigest: first.evidenceDigest,
         acceptedAt: '2026-07-22T17:10:00.000Z',
         signingKeyId: 'baby-deployment-authority-v2',
@@ -289,6 +295,14 @@ describe('fixed standalone deployment controller and guard', () => {
       assert.equal(fixture.controller().evaluate(guard.deploymentId).disposition, 'rollback_failed');
       assert.equal(fixture.controller().evaluate(guard.deploymentId).disposition, 'rollback_failed');
       assert.equal(fixture.host.readFixtureStateForTest().restoreAttempts, 1);
+      fixture.host.setRestoreFailureForTest(false);
+      assert.equal(fixture.controller().manualRecover({
+        deploymentId: guard.deploymentId,
+        snapshotDigest: guard.snapshotDigest,
+        reason: 'Owner approved exact fixture recovery',
+      }).disposition, 'rolled_back');
+      assert.equal(fixture.controller().evaluate(guard.deploymentId).disposition, 'rolled_back');
+      assert.equal(fixture.host.readFixtureStateForTest().restoreAttempts, 2);
     } finally {
       fixture.cleanup();
     }

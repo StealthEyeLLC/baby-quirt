@@ -236,8 +236,23 @@ export class ControllerStore {
     }
   }
 
+  writeManualRecoveryEvidence(evidence: SignedControllerEvidence): void {
+    const root = this.deploymentRoot(evidence.deploymentId);
+    createOnce(join(root, 'evidence', `${evidence.recordDigest}.json`), evidence);
+    const attempts = join(root, 'manual-recovery');
+    ensureDirectory(attempts);
+    const sequence = String(new Date(evidence.occurredAt).valueOf()).padStart(16, '0');
+    createOnce(join(attempts, `${sequence}-${evidence.recordDigest}.json`), evidence);
+  }
+
   readTerminalEvidence(deploymentId: string): unknown | undefined {
     const root = this.deploymentRoot(deploymentId);
+    const attempts = join(root, 'manual-recovery');
+    if (existsSync(attempts)) {
+      const names = readdirSync(attempts).sort();
+      const latest = names.at(-1);
+      if (latest) return readJson(join(attempts, latest));
+    }
     for (const name of ['disarmed.json', 'rollback.json']) {
       const path = join(root, name);
       if (existsSync(path)) return readJson(path);

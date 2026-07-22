@@ -192,6 +192,42 @@ export class FixedDeploymentController {
     return this.status(guard, 'armed');
   }
 
+  manualRecover(input: {
+    deploymentId: string;
+    snapshotDigest: string;
+    reason: string;
+  }): ControllerStatus {
+    return this.store.withGlobalLock(() => {
+      if (
+        !/^[A-Za-z0-9][A-Za-z0-9 .,._:-]{7,511}$/u.test(input.reason) ||
+        /[;&|`$<>\\]/u.test(input.reason)
+      ) {
+        throw new ControllerError('controller_invalid_record', 'Manual recovery reason is invalid');
+      }
+      const guard = this.loadGuard(input.deploymentId);
+      if (guard.snapshotDigest !== input.snapshotDigest) {
+        throw new ControllerError('controller_marker_mismatch', 'Manual recovery snapshot fence failed');
+      }
+      const terminal = this.readVerifiedTerminal(input.deploymentId);
+      if (!terminal || terminal.disposition !== 'rollback_failed') {
+        throw new ControllerError(
+          'controller_rollback_failed',
+          'Manual recovery is allowed only after a recorded rollback failure',
+        );
+      }
+      const result = this.options.host.restoreSnapshot(guard);
+      const disposition: ControllerDisposition = result.completed ? 'rolled_back' : 'rollback_failed';
+      const evidence = this.evidence(guard, disposition, {
+        ...result.details,
+        breakGlass: true,
+        reasonDigest: sha256Hex(input.reason),
+        priorFailureEvidenceDigest: terminal.recordDigest,
+      });
+      this.store.writeManualRecoveryEvidence(evidence);
+      return this.status(guard, disposition, evidence);
+    });
+  }
+
   private loadGuard(deploymentId: string): SignedDeploymentGuardRecord {
     return this.verifyGuard(this.store.readGuard(deploymentId));
   }
@@ -247,6 +283,7 @@ export class FixedDeploymentController {
         planDigest: guard.planDigest,
         snapshotDigest: guard.snapshotDigest,
         candidateManifestDigests: guard.candidateManifestDigests,
+        candidatePointerTargets: guard.candidatePointerTargets,
         disposition,
         detailsDigest: sha256Hex(canonicalJson(details)),
         occurredAt: this.now().toISOString(),

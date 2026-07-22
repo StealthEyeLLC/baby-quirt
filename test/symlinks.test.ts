@@ -1,9 +1,14 @@
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdtempSync, rmSync, symlinkSync, mkdirSync } from 'node:fs';
+import { mkdtempSync, readlinkSync, rmSync, symlinkSync, mkdirSync } from 'node:fs';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
-import { atomicSwapSymlinks, rollbackSymlinks } from '../src/install/symlinks.js';
+import {
+  PointerCasError,
+  atomicCompareAndSwapSymlink,
+  atomicSwapSymlinks,
+  rollbackSymlinks,
+} from '../src/install/symlinks.js';
 import { redactSecrets } from '../src/crypto/canonical.js';
 import { FileManager } from '../src/files/manager.js';
 
@@ -28,6 +33,15 @@ describe('symlink utilities', () => {
     symlinkSync('/missing/target', current);
     atomicSwapSymlinks(current, previous, target);
     assert.doesNotThrow(() => rollbackSymlinks(current, previous));
+  });
+
+  it('rejects a stale compare-and-swap without changing the pointer', () => {
+    const before = readlinkSync(current);
+    assert.throws(
+      () => atomicCompareAndSwapSymlink(current, '/stale/release', target),
+      (error: unknown) => error instanceof PointerCasError,
+    );
+    assert.equal(readlinkSync(current), before);
   });
 
   it('cleans up', () => {

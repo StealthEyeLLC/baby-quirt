@@ -30,7 +30,7 @@ export interface StrictArchiveDeclaration {
 
 export interface ExtractableReleaseManifest {
   schemaVersion: '2.0.0';
-  product: 'baby-quirt' | 'baby-quirt-mcp';
+  product: 'baby-quirt' | 'baby-quirt-mcp' | 'baby-quirt-controller';
   repository: 'StealthEyeLLC/baby-quirt' | 'StealthEyeLLC/baby-quirt-mcp';
   releaseVersion: string;
   sourceDateEpoch: number;
@@ -57,7 +57,7 @@ export function assertReleaseVersion(version: string): void {
   if (!VERSION.test(version) || version === '0.2.1' || version === '0.2.2') {
     throw new DeploymentError(
       'deployment_invalid',
-      `Release version ${version} is invalid or explicitly reserved`,
+      `Invalid release version ${version}: malformed or explicitly reserved`,
     );
   }
 }
@@ -108,7 +108,9 @@ export function validateExtractableManifest(
   if (manifest.schemaVersion !== '2.0.0') {
     throw new DeploymentError('deployment_invalid', 'Unsupported release manifest version');
   }
-  const expectedRepository = `StealthEyeLLC/${manifest.product}`;
+  const expectedRepository = manifest.product === 'baby-quirt-controller'
+    ? 'StealthEyeLLC/baby-quirt'
+    : `StealthEyeLLC/${manifest.product}`;
   if (manifest.repository !== expectedRepository) {
     throw new DeploymentError('deployment_invalid', 'Release repository/product mismatch');
   }

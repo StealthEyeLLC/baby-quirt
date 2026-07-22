@@ -47,4 +47,16 @@ describe('standalone deployment source lane', () => {
     assert.match(timer, /^OnBootSec=15s$/mu);
     assert.match(timer, /^Unit=baby-quirt-deploy-guard@%i\.service$/mu);
   });
+
+  it('keeps inactive install pointer-free and retires product-owned rollback and repair', () => {
+    const installer = readFileSync('src/cli/install.ts', 'utf8');
+    assert.match(installer, /installInactiveCandidate/u);
+    assert.match(installer, /pointerMutation: false/u);
+    assert.doesNotMatch(installer, /atomicSwapSymlinks|systemctl|currentLink/u);
+    for (const path of ['src/cli/rollback.ts', 'src/cli/repair.ts']) {
+      const source = readFileSync(path, 'utf8');
+      assert.match(source, /process\.exitCode = 64/u);
+      assert.doesNotMatch(source, /rollbackSymlinks|chmodSync|systemctl/u);
+    }
+  });
 });

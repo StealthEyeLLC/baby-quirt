@@ -44,6 +44,9 @@ export interface ControllerReleasePayload {
   sourceCommit: string;
   sourceTree: string;
   sourceDateEpoch: number;
+  archiveDigest: string;
+  nodeVersion: '24.18.0';
+  buildCommandDigest: string;
   candidateDigest: string;
   files: ControllerReleaseFile[];
   targetSlot: 'a' | 'b';
@@ -65,7 +68,8 @@ export type ControllerInstallTransaction =
 
 const PAYLOAD_KEYS = [
   'recordVersion', 'recordType', 'releaseId', 'repository', 'sourceCommit',
-  'sourceTree', 'sourceDateEpoch', 'candidateDigest', 'files', 'targetSlot',
+  'sourceTree', 'sourceDateEpoch', 'archiveDigest', 'nodeVersion', 'buildCommandDigest',
+  'candidateDigest', 'files', 'targetSlot',
   'expectedCurrentReleaseId', 'fallbackReleaseId', 'signingKeyId',
   'signatureAlgorithm',
 ] as const;
@@ -92,6 +96,10 @@ function validatePayload(value: ControllerReleasePayload): void {
   if (!Number.isSafeInteger(value.sourceDateEpoch) || value.sourceDateEpoch < 0) {
     throw new Error('invalid sourceDateEpoch');
   }
+  if (!DIGEST.test(value.archiveDigest) || !DIGEST.test(value.buildCommandDigest)) {
+    throw new Error('invalid controller package identity');
+  }
+  if (value.nodeVersion !== '24.18.0') throw new Error('controller Node version is not pinned');
   if (!DIGEST.test(value.candidateDigest)) throw new Error('invalid candidateDigest');
   if (!['a', 'b'].includes(value.targetSlot)) throw new Error('invalid targetSlot');
   for (const id of [value.expectedCurrentReleaseId, value.fallbackReleaseId]) {

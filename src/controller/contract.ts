@@ -7,6 +7,7 @@ import {
   CONTROLLER_RECORD_VERSION,
   ControllerError,
   type CandidateManifestDigests,
+  type CandidatePointerTargets,
   type ControllerEvidencePayload,
   type DeploymentGuardPayload,
   type ExpectedPointers,
@@ -89,6 +90,47 @@ export function assertExpectedPointers(value: unknown): asserts value is Expecte
     assertPointer(pointers.current, `expectedPointers.${product}.current`);
     assertPointer(pointers.previous, `expectedPointers.${product}.previous`);
   }
+  const exactLinks = {
+    baby: {
+      current: '/opt/baby-quirt/current',
+      previous: '/opt/baby-quirt/previous',
+    },
+    gateway: {
+      current: '/opt/baby-quirt-mcp/current',
+      previous: '/opt/baby-quirt-mcp/previous',
+    },
+  } as const;
+  const typed = value as unknown as ExpectedPointers;
+  for (const product of ['baby', 'gateway'] as const) {
+    if (
+      typed[product].current.link !== exactLinks[product].current ||
+      typed[product].previous.link !== exactLinks[product].previous
+    ) fail(`expectedPointers.${product} uses a noncanonical link`);
+    const releasePrefix = product === 'baby'
+      ? '/opt/baby-quirt/releases/'
+      : '/opt/baby-quirt-mcp/releases/';
+    if (!typed[product].current.target?.startsWith(releasePrefix)) {
+      fail(`expectedPointers.${product}.current must bind a known-good immutable release`);
+    }
+    if (
+      typed[product].previous.target !== null &&
+      !typed[product].previous.target.startsWith(releasePrefix)
+    ) fail(`expectedPointers.${product}.previous must bind an immutable release`);
+  }
+}
+
+function assertCandidatePointerTargets(value: unknown): asserts value is CandidatePointerTargets {
+  assertObject(value, 'candidatePointerTargets');
+  assertExactKeys(value, ['baby', 'gateway'], 'candidatePointerTargets');
+  const expected = {
+    baby: /^\/opt\/baby-quirt\/releases\/(?!0\.2\.[12]$)[A-Za-z0-9._-]+$/,
+    gateway: /^\/opt\/baby-quirt-mcp\/releases\/(?!0\.2\.[12]$)[A-Za-z0-9._-]+$/,
+  } as const;
+  for (const product of ['baby', 'gateway'] as const) {
+    if (typeof value[product] !== 'string' || !expected[product].test(value[product])) {
+      fail(`candidatePointerTargets.${product} is invalid or reserved`);
+    }
+  }
 }
 
 function assertIdentityPayload(value: Record<string, unknown>): void {
@@ -101,6 +143,7 @@ function assertIdentityPayload(value: Record<string, unknown>): void {
   assertDigest(value.planDigest, 'planDigest');
   assertDigest(value.snapshotDigest, 'snapshotDigest');
   assertManifestDigests(value.candidateManifestDigests);
+  assertCandidatePointerTargets(value.candidatePointerTargets);
   assertIdentifier(value.signingKeyId, 'signingKeyId');
   if (value.signatureAlgorithm !== 'ed25519') fail('signatureAlgorithm must be ed25519');
 }
@@ -112,19 +155,19 @@ function assertCommonPayload(value: Record<string, unknown>): void {
 
 const GUARD_PAYLOAD_KEYS = [
   'recordVersion', 'recordType', 'deploymentId', 'generation', 'machineId',
-  'planDigest', 'snapshotDigest', 'candidateManifestDigests', 'expectedPointers',
+  'planDigest', 'snapshotDigest', 'candidateManifestDigests', 'candidatePointerTargets', 'expectedPointers',
   'deadline', 'evidenceDigest', 'signingKeyId', 'signatureAlgorithm',
 ] as const;
 
 const SUCCESS_PAYLOAD_KEYS = [
   'recordVersion', 'recordType', 'deploymentId', 'generation', 'machineId',
-  'planDigest', 'snapshotDigest', 'candidateManifestDigests', 'evidenceDigest',
+  'planDigest', 'snapshotDigest', 'candidateManifestDigests', 'candidatePointerTargets', 'evidenceDigest',
   'acceptedAt', 'signingKeyId', 'signatureAlgorithm',
 ] as const;
 
 const EVIDENCE_PAYLOAD_KEYS = [
   'recordVersion', 'recordType', 'deploymentId', 'generation', 'machineId',
-  'planDigest', 'snapshotDigest', 'candidateManifestDigests', 'disposition',
+  'planDigest', 'snapshotDigest', 'candidateManifestDigests', 'candidatePointerTargets', 'disposition',
   'detailsDigest', 'occurredAt', 'signingKeyId', 'signatureAlgorithm',
 ] as const;
 
@@ -260,6 +303,8 @@ export function assertMarkerMatchesGuard(
     marker.snapshotDigest === guard.snapshotDigest &&
     marker.candidateManifestDigests.baby === guard.candidateManifestDigests.baby &&
     marker.candidateManifestDigests.gateway === guard.candidateManifestDigests.gateway &&
+    marker.candidatePointerTargets.baby === guard.candidatePointerTargets.baby &&
+    marker.candidatePointerTargets.gateway === guard.candidatePointerTargets.gateway &&
     marker.evidenceDigest === guard.evidenceDigest;
   if (!exact) {
     throw new ControllerError(
