@@ -35,6 +35,7 @@ describe('one-time nspawn host bootstrap contract', () => {
     assert.match(harness, /allCapabilities/u);
     assert.match(harness, /NoNewPrivs/u);
     assert.match(harness, /SO_PEERCRED UID 997 probe/u);
+    assert.match(harness, /npm_config_nodedir: NODE_ROOT/u);
     assert.match(harness, /npm_config_offline: 'true'/u);
   });
 

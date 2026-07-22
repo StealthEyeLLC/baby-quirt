@@ -209,7 +209,7 @@ export async function createDeterministicTarGz(input: {
       tarHeader({
         path: input.topLevelPrefix,
         type: 'directory',
-        mode: lstatSync(input.releaseRoot).mode & 0o777,
+        mode: 0o755,
         size: 0,
         mtime: input.sourceDateEpoch,
       }),

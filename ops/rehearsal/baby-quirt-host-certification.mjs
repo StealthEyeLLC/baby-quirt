@@ -234,6 +234,7 @@ const BASE_ENVIRONMENT = Object.freeze({
   GIT_CONFIG_NOSYSTEM: '1',
   GIT_TERMINAL_PROMPT: '0',
   npm_config_cache: join(WORK_ROOT, 'npm-cache'),
+  npm_config_nodedir: NODE_ROOT,
   npm_config_offline: 'true',
   npm_config_audit: 'false',
   npm_config_fund: 'false',

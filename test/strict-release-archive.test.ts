@@ -98,7 +98,7 @@ describe('deterministic strict release archive', () => {
     chmodSync(join(release, 'bin', 'entrypoint'), 0o755);
     writeFileSync(join(release, 'lib', 'payload.json'), '{"ok":true}\n');
     chmodSync(join(release, 'lib', 'payload.json'), 0o640);
-    chmodSync(release, 0o755);
+    chmodSync(release, 0o700);
 
     const first = await createDeterministicTarGz({
       releaseRoot: release,
@@ -116,6 +116,9 @@ describe('deterministic strict release archive', () => {
     assert.deepEqual(readFileSync(join(workspace, 'first.tar.gz')), readFileSync(join(workspace, 'second.tar.gz')));
     assert.equal(first.archive.strictProfile, STRICT_ARCHIVE_PROFILE);
     assert.ok(first.files.every((entry) => entry.type !== 'file' || entry.digest.length === 64));
+
+    const archiveBytes = gunzipSync(readFileSync(join(workspace, 'first.tar.gz')));
+    assert.equal(Number.parseInt(archiveBytes.subarray(100, 108).toString('ascii').replace(/\0.*$/u, ''), 8), 0o755);
 
     const extracted = join(workspace, 'extracted');
     const result = await strictExtractRelease({
