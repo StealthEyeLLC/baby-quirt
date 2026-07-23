@@ -1,23 +1,23 @@
 # Baby Quirt Production State
 
-**Effective date:** 2026-07-20  
-**Canonical scope:** the currently deployed Baby Quirt runtime, its gateway relationship, and any known differences between repository source and the live host.
+**Effective date:** 2026-07-23  
+**Canonical scope:** the deployed Baby runtime, gateway relationship, operating authority, isolation model, and known source-to-host differences.
 
-Update this document whenever the active Baby Quirt release, gateway release, host identity, key identities, service topology, or verification result changes.
+Update this document whenever the active Baby release, gateway release, host identity, key identity, service topology, authority contract, or verification result changes.
 
 ## Deployed topology
 
 ```text
-Authorized OAuth MCP client
-  -> Baby-owned OAuth issuer and JWKS at https://baby-quirt.stealtheye.io
+Authorized ChatGPT OAuth client
   -> https://baby-quirt.stealtheye.io/mcp
   -> baby-quirt-mcp.service as fix-mcp (UID 997)
-  -> signed QRT1 over /run/horsey/baby-quirt.sock
+  -> bbyquirt.call_quirt / call_quirt
+  -> Ed25519-signed QRT1 over /run/horsey/baby-quirt.sock
   -> baby-quirt.service as root
-  -> durable result plus supervisor-signed receipt
+  -> durable result plus supervisor-signed Receipt v2 evidence
 ```
 
-A ChatGPT custom app can be that client after separate workspace registration and authenticated acceptance. Baby Quirt itself has no public listener. Caddy terminates public TLS only for the separately deployed MCP gateway.
+Baby Quirt itself has no public listener. Caddy terminates public TLS only for the separately deployed gateway.
 
 ## Runtime inventory
 
@@ -25,75 +25,97 @@ A ChatGPT custom app can be that client after separate workspace registration an
 | --- | --- |
 | Host | `vps-c9f04f5e` (`51.81.86.225`) |
 | Machine identity SHA-256 | `cd189817b39fea60d338b73878240a6fe7db71374c7a0f35ad60f8eb641e8817` |
-| Baby Quirt release | `0.1.3` |
-| Baby Quirt source commit | `6db0298758ef8080cd80adbce2b652333018e3f1` |
-| Baby Quirt service | `baby-quirt.service` |
+| Baby active release pointer | `/opt/baby-quirt/releases/0.2.3` |
+| Baby installed manifest version | `0.1.0` |
+| Baby source commit | `29fa50b56cee5fdad973d318fdb32c1d3e152e43` |
+| Baby source tree | `70d179a8ec0b0fddb89152e7813fdbee24dc2630` |
+| Baby service | `baby-quirt.service` |
 | Socket activation | `baby-quirt.socket` |
 | Private socket | `/run/horsey/baby-quirt.sock` |
 | Gateway peer | `fix-mcp`, UID `997`, group `horsey` |
-| Gateway release | `0.1.2-20260720164826.1053861.938` |
-| Gateway source commit | `115eecbf74e5ce9fa0979c151946c9864ab10e40` |
-| Gateway public endpoint | `https://baby-quirt.stealtheye.io/mcp` |
+| Gateway active release pointer | `/opt/baby-quirt-mcp/releases/0.2.3` |
+| Gateway source commit | `0bfcd99757afe198151e96b18771626388914205` |
+| Public endpoint | `https://baby-quirt.stealtheye.io/mcp` |
 | Required OAuth scope | `baby.apply` |
-| Gateway authority public-key SHA-256 | `0288179e795a801111cebfbba1b43fd3792f08b38c861974eff4a915d61b1ed7` |
+| Public tools | exactly one: `call_quirt` |
+| Runtime operations | 42 discovered `baby.*` operations |
+| Runtime release status | `installed` |
+
+Repository documentation commits may advance `main` without changing these active release identities. Live signed discovery, the installed manifest, active pointers, systemd, and public acceptance are authoritative.
+
+## Canonical authority
+
+Baby Quirt is the canonical owner-authorized authority for unrestricted UID-0 execution, host files, packages, processes, networking, mounts, users, groups, permissions, systemd, durable jobs, streams, PTYs, artifacts, production deployment, release lifecycle, self-hosting, recovery, replay controls, and supervisor-signed receipts.
+
+The gateway authenticates, signs, forwards, correlates, and verifies. It does not become a second executor, scheduler, release database, recovery authority, artifact authority, privileged boundary, or receipt signer.
+
+Fix and the Fix broker do not participate in the normal Baby execution, deployment, or recovery path.
+
+## Canonical isolation model
+
+Stock systemd-nspawn is the default environment for clean builds, test execution, destructive engineering, release certification, production-shaped rehearsal, staging, and preactivation acceptance.
+
+When lifecycle behavior matters, certification boots real systemd and records:
+
+- root and UID `997` identity;
+- user namespace, capability masks, `NoNewPrivs`, and seccomp truth;
+- service, socket, timer, controller, and guard lifecycle;
+- Unix peer credentials;
+- restart and reboot reconciliation;
+- success and rollback behavior;
+- exact evidence binding;
+- cleanup and proof that the machine stopped.
+
+Direct host mutation is reserved for explicitly authorized host work, production activation, recovery, or behavior that cannot be proven in isolation.
 
 ## Verified production behavior
 
-The final production verification established all of the following:
+The accepted production state established:
 
 1. `baby-quirt.socket`, `baby-quirt.service`, `baby-quirt-mcp.service`, and Caddy are active.
-2. The gateway process is launched by Node.js through `/opt/baby-quirt-mcp/current/src/main.js`; the obsolete `--preserve-symlinks-main` and `src/server.js` launch path are absent.
-3. Local gateway health on `127.0.0.1:2096` reports status `ok`, one public tool, and gateway commit `115eecbf74e5ce9fa0979c151946c9864ab10e40`.
-4. A live `baby.health` QRT1 request succeeds as `fix-mcp`, returns the expected host identity, and verifies the supervisor receipt signature and result digest.
-5. Public DNS resolves `baby-quirt.stealtheye.io` to `51.81.86.225`.
-6. Caddy presents a valid public TLS route for `baby-quirt.stealtheye.io`.
-7. Public `/healthz` and `/.well-known/oauth-protected-resource` responses are correct.
-8. The OAuth JWKS is reachable from `https://baby-quirt.stealtheye.io/oauth/jwks.json`.
-9. An unauthenticated MCP initialize request returns HTTP `401` with the expected protected-resource challenge and `baby.apply` scope.
+2. The active Baby and gateway pointers resolve to immutable `0.2.3` release directories.
+3. Signed runtime discovery reports release status `installed`, the expected host identity, 42 operations, and the Baby source identity above.
+4. A live `baby.health` call succeeds through the exact gateway peer and returns verified signed evidence.
+5. Public DNS and TLS route `baby-quirt.stealtheye.io` to the authorized VPS.
+6. Protected-resource metadata, authorization-server metadata, JWKS, challenge behavior, and the one-tool MCP catalog are reachable.
+7. The gateway reports exactly one public tool while the signed runtime reports 42 internal operations.
+8. Restart readback preserved the active deployment and release identity.
 
-The last check proves the public OAuth challenge, not issuance or use of an owner token through a registered ChatGPT custom app.
+A claim about future health or deployment state must re-run the relevant checks rather than relying solely on this record.
 
-## Host remediations applied during first production activation
+## Manifest reconciliation
 
-The production host currently contains two deliberate corrections that are not fully represented by the Baby Quirt source release process:
-
-### Native peer-credential addon path
-
-The compiled runtime loads the Linux addon from:
+The active `0.2.3` Baby release archive did not originally contain the runtime `manifest.json` at the path required by signed release identity readback. Production reconciles that source gap without modifying immutable release contents by binding a root-owned verified manifest into:
 
 ```text
-/opt/baby-quirt/current/lib/build/Release/peer_cred.node
+/opt/baby-quirt/current/manifest.json
 ```
 
-Commit `6db0298758ef8080cd80adbce2b652333018e3f1` packages the addon under `lib/native/build/Release/peer_cred.node`. Production contains an identical root-owned copy at the runtime lookup path. The release packager and a packaged-runtime test must be corrected before the next clean Baby Quirt deployment.
+through systemd read-only bind configuration.
 
-### Gateway-readable public verification material
+The manifest identifies:
 
-The production permission contract is:
+- version `0.1.0`;
+- commit `29fa50b56cee5fdad973d318fdb32c1d3e152e43`;
+- tree `70d179a8ec0b0fddb89152e7813fdbee24dc2630`;
+- the recorded source date epoch.
 
-| Path | Owner:group | Mode |
-| --- | --- | --- |
-| `/etc/baby-quirt` | `root:horsey` | `0750` |
-| `/etc/baby-quirt/gateway-authority-public.pem` | `root:horsey` | `0640` |
-| `/etc/baby-quirt/supervisor-receipt-public.pem` | `root:horsey` | `0640` |
-| `/etc/baby-quirt/supervisor-receipt-private.pem` | `root:root` | `0600` |
+Future release packaging must place the canonical manifest correctly so a clean replacement deployment does not depend on external reconciliation.
 
-The current installer creates the configuration directory and public keys without fully enforcing this group-readable contract. Production was corrected so `fix-mcp` can traverse the directory and read only the public keys.
+## Production mutation doctrine
 
-## Known source follow-ups
+Unrestricted root is the authorized execution capability; it does not justify undocumented live edits. Production mutation preserves:
 
-These items are source defects or assurance gaps, not current production outages:
+- exact source commits and trees;
+- reproducible artifacts;
+- immutable release directories;
+- guarded atomic pointer changes;
+- service and public acceptance readback;
+- signed durable evidence;
+- deterministic rollback;
+- source reconciliation after emergency repair.
 
-1. **Release layout:** package and test `peer_cred.node` at the exact path loaded by the compiled release.
-2. **Install permissions:** enforce `root:horsey` traversal and `0640` public-key modes during install and repair.
-3. **Packaged live test:** load the native addon and complete a signed QRT1 health call from the extracted release before activation.
-4. **Contract guard:** the canonical contract and protocol schema are now Ed25519-only; expand contract validation so a future change cannot advertise an algorithm rejected by the live authenticator.
-5. **State durability:** job, PTY, artifact, replay, and idempotency records use direct JSON-file writes rather than atomic transactional updates; document and harden crash semantics.
-6. **Replay persistence window:** a nonce is persisted after successful dispatch, leaving a crash window between acceptance and durable replay recording.
-7. **Artifact bounds:** configured archive-size limits are not enforced by `ArtifactManager`; large `baby.artifact.create` calls can read an entire file into memory.
-8. **Secret inputs:** literal environment values are persisted in job JSON. Secret values must use `secretReference`; this should be enforced more strongly.
-9. **PTY input fidelity:** the tmux input path performs shell-style apostrophe escaping even though `execFileSync` does not invoke a shell, which can alter literal input.
-10. **Version metadata:** package metadata remains `0.1.0` while the documented deployed Baby Quirt release is `0.1.3`; release identity should have one canonical source.
+Termius, manual SSH, browser terminals, and user-pasted commands are break-glass only when Baby itself is unreachable.
 
 ## Connected ChatGPT usage
 
@@ -101,16 +123,18 @@ The canonical connected tool is `bbyquirt.call_quirt`. Its exact action descript
 
 > Run one authorized Baby Quirt operation through the single authenticated Baby Quirt interface and return its durable result with verified signed evidence.
 
-A fresh conversation must call `baby.describe` and use the returned installed operation definitions rather than assuming the source branch is already deployed. Source-only operations are not production capabilities until an immutable release is activated and a live signed call verifies them. See [Using Baby Quirt from ChatGPT](USING_WITH_CHATGPT.md).
+A fresh conversation calls `baby.describe` and uses the installed operation definitions. Execution operations return durable jobs; callers must wait for terminal state, read output, verify exit status, perform post-action readback, and retain signed evidence before reporting completion.
 
-## Acceptance gate for the next Baby Quirt release
+## Next clean-release requirements
 
-A future release is not production-ready until all of these pass against the extracted archive, not merely the source checkout:
+A future replacement release must:
 
-- native addon loads from the compiled runtime lookup path;
-- exact `fix-mcp` peer credentials are observable through `SO_PEERCRED`;
-- the public-key permission contract is enforced without a host-side repair;
-- `baby.health` completes over the private socket and its receipt verifies;
-- the active release symlink resolves to the expected immutable version;
-- rollback points to a distinct verified previous release;
-- the MCP gateway still reports the new Baby Quirt version and source commit accurately.
+- package the manifest at the exact runtime lookup path;
+- load the native peer-credential addon from the extracted archive;
+- enforce the public-key permission contract without host-side repair;
+- complete signed QRT1 health from the packaged runtime;
+- preserve the one-tool/42-operation contract;
+- pass disposable nspawn certification and cleanup;
+- preserve distinct verified current and previous releases;
+- prove guarded activation and deterministic rollback;
+- report exact source, process, service, OAuth, MCP, and receipt identity.
