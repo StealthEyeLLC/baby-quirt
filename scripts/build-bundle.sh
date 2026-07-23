@@ -49,7 +49,7 @@ cp package.json package-lock.json binding.gyp "$RELEASE_DIR/lib/"
 cp build/Release/peer_cred.node "$RELEASE_DIR/lib/build/Release/peer_cred.node"
 
 cp package.json package-lock.json "$PRODUCTION_DEPS/"
-npm ci --omit=dev --ignore-scripts --no-audit --no-fund --prefix "$PRODUCTION_DEPS"
+npm ci --omit=dev --ignore-scripts --no-audit --no-fund --bin-links=false --prefix "$PRODUCTION_DEPS"
 if find "$PRODUCTION_DEPS/node_modules" -type l -print -quit | grep -q .; then
   echo "ERROR: production dependency graph contains a link and is not packageable" >&2
   exit 1

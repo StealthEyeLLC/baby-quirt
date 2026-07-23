@@ -31,6 +31,12 @@ describe('acceptance: reproducible release builds', () => {
       /npm ci --include=dev/u,
       'release wrapper must install build-time dependencies under production npm defaults',
     );
+    const bundleBuilder = readFileSync(join(root, 'scripts/build-bundle.sh'), 'utf8');
+    assert.match(
+      bundleBuilder,
+      /npm ci --omit=dev .*--bin-links=false/u,
+      'bundle builder must disable npm bin symlinks without relying on ambient npm configuration',
+    );
     const workspace = mkdtempSync(join(tmpdir(), 'bq-repro-'));
     const buildA = join(workspace, 'build-a');
     const buildB = join(workspace, 'build-b');
