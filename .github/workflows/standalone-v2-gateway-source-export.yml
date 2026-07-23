@@ -1,0 +1,81 @@
+name: Export exact standalone v2 Gateway source
+
+on:
+  push:
+    branches:
+      - 'tmp/standalone-v2-gateway-source-export-20260723-0303'
+
+permissions:
+  contents: write
+
+jobs:
+  export:
+    if: github.event.head_commit.message == 'ci: export exact standalone v2 Gateway source'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out disposable Baby control branch
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
+        with:
+          fetch-depth: 0
+
+      - name: Check out exact private Gateway source
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
+        with:
+          repository: StealthEyeLLC/baby-quirt-mcp
+          ref: 44fed7196a5ef748c20a8c63f9d343d730cabb4f
+          fetch-depth: 0
+          path: gateway
+          token: ${{ secrets.quirt_all_gh_token }}
+          persist-credentials: false
+
+      - name: Verify and export exact Gateway Git bundle
+        shell: bash
+        env:
+          TARGET_COMMIT: 44fed7196a5ef748c20a8c63f9d343d730cabb4f
+          TARGET_TREE: 45837d59ef1d18e277f0c9918bb92cf0f341e158
+          CONTROL_BRANCH: tmp/standalone-v2-gateway-source-export-20260723-0303
+          DATA_BRANCH: tmp/standalone-v2-gateway-source-data-20260723-0303
+        run: |
+          set -euo pipefail
+          test "$GITHUB_REF_NAME" = "$CONTROL_BRANCH"
+          test "$(git -C gateway rev-parse HEAD)" = "$TARGET_COMMIT"
+          test "$(git -C gateway rev-parse 'HEAD^{tree}')" = "$TARGET_TREE"
+          test -z "$(git -C gateway status --porcelain=v1 --untracked-files=all)"
+
+          git -C gateway branch export-target "$TARGET_COMMIT"
+          git -C gateway bundle create /tmp/gateway.bundle refs/heads/export-target
+          git -C gateway bundle verify /tmp/gateway.bundle
+          payload_sha=$(sha256sum /tmp/gateway.bundle | awk '{print $1}')
+          payload_size=$(stat -c '%s' /tmp/gateway.bundle)
+          rm -rf /tmp/gateway-export
+          mkdir -p /tmp/gateway-export/chunks
+          split -b 49152 -d -a 4 /tmp/gateway.bundle /tmp/gateway-export/chunks/chunk-
+          chunk_count=$(find /tmp/gateway-export/chunks -type f | wc -l)
+
+          git config user.name 'StealthEye Automation'
+          git config user.email 'automation@stealtheye.io'
+          rm -rf gateway
+          git checkout --orphan export-data
+          git rm -rf .
+          mkdir -p .gateway-export/chunks
+          cp /tmp/gateway-export/chunks/chunk-* .gateway-export/chunks/
+          {
+            printf 'target_commit=%s\n' "$TARGET_COMMIT"
+            printf 'target_tree=%s\n' "$TARGET_TREE"
+            printf 'payload_sha256=%s\n' "$payload_sha"
+            printf 'payload_size=%s\n' "$payload_size"
+            printf 'chunk_count=%s\n' "$chunk_count"
+            for file in .gateway-export/chunks/chunk-*; do
+              printf '%s %s %s\n' \
+                "$(basename "$file")" \
+                "$(stat -c '%s' "$file")" \
+                "$(sha256sum "$file" | awk '{print $1}')"
+            done
+          } > .gateway-export/manifest.txt
+          git add .gateway-export
+          git commit -m 'ci: export exact standalone v2 Gateway source data [skip ci]'
+          git push origin "HEAD:refs/heads/$DATA_BRANCH"
+          printf 'DATA_BRANCH=%s\n' "$DATA_BRANCH"
+          printf 'PAYLOAD_SHA256=%s\n' "$payload_sha"
+          printf 'PAYLOAD_SIZE=%s\n' "$payload_size"
+          printf 'CHUNK_COUNT=%s\n' "$chunk_count"
