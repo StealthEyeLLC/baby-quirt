@@ -8,9 +8,21 @@
 
 ## Purpose
 
-Baby Quirt is the standalone UID-0 local-machine authority for the StealthEye recovery and bootstrap plane. It executes exact, signed requests over a private Unix socket and owns privileged process execution, durable job records, stream files, PTY sessions, host file operations, artifacts, release installation, rollback, replay state, and supervisor-signed receipts.
+Baby Quirt is the standalone UID-0 owner-authorized authority for the StealthEye VPS, production deployment, recovery, and unrestricted host operation. It executes exact signed requests over a private Unix socket and owns privileged process execution, durable jobs, streams, PTYs, host file operations, artifacts, release lifecycle, self-hosting, replay state, recovery, and supervisor-signed receipts.
 
-Baby Quirt is not a public control plane, OAuth server, public MCP server, general objective scheduler, or second execution kernel.
+Baby Quirt is intentionally not a constrained command broker, executable allowlist, path allowlist, rootless-only workspace, or mandatory plan/apply wrapper. Once the exact owner, gateway, host, peer, freshness, signature, replay, and release checks pass, the installed `unrestricted-owner` class provides full root authority.
+
+Baby Quirt is not a public root service, OAuth server, public MCP listener, model service, or second public product surface.
+
+## Canonical operating doctrine
+
+- Every connected Baby action uses the single `bbyquirt.call_quirt` interface and one installed `baby.*` operation.
+- Stock `systemd-nspawn` is the default isolated environment for builds, tests, destructive engineering, certification, production-shaped rehearsal, staging, and preactivation acceptance.
+- systemd is the canonical durable host lifecycle manager for Baby, the gateway, sockets, timers, guards, and production services.
+- Direct host mutation is appropriate for explicitly authorized host work, production activation, recovery, or behavior that cannot be proven in isolation.
+- Production changes use exact source identities, reproducible artifacts, immutable release directories, guarded atomic pointer changes, post-action readback, signed evidence, and deterministic rollback.
+- Termius, manual SSH, browser terminals, and user-pasted commands are break-glass only when Baby itself is unreachable. They are not routine dependencies.
+- The Fix operator and Fix broker do not participate in the normal Baby execution, deployment, or recovery path.
 
 ## Production topology
 
@@ -30,10 +42,11 @@ baby-quirt-mcp.service as fix-mcp (UID 997)
 baby-quirt.service as root
         |
         +-- jobs / streams / PTYs / files / artifacts
+        +-- release / self-host / recovery lifecycle
         +-- result bound to supervisor-signed receipt
 ```
 
-A ChatGPT custom app can be that client after separate workspace registration and authenticated acceptance. The separate `StealthEyeLLC/baby-quirt-mcp` repository owns the remote OAuth/MCP boundary. Baby Quirt itself binds no TCP port and is not routed by Caddy.
+A ChatGPT custom app can be that client after workspace registration and authenticated acceptance. `StealthEyeLLC/baby-quirt-mcp` owns the remote OAuth/MCP boundary. Baby itself binds no TCP port and is not routed by Caddy.
 
 ## Identity and transport
 
@@ -50,96 +63,111 @@ A ChatGPT custom app can be that client after separate workspace registration an
 | Gateway ID | `stealtheye-horsey-gateway` |
 | Gateway key ID | `gateway-authority-v1` |
 | Receipt key ID | `supervisor-receipt-v1` |
-| Public listener | Forbidden |
+| Public listener | forbidden |
 
-Linux peer identity is read with the native `SO_PEERCRED` addon. The authenticated request is accepted only when the signed identity and kernel-reported peer UID both match the configured gateway.
+Linux peer identity is read with native `SO_PEERCRED`. A request is accepted only when the signed gateway identity and kernel-reported peer identity both match the configured authority.
 
-## Persistent layout and data model
+## Persistent layout
 
 | Path | Purpose |
 | --- | --- |
 | `/etc/baby-quirt/` | Runtime configuration, gateway public key, supervisor receipt key pair |
-| `/var/lib/baby-quirt/jobs/` | One JSON record per job |
-| `/var/lib/baby-quirt/streams/` | Binary stdout, stderr, and PTY output files |
-| `/var/lib/baby-quirt/pty/` | One JSON record per PTY session |
-| `/var/lib/baby-quirt/artifacts/` | Artifact blobs plus JSON manifest |
-| `/var/lib/baby-quirt/replay-store.json` | Nonce and idempotency cache |
+| `/var/lib/baby-quirt/jobs/` | Durable job records |
+| `/var/lib/baby-quirt/streams/` | Binary stdout, stderr, and PTY streams |
+| `/var/lib/baby-quirt/pty/` | Durable PTY session records |
+| `/var/lib/baby-quirt/artifacts/` | Artifact blobs and manifests |
+| `/var/lib/baby-quirt/deployments/` | Standalone v2 deployment state and evidence |
+| `/var/lib/baby-quirt/workspaces/` | Baby-owned source and engineering workspaces |
+| `/var/lib/baby-quirt/replay-store.json` | Nonce and idempotency state |
 | `/opt/baby-quirt/releases/` | Immutable release directories |
-| `/opt/baby-quirt/current` | Active release symlink |
-| `/opt/baby-quirt/previous` | Rollback release symlink |
+| `/opt/baby-quirt/current` | Active release pointer |
+| `/opt/baby-quirt/previous` | Rollback release pointer |
 
-The current persistence implementation uses root-owned JSON files and binary stream/blob files. It is restart-readable but is not a transactional database; direct writes can leave a corrupt record after a host or process crash. Corrupt job or PTY records are skipped during listing.
+Persistent state never belongs inside a release directory. Corrupt or ambiguous state must be reported and reconciled, never converted into invented success.
 
 ## Wire protocol
 
-- Fixed 32-byte binary `QRT1` header plus JSON payload
-- `hello` / `welcome` negotiation before requests
-- Ed25519 is the accepted production request-signing algorithm
-- Canonical JSON signing document binds protocol, request ID, operation, principal, authority, target host, timestamp, payload, and binary length
-- Maximum frame payload: 16 MiB
-- Response correlation by request ID and operation
-- Ed25519 supervisor receipt binds request, authority identity, host identity, result digest, and timestamp
+- Fixed 32-byte binary `QRT1` header plus JSON payload.
+- `hello` / `welcome` negotiation before requests.
+- Ed25519 request signatures and supervisor receipts.
+- Canonical request binding for protocol, request ID, operation, principal, authority, target host, timestamp, payload, and binary length.
+- Maximum frame payload of 16 MiB.
+- Exact request ID and operation correlation.
+- Receipt binding for request digest, semantic fingerprint, result digest, host identity, release identity, and timestamp.
 
 ## Request lifecycle
 
-1. **Frame validation** — verify QRT1 framing and payload bounds.
-2. **Handshake** — require Ed25519 support and return exact supervisor and host identity.
-3. **Principal validation** — require exact issuer, resource, audience, subject, owner authority class, principal type, and principal fingerprint.
-4. **Authority validation** — require exact gateway ID, key ID, fresh timestamp, nonce, target host, signature, and machine identity.
-5. **Peer validation** — require the Unix peer UID to equal `997` unless an explicit test-only bypass is enabled.
-6. **Replay and idempotency** — return a cached response for an identical signed request hash or commit a new nonce.
-7. **Dispatch** — route one of the 42 unique `baby.*` operations through the unified registry.
-8. **Persistence** — update job, stream, PTY, artifact, and replay state.
-9. **Evidence** — sign a receipt over the canonical result digest.
-10. **Recovery** — reconcile running jobs, detached jobs, and tmux-backed PTYs on service restart.
+1. Validate frame and payload bounds.
+2. Negotiate protocol and return exact supervisor, release, and host identity.
+3. Require exact issuer, resource, audience, subject, owner authority class, and principal fingerprint.
+4. Require exact gateway ID, key ID, fresh timestamp, nonce, target host, signature, and machine identity.
+5. Require the expected Unix peer UID.
+6. Apply replay and idempotency checks.
+7. Dispatch one of the installed `baby.*` operations through the unified registry.
+8. Persist jobs, streams, PTYs, artifacts, release state, and replay state.
+9. Sign a receipt over the canonical result.
+10. Reconcile durable work after service or host restart.
 
 ## Capability families
 
-| Family | Operations | Implementation |
-| --- | ---: | --- |
-| Health | 1 | Runtime and host identity |
-| Execution | 2 | Exact argv or shell as root jobs |
-| Jobs and streams | 6 | Status, list, wait, cancel, offset reads |
-| Files | 8 | Stat, read, write, patch, copy, move, remove, list |
-| PTY | 5 | tmux-backed create, input, resize, read, close |
-| Artifacts | 5 | Create, resumable upload/download, list, get |
+The installed runtime exposes one public ChatGPT tool and 42 internal operations:
 
-The canonical operation names are in `contracts/baby-quirt-contracts-v1.json` and `src/operations/registry.ts`.
+| Family | Operations |
+| --- | ---: |
+| Discovery and health | 2 |
+| Execution | 2 |
+| Jobs and streams | 5 |
+| Files | 9 |
+| PTY | 5 |
+| Artifacts | 8 |
+| Releases | 8 |
+| Self-hosting | 3 |
 
-## ChatGPT and Horsey invocation boundary
+The installed runtime returned by `baby.describe` is authoritative. Documentation and repository source do not override signed runtime discovery.
 
-The remote client exposes one generic external tool, `bbyquirt.call_quirt`. Every health, execution, job, file, PTY, artifact, and discovery request is an internal signed `baby.*` operation submitted through that one tool.
+## ChatGPT invocation boundary
+
+The remote client exposes one generic external tool, `bbyquirt.call_quirt`. Only `operation`, `payload`, and `idempotencyKey` vary.
 
 The canonical action description is:
 
 > Run one authorized Baby Quirt operation through the single authenticated Baby Quirt interface and return its durable result with verified signed evidence.
 
-This stable tool identity is a client-integration rule; it does not weaken Baby Quirt authentication, authorization, replay checks, host identity, peer credentials, or receipts. ChatGPT controls its own confirmation UI and may still require confirmation for sensitive payloads. See [Using Baby Quirt from ChatGPT](USING_WITH_CHATGPT.md).
+Clients must not create alternate Baby tool identities or attempt to evade platform confirmation. See [Using Baby Quirt from ChatGPT](USING_WITH_CHATGPT.md).
 
 ## Authority model
 
-Only the exact configured owner identity may exercise the unrestricted authority class. There are intentionally no command allowlists, path allowlists, per-operation grants, or lower-privilege execution profiles inside Baby Quirt. The security boundary is therefore the complete chain of OAuth owner authentication, gateway private-key custody, private socket access, kernel peer credentials, exact host identity, request signature verification, replay controls, and verified receipts.
+Only the exact configured owner identity may exercise `unrestricted-owner`. There are intentionally no executable, argument, path, package, service, or destination allowlists inside this authority class. The security boundary is the complete authenticated chain and its signed evidence, not command restriction after authorization.
+
+Structured release and self-host operations are durable accelerators. They do not remove the underlying root execution and PTY capabilities.
+
+## Isolation and certification
+
+Stock systemd-nspawn is the canonical disposable Linux substrate. Certification must use exact clean source, real systemd where needed, honest capability and seccomp readback, UID `997`, Unix peer credentials, deterministic builds, restart and reboot tests, rollback tests, evidence signing, cleanup, and proof that the disposable machine stopped.
+
+A sandbox limitation must be recorded as a limitation, not silently treated as a pass.
 
 ## Release model
 
-- Releases are deterministic tar archives with manifest and SHA-256 digest.
-- Deployment is pinned to an exact 40-character commit already contained in `main`.
-- The installer verifies host identity, release identity, digest, gateway public-key fingerprint, and immutable target absence.
-- Activation swaps `/opt/baby-quirt/current` atomically and preserves `/opt/baby-quirt/previous` for rollback.
-- systemd units and tmpfiles configuration are installed from the active release.
-- Verification must exercise the extracted packaged runtime, including the native peer-credential addon and a signed QRT1 health request.
+- Releases are deterministic archives with manifests and SHA-256 digests.
+- Source identities are exact commits and trees.
+- Installation verifies host, machine, release, gateway key, manifest, and immutable target identity.
+- Activation changes pointers atomically and preserves rollback state.
+- Independent guards protect coordinated activation.
+- Acceptance exercises the packaged runtime, signed discovery, signed health, gateway behavior, public OAuth/MCP behavior, restart, and rollback.
+- Emergency host repairs must be captured back into reproducible source and release evidence.
 
 ## Security properties
 
-- No public listener in the privileged process
-- Ed25519 gateway request signatures and supervisor receipts
-- Exact owner, gateway, host, machine, key, and peer identities
-- Private keys generated or installed only on the host
-- Pinned SSH host key and exact machine identity during deployment
-- Bounded frames, job output streams, job queue, retention, and stream pages
-- Secret-reference support for job environment variables
-- Immutable releases with explicit rollback pointer
+- No public listener in the privileged process.
+- Exact owner, gateway, host, machine, key, peer, request, and release identities.
+- Ed25519 request signatures and supervisor receipts.
+- Private keys remain host managed.
+- Bounded frames, queues, streams, artifacts, retention, and evidence pages.
+- Replay and semantic idempotency protection.
+- Immutable releases and deterministic rollback.
+- No dependency on Termius, manual SSH, GitHub Actions, Fix, or the Fix broker for normal runtime operation.
 
-## Current production qualification
+## Production qualification
 
-The deployed runtime and gateway have passed local health, signed `baby.health`, receipt verification, public gateway TLS, protected-resource metadata, JWKS reachability, and unauthenticated MCP challenge checks. The exact deployment and remaining source gaps are maintained in [PRODUCTION.md](PRODUCTION.md). Those gaps must not be mistaken for current service outages, but they must be resolved before a clean replacement release is considered fully reproducible.
+The deployed runtime and gateway have passed local health, signed `baby.health`, receipt verification, public TLS, protected-resource metadata, JWKS reachability, OAuth/MCP challenge behavior, and release-identity readback. Current production truth must always be read directly from `baby.describe`, `baby.health`, `baby.release.status`, systemd, active pointers, and signed evidence before making a deployment claim.
