@@ -8,7 +8,6 @@ import assert from 'node:assert/strict';
 import {
   mkdtempSync,
   rmSync,
-  mkdirSync,
   readFileSync,
   existsSync,
   readdirSync,
@@ -43,12 +42,7 @@ describe('acceptance: protocol-only self-hosting end-to-end', () => {
   const fixtureDir = join(REPO_ROOT, 'acceptance/fixtures/local-fixture-pkg');
   const fixtureTgz = join(sandbox, 'local-fixture-pkg-1.0.0.tgz');
   const projectDir = join(sandbox, 'project');
-  const installRoot = join(sandbox, 'install');
-  const configRoot = join(installRoot, 'config');
-  const stateRoot = join(installRoot, 'state');
-  const releaseRoot = join(installRoot, 'releases');
-  const currentLink = join(installRoot, 'current');
-  const previousLink = join(installRoot, 'previous');
+  const releaseOutput = join(sandbox, 'release-output');
 
   let ctx: TestServerContext;
   let client: BabyQuirtTestClient;
@@ -79,16 +73,6 @@ describe('acceptance: protocol-only self-hosting end-to-end', () => {
 
       const sourceCommit = execSync('git rev-parse HEAD', { cwd: REPO_ROOT, encoding: 'utf8' }).trim();
       assert.equal(sourceCommit.length, 40);
-
-      const installEnv = [
-        `BABY_QUIRT_CONFIG_ROOT=${configRoot}`,
-        `BABY_QUIRT_STATE_ROOT=${stateRoot}`,
-        `BABY_QUIRT_RELEASE_ROOT=${releaseRoot}`,
-        `BABY_QUIRT_CURRENT_LINK=${currentLink}`,
-        `BABY_QUIRT_PREVIOUS_LINK=${previousLink}`,
-        `BABY_QUIRT_SOCKET_PATH=${join(stateRoot, 'baby-quirt.sock')}`,
-        'BABY_QUIRT_SKIP_MACHINE_ID_CHECK=1',
-      ].join(' ');
 
       // 1–3: create project, manifest, sources, patch
       await writeFile(
@@ -166,25 +150,20 @@ describe('acceptance: protocol-only self-hosting end-to-end', () => {
       await shellWait(client, 'git add -A && git commit -m "selfhost initial"', projectDir);
       await shellWait(client, 'git push -u origin main', projectDir);
 
-      // Provision install gateway key via protocol
-      const gatewayPub = readFileSync(
-        join(REPO_ROOT, 'ops/bootstrap/gateway-authority-public.pem'),
-        'utf8',
-      );
-      await writeFile(client, join(configRoot, 'gateway-authority-public.pem'), gatewayPub);
-
       const buildRelease = async (version: string): Promise<string> => {
         const script = [
           `cd ${REPO_ROOT}`,
           `export BABY_QUIRT_SOURCE_COMMIT=${sourceCommit}`,
+          'export BABY_QUIRT_ALLOW_FIXTURE_VERSION=1',
+          `export BABY_QUIRT_OUTPUT_DIR=${releaseOutput}`,
           'npm run build',
           `bash scripts/build-bundle.sh ${version}`,
-          `cd release && sha256sum -c baby-quirt-${version}.sha256`,
-          `python3 -c "import json; m=json.load(open('baby-quirt-${version}.manifest.json')); assert m['commit']=='${sourceCommit}', m['commit']"`,
+          `cd ${releaseOutput} && sha256sum -c baby-quirt-${version}.sha256`,
+          `python3 -c "import json; m=json.load(open('baby-quirt-${version}.build.json')); assert m['commit']=='${sourceCommit}', m['commit']"`,
         ].join(' && ');
-        const result = await shellWait(client, script, REPO_ROOT, 600_000);
+        await shellWait(client, script, REPO_ROOT, 600_000);
         const digest = readFileSync(
-          join(REPO_ROOT, `release/baby-quirt-${version}.sha256`),
+          join(releaseOutput, `baby-quirt-${version}.sha256`),
           'utf8',
         )
           .trim()
@@ -193,45 +172,30 @@ describe('acceptance: protocol-only self-hosting end-to-end', () => {
         return digest;
       };
 
-      // 13–16: release v1 build, verify, install, activate
+      const verifyRelease = async (version: string): Promise<void> => {
+        const result = await shellWait(
+          client,
+          [
+            'node --import tsx scripts/verify-candidate.ts',
+            `--archive ${join(releaseOutput, `baby-quirt-${version}.tar.gz`)}`,
+            `--build-record ${join(releaseOutput, `baby-quirt-${version}.build.json`)}`,
+          ].join(' '),
+          REPO_ROOT,
+          600_000,
+        );
+        assert.match(result.stdout, /"verified":true/u);
+      };
+
+      // 13–16: release v1 build and strict verification without pointer mutation
       const digestV1 = await buildRelease(RELEASE_V1);
-      const installV1 = await shellWait(
-        client,
-        `${installEnv} node ${join(REPO_ROOT, 'dist/src/cli/install.js')} --archive ${join(REPO_ROOT, `release/baby-quirt-${RELEASE_V1}.tar.gz`)} --version ${RELEASE_V1}`,
-        REPO_ROOT,
-      );
-      assert.match(installV1.stdout, /Installed Baby Quirt/);
-      assert.ok(existsSync(currentLink));
+      await verifyRelease(RELEASE_V1);
 
-      // 17: health verification
-      const verifyV1 = await shellWait(
-        client,
-        `${installEnv} node ${join(REPO_ROOT, 'dist/src/cli/verify.js')}`,
-        REPO_ROOT,
-      );
-      assert.match(verifyV1.stdout, /"passed": true/);
-
-      // 18: second release
+      // 17–18: second release is distinct and independently verified
       const digestV2 = await buildRelease(RELEASE_V2);
       assert.notEqual(digestV1, digestV2);
-      await shellWait(
-        client,
-        `${installEnv} node ${join(REPO_ROOT, 'dist/src/cli/install.js')} --archive ${join(REPO_ROOT, `release/baby-quirt-${RELEASE_V2}.tar.gz`)} --version ${RELEASE_V2}`,
-        REPO_ROOT,
-      );
-
-      // 19–20: rollback and repair
-      await shellWait(
-        client,
-        `${installEnv} node ${join(REPO_ROOT, 'dist/src/cli/rollback.js')}`,
-        REPO_ROOT,
-      );
-      const repair = await shellWait(
-        client,
-        `${installEnv} node ${join(REPO_ROOT, 'dist/src/cli/repair.js')}`,
-        REPO_ROOT,
-      );
-      assert.match(repair.stdout, /repair/);
+      await verifyRelease(RELEASE_V2);
+      const sourceStatus = await shellWait(client, 'git status --porcelain=v1 --untracked-files=all', REPO_ROOT);
+      assert.equal(sourceStatus.stdout, '');
 
       // 21–22: detached job across daemon restart with durable offsets
       const detached = await client.request('baby.exec', {
@@ -328,9 +292,9 @@ describe('acceptance: protocol-only self-hosting end-to-end', () => {
       for (const file of readdirSync(join(ctx.stateRoot, 'jobs'))) {
         surfaces.push(readFileSync(join(ctx.stateRoot, 'jobs', file), 'utf8'));
       }
-      const manifestPath = join(REPO_ROOT, `release/baby-quirt-${RELEASE_V1}.manifest.json`);
-      if (existsSync(manifestPath)) {
-        surfaces.push(readFileSync(manifestPath, 'utf8'));
+      const buildRecordPath = join(releaseOutput, `baby-quirt-${RELEASE_V1}.build.json`);
+      if (existsSync(buildRecordPath)) {
+        surfaces.push(readFileSync(buildRecordPath, 'utf8'));
       }
       for (const [idx, surface] of surfaces.entries()) {
         assertNoSecretLeak(surface, CANARY, `surface-${idx}`);

@@ -939,6 +939,116 @@
           "artifactId"
         ]
       }
+    },
+    {
+      "operation": "baby.release.status",
+      "version": "2.0.0",
+      "description": "Read durable standalone deployment state, products, transitions, and bounded evidence indexes.",
+      "family": "release",
+      "mutation": false,
+      "idempotency": "read_only",
+      "risk": "low",
+      "input": { "type": "object", "additionalProperties": false, "properties": { "deploymentId": { "type": "string" }, "offset": { "type": "integer", "minimum": 0 }, "limit": { "type": "integer", "minimum": 1, "maximum": 200 } } }
+    },
+    {
+      "operation": "baby.release.build",
+      "version": "2.0.0",
+      "description": "Create or resume an exact-source, reproducible, durable coordinated Baby and gateway build.",
+      "family": "release",
+      "mutation": true,
+      "idempotency": "caller_key",
+      "risk": "medium",
+      "input": { "type": "object", "additionalProperties": false, "properties": { "deploymentId": { "type": "string" }, "generation": { "type": "integer", "minimum": 1 }, "planDigest": { "type": "string", "pattern": "^[a-f0-9]{64}$" }, "deadline": { "type": "string", "format": "date-time" }, "sources": { "type": "object" } }, "required": ["deploymentId", "generation", "planDigest", "deadline", "sources"] }
+    },
+    {
+      "operation": "baby.release.stage",
+      "version": "2.0.0",
+      "description": "Verify compatibility, run read-only preflight, and create inactive release targets without pointer mutation.",
+      "family": "release",
+      "mutation": true,
+      "idempotency": "caller_key",
+      "risk": "medium",
+      "input": { "type": "object", "additionalProperties": false, "properties": { "deploymentId": { "type": "string" }, "expectedSequence": { "type": "integer", "minimum": 0 } }, "required": ["deploymentId", "expectedSequence"] }
+    },
+    {
+      "operation": "baby.release.verify",
+      "version": "2.0.0",
+      "description": "Verify deployment database integrity, source and product identity, evidence, candidates, guard, and terminal truth.",
+      "family": "release",
+      "mutation": false,
+      "idempotency": "read_only",
+      "risk": "low",
+      "input": { "type": "object", "additionalProperties": false, "properties": { "deploymentId": { "type": "string" } }, "required": ["deploymentId"] }
+    },
+    {
+      "operation": "baby.release.activate",
+      "version": "2.0.0",
+      "description": "Snapshot, arm and read back the independent guard, activate gateway first, accept, mark success, and disarm.",
+      "family": "release",
+      "mutation": true,
+      "idempotency": "caller_key",
+      "risk": "high",
+      "input": { "type": "object", "additionalProperties": false, "properties": { "deploymentId": { "type": "string" }, "expectedSequence": { "type": "integer", "minimum": 0 }, "confirmationDigest": { "type": "string", "pattern": "^[a-f0-9]{64}$" } }, "required": ["deploymentId", "expectedSequence", "confirmationDigest"] }
+    },
+    {
+      "operation": "baby.release.rollback",
+      "version": "2.0.0",
+      "description": "Request and reconcile deterministic independent rollback for one exact guarded generation.",
+      "family": "release",
+      "mutation": true,
+      "idempotency": "caller_key",
+      "risk": "high",
+      "input": { "type": "object", "additionalProperties": false, "properties": { "deploymentId": { "type": "string" }, "reason": { "type": "string", "minLength": 8, "maxLength": 512 } }, "required": ["deploymentId", "reason"] }
+    },
+    {
+      "operation": "baby.release.repair",
+      "version": "2.0.0",
+      "description": "Reconcile incomplete, conflicting, ambiguous, unknown, or rollback-failed deployment state by exact readback.",
+      "family": "release",
+      "mutation": true,
+      "idempotency": "caller_key",
+      "risk": "high",
+      "input": { "type": "object", "additionalProperties": false, "properties": { "deploymentId": { "type": "string" }, "expectedSequence": { "type": "integer", "minimum": 0 } }, "required": ["deploymentId", "expectedSequence"] }
+    },
+    {
+      "operation": "baby.release.prune",
+      "version": "2.0.0",
+      "description": "Prune only unprotected inactive release data under bounded retention and exact reference checks.",
+      "family": "release",
+      "mutation": true,
+      "idempotency": "caller_key",
+      "risk": "medium",
+      "input": { "type": "object", "additionalProperties": false, "properties": { "dryRun": { "type": "boolean" }, "retain": { "type": "integer", "minimum": 2, "maximum": 100 } }, "required": ["dryRun"] }
+    },
+    {
+      "operation": "baby.selfhost.source.get",
+      "version": "2.0.0",
+      "description": "Materialize or read back exact Baby and gateway source identities in a deployment-owned workspace.",
+      "family": "selfhost",
+      "mutation": true,
+      "idempotency": "caller_key",
+      "risk": "medium",
+      "input": { "type": "object", "additionalProperties": false, "properties": { "deploymentId": { "type": "string" }, "product": { "enum": ["baby-quirt", "baby-quirt-mcp"] } }, "required": ["deploymentId", "product"] }
+    },
+    {
+      "operation": "baby.selfhost.acceptance.run",
+      "version": "2.0.0",
+      "description": "Run the fixed bounded acceptance profile and persist a signed content-addressed evidence index.",
+      "family": "selfhost",
+      "mutation": true,
+      "idempotency": "caller_key",
+      "risk": "medium",
+      "input": { "type": "object", "additionalProperties": false, "properties": { "deploymentId": { "type": "string" }, "profile": { "enum": ["preactivation", "postactivation", "full"] } }, "required": ["deploymentId", "profile"] }
+    },
+    {
+      "operation": "baby.selfhost.evidence.get",
+      "version": "2.0.0",
+      "description": "Read a bounded page of signed content-addressed deployment evidence without private recovery payloads.",
+      "family": "selfhost",
+      "mutation": false,
+      "idempotency": "read_only",
+      "risk": "low",
+      "input": { "type": "object", "additionalProperties": false, "properties": { "deploymentId": { "type": "string" }, "kind": { "type": "string" }, "offset": { "type": "integer", "minimum": 0 }, "limit": { "type": "integer", "minimum": 1, "maximum": 200 } }, "required": ["deploymentId"] }
     }
   ],
   "paths": {
@@ -996,7 +1106,7 @@
   },
   "clientInvocation": {
     "tool": "bbyquirt.call_quirt",
-    "actionDescription": "Run any authorized Baby Quirt operation through the single authenticated Baby Quirt interface.",
+    "actionDescription": "Run one authorized Baby Quirt operation through the single authenticated Baby Quirt interface and return its durable result with verified signed evidence.",
     "variableFields": [
       "operation",
       "payload",

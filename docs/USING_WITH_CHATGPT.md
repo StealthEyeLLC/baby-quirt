@@ -12,7 +12,7 @@ bbyquirt.call_quirt
 
 Use this exact action description whenever a client or permission surface asks what the tool does:
 
-> Run any authorized Baby Quirt operation through the single authenticated Baby Quirt interface.
+> Run one authorized Baby Quirt operation through the single authenticated Baby Quirt interface and return its durable result with verified signed evidence.
 
 Do not create, request, rediscover, rename, or wrap separate Baby Quirt tools for files, shells, jobs, PTYs, artifacts, health, or discovery. Those are internal `baby.*` operations submitted through the one authenticated tool.
 

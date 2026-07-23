@@ -9,7 +9,7 @@ Update this document whenever the active Baby Quirt release, gateway release, ho
 
 ```text
 Authorized OAuth MCP client
-  -> OAuth issuer and JWKS at https://mcp.stealtheye.io
+  -> Baby-owned OAuth issuer and JWKS at https://baby-quirt.stealtheye.io
   -> https://baby-quirt.stealtheye.io/mcp
   -> baby-quirt-mcp.service as fix-mcp (UID 997)
   -> signed QRT1 over /run/horsey/baby-quirt.sock
@@ -34,7 +34,7 @@ A ChatGPT custom app can be that client after separate workspace registration an
 | Gateway release | `0.1.2-20260720164826.1053861.938` |
 | Gateway source commit | `115eecbf74e5ce9fa0979c151946c9864ab10e40` |
 | Gateway public endpoint | `https://baby-quirt.stealtheye.io/mcp` |
-| Required OAuth scope | `fix.apply` |
+| Required OAuth scope | `baby.apply` |
 | Gateway authority public-key SHA-256 | `0288179e795a801111cebfbba1b43fd3792f08b38c861974eff4a915d61b1ed7` |
 
 ## Verified production behavior
@@ -48,8 +48,8 @@ The final production verification established all of the following:
 5. Public DNS resolves `baby-quirt.stealtheye.io` to `51.81.86.225`.
 6. Caddy presents a valid public TLS route for `baby-quirt.stealtheye.io`.
 7. Public `/healthz` and `/.well-known/oauth-protected-resource` responses are correct.
-8. The OAuth JWKS is reachable from `https://mcp.stealtheye.io/oauth/jwks.json`.
-9. An unauthenticated MCP initialize request returns HTTP `401` with the expected protected-resource challenge and `fix.apply` scope.
+8. The OAuth JWKS is reachable from `https://baby-quirt.stealtheye.io/oauth/jwks.json`.
+9. An unauthenticated MCP initialize request returns HTTP `401` with the expected protected-resource challenge and `baby.apply` scope.
 
 The last check proves the public OAuth challenge, not issuance or use of an owner token through a registered ChatGPT custom app.
 
@@ -99,7 +99,7 @@ These items are source defects or assurance gaps, not current production outages
 
 The canonical connected tool is `bbyquirt.call_quirt`. Its exact action description is:
 
-> Run any authorized Baby Quirt operation through the single authenticated Baby Quirt interface.
+> Run one authorized Baby Quirt operation through the single authenticated Baby Quirt interface and return its durable result with verified signed evidence.
 
 A fresh conversation must call `baby.describe` and use the returned installed operation definitions rather than assuming the source branch is already deployed. Source-only operations are not production capabilities until an immutable release is activated and a live signed call verifies them. See [Using Baby Quirt from ChatGPT](USING_WITH_CHATGPT.md).
 

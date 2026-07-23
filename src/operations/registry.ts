@@ -15,6 +15,7 @@ import { getHostname, getMachineIdSha256, PROTOCOL_VERSION } from '../config.js'
 import type { ResponsePayload } from '../protocol/frame.js';
 import { buildCapabilityDescription, OPERATION_DEFINITIONS } from './definitions.js';
 import { normalizeOperationError, OperationError } from './errors.js';
+import { StandaloneDeploymentService } from '../deployment/service.js';
 
 export interface OperationResult {
   response: ResponsePayload;
@@ -27,6 +28,7 @@ export class OperationRegistry {
   private readonly pty: PtyManager;
   private readonly artifacts: ArtifactManager;
   private privateKey?: ReturnType<typeof loadPrivKey>;
+  private deployments?: StandaloneDeploymentService;
 
   constructor(
     private readonly config: RuntimeConfig,
@@ -49,6 +51,10 @@ export class OperationRegistry {
       detached: this.jobs.recoverDetachedJobs(),
       ptySessions: this.pty.recoverSessions(),
     };
+  }
+
+  close(): void {
+    this.deployments?.close();
   }
 
   async dispatch(auth: AuthenticatedRequest): Promise<OperationResult> {
@@ -105,6 +111,14 @@ export class OperationRegistry {
     requestId: string,
     body: Record<string, unknown>,
   ): Promise<unknown> {
+    if (StandaloneDeploymentService.handles(operation)) {
+      this.deployments ??= new StandaloneDeploymentService(this.config, {
+        signingKey: this.privateKey,
+        signingKeyId: this.config.supervisorReceiptKeyId,
+        fixtureMode: process.env.BABY_QUIRT_DEPLOYMENT_FIXTURE_MODE === '1',
+      });
+      return this.deployments.execute(operation, requestId, body);
+    }
     switch (operation) {
       case 'baby.describe':
         return buildCapabilityDescription(this.config);

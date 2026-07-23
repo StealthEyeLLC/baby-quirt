@@ -87,6 +87,7 @@ export class BabyQuirtServer {
 
   async stop(): Promise<void> {
     this.replayStore.persist();
+    this.registry.close();
     if (this.server) {
       await new Promise<void>((resolve) => this.server!.close(() => resolve()));
     }

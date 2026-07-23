@@ -48,13 +48,13 @@ All Baby Quirt actions from ChatGPT use one external tool identity: `bbyquirt.ca
 
 Use this exact action description:
 
-> Run any authorized Baby Quirt operation through the single authenticated Baby Quirt interface.
+> Run one authorized Baby Quirt operation through the single authenticated Baby Quirt interface and return its durable result with verified signed evidence.
 
 Only `operation`, `payload`, and `idempotencyKey` vary. A fresh conversation should call `baby.describe` before guessing operation names or payload fields. The complete canonical client procedure is [Using Baby Quirt from ChatGPT](docs/USING_WITH_CHATGPT.md).
 
 ## Operations
 
-The runtime registers exactly 31 operations under the `baby.*` namespace. The canonical machine-readable list is [contracts/baby-quirt-contracts-v1.json](contracts/baby-quirt-contracts-v1.json); the executable registry is `src/operations/registry.ts`.
+The runtime registers exactly 42 unique operations under the `baby.*` namespace, including 8 release and 3 self-host operations. The canonical machine-readable list is [contracts/baby-quirt-contracts-v1.json](contracts/baby-quirt-contracts-v1.json); the executable registry is `src/operations/registry.ts`.
 
 ## Runtime layout
 

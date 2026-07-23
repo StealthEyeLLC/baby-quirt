@@ -1,0 +1,4 @@
+#!/bin/sh
+set -eu
+exec /opt/node-v24.18.0-linux-x64/bin/node \
+  /usr/local/lib/baby-quirt-nspawn/dist/src/rehearsal/nspawn-cli.js "$@"

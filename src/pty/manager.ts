@@ -154,29 +154,27 @@ export class PtyManager {
 
     const data =
       payload.encoding === 'base64'
-        ? Buffer.from(payload.data, 'base64').toString('utf8')
-        : payload.data;
-
-    const escaped = data.replace(/'/g, `'"'"'`);
+        ? Buffer.from(payload.data, 'base64')
+        : Buffer.from(payload.data, 'utf8');
+    const bufferName = `baby-quirt-input-${process.pid}-${Date.now()}`;
+    execFileSync('tmux', tmuxArgs(session.tmuxServer!, 'load-buffer', '-b', bufferName, '-'), {
+      input: data,
+      maxBuffer: Math.max(data.length + 1024, 1024 * 1024),
+    });
     execFileSync(
       'tmux',
       tmuxArgs(
         session.tmuxServer!,
-        'send-keys',
+        'paste-buffer',
+        '-b',
+        bufferName,
         '-t',
         session.tmuxSession!,
-        '-l',
-        escaped,
+        '-d',
       ),
     );
-    if (data.includes('\n') || data.endsWith('\r')) {
-      execFileSync(
-        'tmux',
-        tmuxArgs(session.tmuxServer!, 'send-keys', '-t', session.tmuxSession!, 'Enter'),
-      );
-    }
 
-    return { sessionId: payload.sessionId, bytesWritten: Buffer.byteLength(data) };
+    return { sessionId: payload.sessionId, bytesWritten: data.length };
   }
 
   resize(payload: PtyResizePayload): { sessionId: string; cols: number; rows: number } {

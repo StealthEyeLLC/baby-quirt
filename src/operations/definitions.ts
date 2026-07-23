@@ -14,17 +14,45 @@ import {
 
 export const CANONICAL_BBY_TOOL = 'bbyquirt.call_quirt';
 export const CANONICAL_BBY_ACTION_DESCRIPTION =
-  'Run any authorized Baby Quirt operation through the single authenticated Baby Quirt interface.';
+  'Run one authorized Baby Quirt operation through the single authenticated Baby Quirt interface and return its durable result with verified signed evidence.';
 
 export interface OperationDefinition {
   operation: string;
-  family: 'discovery' | 'health' | 'execution' | 'job' | 'file' | 'pty' | 'artifact';
+  family:
+    | 'discovery'
+    | 'health'
+    | 'execution'
+    | 'job'
+    | 'file'
+    | 'pty'
+    | 'artifact'
+    | 'release'
+    | 'selfhost';
   version: string;
   description: string;
   mutation: boolean;
   idempotency: 'read_only' | 'caller_key' | 'conditional' | 'non_idempotent';
   risk: 'low' | 'medium' | 'high';
   input: Record<string, unknown>;
+  output?: Record<string, unknown>;
+  authority?: Readonly<{
+    class: 'unrestricted-owner';
+    confirmation: 'risk_dependent';
+    scope: 'baby.apply';
+    issuer: 'https://baby-quirt.stealtheye.io';
+    resource: 'https://baby-quirt.stealtheye.io/mcp';
+  }>;
+  costClass?: 'local_zero';
+  support?: Readonly<{
+    state: 'supported' | 'unavailable' | 'unsupported' | 'ambiguous' | 'unknown';
+    provider: 'baby-standalone-deployment-v2';
+  }>;
+  errors?: readonly string[];
+  cancellation?: 'not_applicable' | 'pre_arm_cleanup_post_arm_rollback';
+  restartBehavior?: 'read_only' | 'durable_reconcile';
+  postActionVerification?: boolean;
+  receiptVersion?: '2.0.0';
+  limits?: Readonly<Record<string, number | string>>;
   limitations?: string[];
 }
 
@@ -41,6 +69,59 @@ const objectSchema = (
 const string = { type: 'string' } as const;
 const integer = { type: 'integer', minimum: 0 } as const;
 const boolean = { type: 'boolean' } as const;
+const digest = { type: 'string', pattern: '^[a-f0-9]{64}$' } as const;
+const gitObject = { type: 'string', pattern: '^(?:[a-f0-9]{40}|[a-f0-9]{64})$' } as const;
+const identifier = { type: 'string', pattern: '^[A-Za-z0-9][A-Za-z0-9._:-]{0,255}$' } as const;
+const timestamp = { type: 'string', format: 'date-time' } as const;
+
+const deploymentResult = objectSchema({
+  operation: string,
+  deploymentId: identifier,
+  generation: integer,
+  state: string,
+  stateSequence: integer,
+  terminal: boolean,
+  resultDigest: digest,
+  evidence: { type: 'array', items: objectSchema({ kind: identifier, digest }) },
+});
+
+const RELEASE_ERRORS = Object.freeze([
+  'invalid_request',
+  'idempotency_conflict',
+  'deployment_not_found',
+  'deployment_conflict',
+  'deployment_state_conflict',
+  'deployment_transition_forbidden',
+  'deployment_evidence_missing',
+  'deployment_integrity_failed',
+  'resource_unavailable',
+  'ambiguous',
+  'unknown',
+]);
+
+function releaseOperation(
+  definition: Omit<OperationDefinition, 'authority' | 'costClass' | 'support' | 'errors' |
+    'cancellation' | 'restartBehavior' | 'postActionVerification' | 'receiptVersion'>,
+): OperationDefinition {
+  return {
+    ...definition,
+    authority: {
+      class: 'unrestricted-owner',
+      confirmation: 'risk_dependent',
+      scope: 'baby.apply',
+      issuer: 'https://baby-quirt.stealtheye.io',
+      resource: 'https://baby-quirt.stealtheye.io/mcp',
+    },
+    costClass: 'local_zero',
+    support: { state: 'supported', provider: 'baby-standalone-deployment-v2' },
+    errors: RELEASE_ERRORS,
+    cancellation: definition.mutation ? 'pre_arm_cleanup_post_arm_rollback' : 'not_applicable',
+    restartBehavior: definition.mutation ? 'durable_reconcile' : 'read_only',
+    postActionVerification: true,
+    receiptVersion: '2.0.0',
+    limits: { maxInlineEvidenceBytes: 65536, defaultPageSize: 50, maximumPageSize: 200 },
+  };
+}
 
 export const OPERATION_DEFINITIONS: readonly OperationDefinition[] = [
   {
@@ -178,7 +259,122 @@ export const OPERATION_DEFINITIONS: readonly OperationDefinition[] = [
     operation: 'baby.artifact.get', family: 'artifact', version: '1.0.0', description: 'Get artifact metadata by ID.',
     mutation: false, idempotency: 'read_only', risk: 'low', input: objectSchema({ artifactId: string }, ['artifactId']),
   },
+  releaseOperation({
+    operation: 'baby.release.status', family: 'release', version: '2.0.0',
+    description: 'Read durable standalone deployment state, products, transitions, and bounded evidence indexes.',
+    mutation: false, idempotency: 'read_only', risk: 'low',
+    input: objectSchema({ deploymentId: identifier, offset: integer, limit: { type: 'integer', minimum: 1, maximum: 200 } }),
+    output: deploymentResult,
+  }),
+  releaseOperation({
+    operation: 'baby.release.build', family: 'release', version: '2.0.0',
+    description: 'Create or resume an exact-source, reproducible, durable coordinated Baby and gateway build.',
+    mutation: true, idempotency: 'caller_key', risk: 'medium',
+    input: objectSchema({
+      deploymentId: identifier,
+      generation: { type: 'integer', minimum: 1 },
+      planDigest: digest,
+      deadline: timestamp,
+      sources: objectSchema({
+        baby: objectSchema({ commit: gitObject, tree: gitObject }, ['commit', 'tree']),
+        gateway: objectSchema({ commit: gitObject, tree: gitObject }, ['commit', 'tree']),
+      }, ['baby', 'gateway']),
+    }, ['deploymentId', 'generation', 'planDigest', 'deadline', 'sources']),
+    output: deploymentResult,
+  }),
+  releaseOperation({
+    operation: 'baby.release.stage', family: 'release', version: '2.0.0',
+    description: 'Verify compatibility, run read-only preflight, and create inactive release targets without pointer mutation.',
+    mutation: true, idempotency: 'caller_key', risk: 'medium',
+    input: objectSchema({ deploymentId: identifier, expectedSequence: integer }, ['deploymentId', 'expectedSequence']),
+    output: deploymentResult,
+  }),
+  releaseOperation({
+    operation: 'baby.release.verify', family: 'release', version: '2.0.0',
+    description: 'Verify deployment database integrity, source and product identity, evidence, candidates, guard, and terminal truth.',
+    mutation: false, idempotency: 'read_only', risk: 'low',
+    input: objectSchema({ deploymentId: identifier }, ['deploymentId']),
+    output: deploymentResult,
+  }),
+  releaseOperation({
+    operation: 'baby.release.activate', family: 'release', version: '2.0.0',
+    description: 'Snapshot, arm and read back the independent guard, activate gateway first, accept, mark success, and disarm.',
+    mutation: true, idempotency: 'caller_key', risk: 'high',
+    input: objectSchema({ deploymentId: identifier, expectedSequence: integer, confirmationDigest: digest }, ['deploymentId', 'expectedSequence', 'confirmationDigest']),
+    output: deploymentResult,
+  }),
+  releaseOperation({
+    operation: 'baby.release.rollback', family: 'release', version: '2.0.0',
+    description: 'Request and reconcile deterministic independent rollback for one exact guarded generation.',
+    mutation: true, idempotency: 'caller_key', risk: 'high',
+    input: objectSchema({ deploymentId: identifier, reason: { type: 'string', minLength: 8, maxLength: 512 } }, ['deploymentId', 'reason']),
+    output: deploymentResult,
+  }),
+  releaseOperation({
+    operation: 'baby.release.repair', family: 'release', version: '2.0.0',
+    description: 'Reconcile incomplete, conflicting, ambiguous, unknown, or rollback-failed deployment state by exact readback.',
+    mutation: true, idempotency: 'caller_key', risk: 'high',
+    input: objectSchema({ deploymentId: identifier, expectedSequence: integer }, ['deploymentId', 'expectedSequence']),
+    output: deploymentResult,
+  }),
+  releaseOperation({
+    operation: 'baby.release.prune', family: 'release', version: '2.0.0',
+    description: 'Prune only unprotected inactive release data under bounded retention and exact reference checks.',
+    mutation: true, idempotency: 'caller_key', risk: 'medium',
+    input: objectSchema({ dryRun: boolean, retain: { type: 'integer', minimum: 2, maximum: 100 } }, ['dryRun']),
+    output: objectSchema({ protected: { type: 'array', items: string }, candidates: { type: 'array', items: string }, removed: { type: 'array', items: string }, dryRun: boolean }),
+  }),
+  releaseOperation({
+    operation: 'baby.selfhost.source.get', family: 'selfhost', version: '2.0.0',
+    description: 'Materialize or read back exact Baby and gateway source identities in a deployment-owned workspace.',
+    mutation: true, idempotency: 'caller_key', risk: 'medium',
+    input: objectSchema({ deploymentId: identifier, product: { enum: ['baby-quirt', 'baby-quirt-mcp'] } }, ['deploymentId', 'product']),
+    output: objectSchema({ deploymentId: identifier, repository: string, commit: gitObject, tree: gitObject, workspaceReference: string, clean: boolean }),
+  }),
+  releaseOperation({
+    operation: 'baby.selfhost.acceptance.run', family: 'selfhost', version: '2.0.0',
+    description: 'Run the fixed bounded acceptance profile and persist a signed content-addressed evidence index.',
+    mutation: true, idempotency: 'caller_key', risk: 'medium',
+    input: objectSchema({ deploymentId: identifier, profile: { enum: ['preactivation', 'postactivation', 'full'] } }, ['deploymentId', 'profile']),
+    output: deploymentResult,
+  }),
+  releaseOperation({
+    operation: 'baby.selfhost.evidence.get', family: 'selfhost', version: '2.0.0',
+    description: 'Read a bounded page of signed content-addressed deployment evidence without private recovery payloads.',
+    mutation: false, idempotency: 'read_only', risk: 'low',
+    input: objectSchema({ deploymentId: identifier, kind: identifier, offset: integer, limit: { type: 'integer', minimum: 1, maximum: 200 } }, ['deploymentId']),
+    output: objectSchema({ deploymentId: identifier, offset: integer, nextOffset: integer, total: integer, items: { type: 'array' } }),
+  }),
 ] as const;
+
+function discoveredDefinition(definition: OperationDefinition): Record<string, unknown> {
+  return {
+    ...definition,
+    output: definition.output ?? objectSchema({}),
+    authority: definition.authority ?? {
+      class: 'unrestricted-owner',
+      confirmation: 'risk_dependent',
+      scope: 'baby.apply',
+      issuer: 'https://baby-quirt.stealtheye.io',
+      resource: 'https://baby-quirt.stealtheye.io/mcp',
+    },
+    costClass: definition.costClass ?? 'local_zero',
+    support: definition.support ?? {
+      state: 'supported',
+      provider: 'baby-standalone-deployment-v2',
+    },
+    errors: definition.errors ?? ['invalid_request', 'operation_failed'],
+    cancellation: definition.cancellation ?? (definition.mutation
+      ? 'pre_arm_cleanup_post_arm_rollback'
+      : 'not_applicable'),
+    restartBehavior: definition.restartBehavior ?? (definition.mutation
+      ? 'durable_reconcile'
+      : 'read_only'),
+    postActionVerification: definition.postActionVerification ?? true,
+    receiptVersion: definition.receiptVersion ?? '2.0.0',
+    limits: definition.limits ?? { maxInlineResultBytes: 65536 },
+  };
+}
 
 export function readReleaseIdentity(): Record<string, unknown> {
   const manifestPath = join(DEFAULTS.currentLink, 'manifest.json');
@@ -229,6 +425,8 @@ export function buildCapabilityDescription(config: RuntimeConfig): Record<string
       tool: CANONICAL_BBY_TOOL,
       actionDescription: CANONICAL_BBY_ACTION_DESCRIPTION,
       variableFields: ['operation', 'payload', 'idempotencyKey'],
+      annotations: { idempotentHint: true },
+      securitySchemes: [{ type: 'oauth2', scopes: ['baby.apply'] }],
       rules: [
         'Use only the single bbyquirt.call_quirt tool for Baby Quirt operations.',
         'Do not rediscover, rename, or wrap Baby Quirt with alternate tool identities.',
@@ -236,6 +434,6 @@ export function buildCapabilityDescription(config: RuntimeConfig): Record<string
         'Use a new idempotency key whenever the operation or payload changes.',
       ],
     },
-    operations: OPERATION_DEFINITIONS,
+    operations: OPERATION_DEFINITIONS.map(discoveredDefinition),
   };
 }

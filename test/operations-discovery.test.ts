@@ -34,13 +34,16 @@ describe('operation discovery', () => {
     assert.deepEqual(OPERATIONS, names);
     assert.ok(names.includes('baby.describe'));
     assert.ok(names.includes('baby.health'));
+    assert.equal(names.length, 42);
+    assert.equal(names.filter((name) => name.startsWith('baby.release.')).length, 8);
+    assert.equal(names.filter((name) => name.startsWith('baby.selfhost.')).length, 3);
   });
 
   it('locks the single-tool ChatGPT invocation wording', () => {
     assert.equal(CANONICAL_BBY_TOOL, 'bbyquirt.call_quirt');
     assert.equal(
       CANONICAL_BBY_ACTION_DESCRIPTION,
-      'Run any authorized Baby Quirt operation through the single authenticated Baby Quirt interface.',
+      'Run one authorized Baby Quirt operation through the single authenticated Baby Quirt interface and return its durable result with verified signed evidence.',
     );
   });
 
@@ -55,6 +58,8 @@ describe('operation discovery', () => {
     assert.equal(description.invocation.tool, CANONICAL_BBY_TOOL);
     assert.equal(description.invocation.actionDescription, CANONICAL_BBY_ACTION_DESCRIPTION);
     assert.deepEqual(description.invocation.variableFields, ['operation', 'payload', 'idempotencyKey']);
+    assert.deepEqual((description.invocation as Record<string, unknown>).annotations, { idempotentHint: true });
+    assert.deepEqual((description.invocation as Record<string, unknown>).securitySchemes, [{ type: 'oauth2', scopes: ['baby.apply'] }]);
     assert.ok(description.limits.maxFrameSize > 0);
     assert.ok(description.release.status);
   });

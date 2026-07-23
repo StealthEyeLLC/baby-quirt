@@ -23,6 +23,19 @@ describe('secret references', () => {
     assert.ok(!JSON.stringify(resolved.persisted).includes(CANARY));
   });
 
+  it('rejects secret-like literal environment names while allowing ordinary literals', async () => {
+    const provider = new MapSecretProvider(new Map());
+    await assert.rejects(
+      resolveEnvironment([{ name: 'GH_TOKEN', value: 'literal-secret' }], provider),
+      /must use secretReference/u,
+    );
+    const ordinary = await resolveEnvironment([{ name: 'NODE_ENV', value: 'test' }], provider);
+    assert.deepEqual(ordinary, {
+      env: { NODE_ENV: 'test' },
+      persisted: [{ name: 'NODE_ENV', value: 'test' }],
+    });
+  });
+
   it('redacts secret-like fields', () => {
     const redacted = redactSecrets({
       environment: [{ name: 'GH_TOKEN', secretReference: 'github:test', redacted: true }],

@@ -3,7 +3,7 @@ dist/
 build/
 *.tgz
 *.tar.gz
-release/
+/release/
 .env
 *.log
 .DS_Store

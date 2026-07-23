@@ -1,9 +1,33 @@
 /** Durable job and session state persistence. */
 
-import { readFileSync, writeFileSync, mkdirSync, existsSync, readdirSync, unlinkSync } from 'node:fs';
+import { closeSync, existsSync, fsyncSync, mkdirSync, openSync, readFileSync, readdirSync, renameSync, unlinkSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { randomUUID } from 'node:crypto';
 import type { RuntimeConfig } from '../config.js';
+
+
+function writeJsonAtomically(path: string, value: unknown): void {
+  const temporary = `${path}.tmp-${process.pid}-${Date.now()}`;
+  const directory = join(path, '..');
+  try {
+    writeFileSync(temporary, JSON.stringify(value, null, 2), { mode: 0o600, flag: 'wx' });
+    const fileFd = openSync(temporary, 'r');
+    try {
+      fsyncSync(fileFd);
+    } finally {
+      closeSync(fileFd);
+    }
+    renameSync(temporary, path);
+    const directoryFd = openSync(directory, 'r');
+    try {
+      fsyncSync(directoryFd);
+    } finally {
+      closeSync(directoryFd);
+    }
+  } finally {
+    if (existsSync(temporary)) unlinkSync(temporary);
+  }
+}
 
 export type JobStatus =
   | 'pending'
@@ -114,7 +138,7 @@ export class StateStore {
 
   saveJob(job: JobRecord): void {
     const path = join(this.jobsDir, `${job.jobId}.json`);
-    writeFileSync(path, JSON.stringify(job, null, 2), { mode: 0o600 });
+    writeJsonAtomically(path, job);
   }
 
   getJob(jobId: string): JobRecord | undefined {
@@ -157,7 +181,7 @@ export class StateStore {
 
   savePtySession(session: PtySessionRecord): void {
     const path = join(this.ptyDir, `${session.sessionId}.json`);
-    writeFileSync(path, JSON.stringify(session, null, 2), { mode: 0o600 });
+    writeJsonAtomically(path, session);
   }
 
   getPtySession(sessionId: string): PtySessionRecord | undefined {

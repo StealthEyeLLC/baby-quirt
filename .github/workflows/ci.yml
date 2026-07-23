@@ -23,8 +23,7 @@ jobs:
           sudo DEBIAN_FRONTEND=noninteractive apt-get update
           sudo DEBIAN_FRONTEND=noninteractive apt-get install -y \
             build-essential gcc g++ make python3 python3-dev pkg-config \
-            git jq curl ca-certificates openssh-client openssl tmux tar gzip xz-utils \
-            rsync util-linux systemd systemd-dev libsystemd-dev
+            git jq curl ca-certificates openssl tmux util-linux systemd systemd-dev libsystemd-dev
 
       - name: Setup Node.js 24.18
         uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
@@ -32,30 +31,23 @@ jobs:
           node-version: '24.18.0'
           cache: npm
 
-      - name: Install dependencies
+      - name: Install exact dependencies
+        run: npm ci --include=dev
+
+      - name: Build native addon
+        run: npm run build:native
+
+      - name: Typecheck and build
+        run: npm run lint && npm run build
+
+      - name: Complete test suite
         run: |
-          npm ci
-          npm run build:native
+          sudo env PATH="$PATH" HOME="$HOME" npm run test
+          npm run test:integration
+          npm run test:acceptance
+          npm run test:contracts
 
-      - name: Verify runtime dependencies
-        run: bash scripts/verify-runtime-deps.sh
-
-      - name: Typecheck
-        run: npm run lint
-
-      - name: Unit tests
-        run: npm run test
-
-      - name: Integration tests
-        run: npm run test:integration
-
-      - name: Acceptance tests
-        run: npm run test:acceptance
-
-      - name: Contract validation
-        run: npm run test:contracts
-
-  build-release:
+  reproducible-candidate:
     runs-on: ubuntu-latest
     needs: test
     steps:
@@ -64,13 +56,11 @@ jobs:
         with:
           ref: ${{ github.event.pull_request.head.sha || github.sha }}
 
-      - name: Install system dependencies
+      - name: Install native build dependencies
         run: |
           sudo DEBIAN_FRONTEND=noninteractive apt-get update
           sudo DEBIAN_FRONTEND=noninteractive apt-get install -y \
-            build-essential gcc g++ make python3 python3-dev pkg-config \
-            git jq curl ca-certificates openssh-client openssl tmux tar gzip xz-utils \
-            rsync util-linux systemd systemd-dev libsystemd-dev
+            build-essential gcc g++ make python3 python3-dev pkg-config
 
       - name: Setup Node.js 24.18
         uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
@@ -78,60 +68,44 @@ jobs:
           node-version: '24.18.0'
           cache: npm
 
-      - name: Record source commit
-        run: echo "BABY_QUIRT_SOURCE_COMMIT=${{ github.event.pull_request.head.sha || github.sha }}" >> "$GITHUB_ENV"
+      - name: Install exact dependencies
+        run: npm ci --include=dev
 
-      - name: Verify runtime dependencies
-        run: bash scripts/verify-runtime-deps.sh
-
-      - name: Build release bundle
+      - name: Freeze source identity
         run: |
-          chmod +x scripts/*.sh
-          bash scripts/build-release.sh 0.1.0
+          VERSION=$(node -p "require('./package.json').version")
+          echo "BABY_QUIRT_SOURCE_COMMIT=$(git rev-parse HEAD)" >> "$GITHUB_ENV"
+          echo "BABY_QUIRT_SOURCE_TREE=$(git rev-parse HEAD^{tree})" >> "$GITHUB_ENV"
+          echo "BABY_QUIRT_VERSION=$VERSION" >> "$GITHUB_ENV"
 
-      - name: Reproducibility build A
+      - name: Build candidate A
         run: |
-          BUILD_A=$(mktemp -d)
-          BABY_QUIRT_BUILD_ROOT="$BUILD_A" BABY_QUIRT_SOURCE_COMMIT="${{ github.event.pull_request.head.sha || github.sha }}" \
-            bash scripts/build-bundle.sh 0.1.0 > /tmp/digest-a.txt
-          cp release/baby-quirt-0.1.0.sha256 /tmp/sha-a.txt
+          mkdir -p /tmp/bq-build-a /tmp/bq-output-a
+          BABY_QUIRT_BUILD_ROOT=/tmp/bq-build-a BABY_QUIRT_OUTPUT_DIR=/tmp/bq-output-a \
+            bash scripts/build-bundle.sh "$BABY_QUIRT_VERSION"
 
-      - name: Reproducibility build B
+      - name: Build candidate B
         run: |
-          BUILD_B=$(mktemp -d)
-          BABY_QUIRT_BUILD_ROOT="$BUILD_B" BABY_QUIRT_SOURCE_COMMIT="${{ github.event.pull_request.head.sha || github.sha }}" \
-            bash scripts/build-bundle.sh 0.1.0 > /tmp/digest-b.txt
-          cp release/baby-quirt-0.1.0.sha256 /tmp/sha-b.txt
-          diff /tmp/sha-a.txt /tmp/sha-b.txt
+          mkdir -p /tmp/bq-build-b /tmp/bq-output-b
+          BABY_QUIRT_BUILD_ROOT=/tmp/bq-build-b BABY_QUIRT_OUTPUT_DIR=/tmp/bq-output-b \
+            bash scripts/build-bundle.sh "$BABY_QUIRT_VERSION"
 
-      - name: Verify artifact contents
+      - name: Require byte-identical outputs and verify extracted runtime
         run: |
-          ls -la release/
-          test "$(find release -maxdepth 1 -type f -name 'baby-quirt-0.1.0*' | wc -l)" -eq 3
-          test -f release/baby-quirt-0.1.0.tar.gz
-          test -f release/baby-quirt-0.1.0.sha256
-          test -f release/baby-quirt-0.1.0.manifest.json
-          COMMIT=$(python3 -c "import json; print(json.load(open('release/baby-quirt-0.1.0.manifest.json'))['commit'])")
-          test "${#COMMIT}" -eq 40
-          test "$COMMIT" = "${{ github.event.pull_request.head.sha || github.sha }}"
+          cmp "/tmp/bq-output-a/baby-quirt-$BABY_QUIRT_VERSION.tar.gz" \
+              "/tmp/bq-output-b/baby-quirt-$BABY_QUIRT_VERSION.tar.gz"
+          cmp "/tmp/bq-output-a/baby-quirt-$BABY_QUIRT_VERSION.build.json" \
+              "/tmp/bq-output-b/baby-quirt-$BABY_QUIRT_VERSION.build.json"
+          node --import tsx scripts/verify-candidate.ts \
+            --archive "/tmp/bq-output-a/baby-quirt-$BABY_QUIRT_VERSION.tar.gz" \
+            --build-record "/tmp/bq-output-a/baby-quirt-$BABY_QUIRT_VERSION.build.json"
 
-      - name: Upload release artifact
+      - name: Upload unsigned verified candidate evidence
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
-          name: baby-quirt-release
-          path: release/baby-quirt-0.1.0.tar.gz
-          retention-days: 30
-
-      - name: Upload release digest
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
-        with:
-          name: baby-quirt-release-digest
-          path: release/baby-quirt-0.1.0.sha256
-          retention-days: 30
-
-      - name: Upload release manifest
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
-        with:
-          name: baby-quirt-release-manifest
-          path: release/baby-quirt-0.1.0.manifest.json
+          name: baby-quirt-verified-candidate
+          path: |
+            /tmp/bq-output-a/baby-quirt-${{ env.BABY_QUIRT_VERSION }}.tar.gz
+            /tmp/bq-output-a/baby-quirt-${{ env.BABY_QUIRT_VERSION }}.build.json
+            /tmp/bq-output-a/baby-quirt-${{ env.BABY_QUIRT_VERSION }}.sha256
           retention-days: 30
