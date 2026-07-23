@@ -1,18 +1,50 @@
 # Baby Quirt Operational Runbook
 
-This runbook is the canonical operator procedure for building, deploying, verifying, repairing, and rolling back the private Baby Quirt runtime. The exact current deployment is recorded in [PRODUCTION.md](PRODUCTION.md).
+This runbook is the canonical procedure for operating, building, certifying, deploying, verifying, repairing, and rolling back the private Baby Quirt runtime. Exact current deployment identity is recorded in [PRODUCTION.md](PRODUCTION.md).
 
-## Safety boundary
+## Safety and authority boundary
 
-Baby Quirt runs as root and intentionally provides unrestricted owner authority. Do not expose its Unix socket, gateway signing key, receipt private key, or service directly to the public network. The only supported remote path is the separate OAuth-protected `baby-quirt-mcp` gateway.
+Baby Quirt runs as UID 0 and intentionally provides unrestricted owner authority after exact OAuth owner, gateway, host, peer, signature, freshness, replay, and release checks succeed.
+
+Do not expose the Baby Unix socket, gateway signing key, supervisor receipt private key, or root service to the public network. The supported remote path is the OAuth-protected `baby-quirt-mcp` gateway and its one public `call_quirt` action.
+
+Fix and the Fix broker are not prerequisites for Baby-owned work. Termius, manual SSH, browser terminals, and user-pasted commands are break-glass only when Baby is unreachable.
 
 ## Canonical ChatGPT invocation
 
-Use only `bbyquirt.call_quirt` for connected Baby Quirt work. Use this exact action description:
+Use only `bbyquirt.call_quirt` for connected Baby work.
+
+Exact action description:
 
 > Run one authorized Baby Quirt operation through the single authenticated Baby Quirt interface and return its durable result with verified signed evidence.
 
-Only `operation`, `payload`, and `idempotencyKey` vary. Call `baby.describe` first in a fresh conversation. Reuse an idempotency key only for an exact retry of the same operation and payload. Do not invent alternate Baby tool names or wrappers merely to describe file, shell, job, PTY, or artifact actions. Full examples and evidence requirements are in [Using Baby Quirt from ChatGPT](USING_WITH_CHATGPT.md).
+Only `operation`, `payload`, and `idempotencyKey` vary.
+
+At the start of a fresh conversation:
+
+```json
+{
+  "operation": "baby.describe",
+  "payload": {},
+  "idempotencyKey": "baby-describe-<date>-001"
+}
+```
+
+Signed runtime discovery is authoritative. Do not guess operation names, schemas, release identity, or limits from old documentation.
+
+## Durable job completion
+
+`baby.exec` and `baby.shell` return durable jobs. A returned `jobId` means accepted or started, not completed.
+
+Before reporting success:
+
+1. call `baby.job.wait` or `baby.job.get` until terminal;
+2. verify status, exit code, signal, and completion time;
+3. read stdout and stderr from their returned offsets or durable stream paths;
+4. perform task-specific post-action readback;
+5. retain request ID, job ID, result digest, receipt ID, verification state, and source identity.
+
+Never report a running job as finished.
 
 ## Production baseline
 
@@ -25,266 +57,243 @@ Only `operation`, `payload`, and `idempotencyKey` vary. Call `baby.describe` fir
 | Socket | `/run/horsey/baby-quirt.sock` |
 | Gateway user | `fix-mcp` UID `997` |
 | Socket group | `horsey` |
-| Active release link | `/opt/baby-quirt/current` |
-| Current source commit | `6db0298758ef8080cd80adbce2b652333018e3f1` |
+| Active Baby pointer | `/opt/baby-quirt/releases/0.2.3` |
+| Active Baby source | `29fa50b56cee5fdad973d318fdb32c1d3e152e43` |
+| Active Baby tree | `70d179a8ec0b0fddb89152e7813fdbee24dc2630` |
+| Active gateway source | `0bfcd99757afe198151e96b18771626388914205` |
 
-## Deployment prerequisites
+These are historical values at the document date. Re-read live signed identity before acting.
 
-The target host must have:
+## Canonical isolation path
 
-- Ubuntu with systemd;
-- Node.js `24.18.0` at the pinned path;
-- `tmux`, Python 3, OpenSSL, tar, gzip, and standard GNU utilities;
-- user `fix-mcp` with UID `997`;
-- group `horsey`, with `fix-mcp` as a member;
-- passwordless, tightly authorized `sudo` for the deployment user;
-- the pinned SSH host key;
-- no public listener for Baby Quirt.
+Stock systemd-nspawn is the default substrate for:
 
-## Automated deployment
+- clean source materialization;
+- dependency installation;
+- builds and tests;
+- destructive engineering;
+- release certification;
+- production-shaped success and rollback rehearsal;
+- staging and preactivation acceptance.
 
-Deploy an exact commit already contained in `main`:
+Use disposable images or snapshots. Boot real systemd when unit, socket, timer, reboot, recovery, guard, or peer-credential behavior matters.
 
-```bash
-gh workflow run deploy.yml \
-  --repo StealthEyeLLC/baby-quirt \
-  -f version=<immutable-semver> \
-  -f expected_commit=<40-character-main-commit>
+Certification records:
+
+- exact source commits and trees;
+- clean source status;
+- runtime and dependency versions;
+- UID, user namespace, capability masks, `NoNewPrivs`, seccomp, mounts, and networking truth;
+- systemd service, socket, timer, controller, and guard lifecycle;
+- `fix-mcp` UID `997` and Unix `SO_PEERCRED` behavior;
+- deterministic independent build digests;
+- test counts, failures, skips, flakes, and durations;
+- success, rollback, restart, and reboot behavior;
+- signed evidence and artifact identities;
+- cleanup and proof that the disposable machine stopped.
+
+Record limitations honestly. A sandbox mismatch is evidence, not an assumed pass.
+
+## Source materialization
+
+For Baby and gateway source under a deployment-owned transaction, prefer the installed self-host operation:
+
+```json
+{
+  "operation": "baby.selfhost.source.get",
+  "payload": {
+    "deploymentId": "<deployment-id>",
+    "product": "baby-quirt"
+  },
+  "idempotencyKey": "<deployment-id>-baby-source"
+}
 ```
 
-Required GitHub secrets:
+Use the corresponding `baby-quirt-mcp` product call for the gateway. Verify returned repository, commit, tree, workspace reference, and clean state.
 
-| Secret | Purpose |
-| --- | --- |
-| `BABY_QUIRT_VPS_SSH_PRIVATE_KEY` | SSH authentication for the authorized deployment account |
-| `BABY_QUIRT_VPS_SSH_KNOWN_HOSTS` | Pinned VPS host-key entry |
+Repository connector materialization is acceptable for source work when host Git credentials are intentionally absent, but exact GitHub readback remains mandatory before commit or deployment claims.
 
-Required repository variables:
+## Coordinated release lifecycle
 
-| Variable | Purpose |
-| --- | --- |
-| `BABY_QUIRT_VPS_HOST` | Authorized VPS address |
-| `BABY_QUIRT_VPS_PORT` | SSH port, normally `22` |
-| `BABY_QUIRT_VPS_USER` | Deployment account, normally `ubuntu` |
-| `BABY_QUIRT_EXPECTED_HOSTNAME` | Exact hostname |
-| `BABY_QUIRT_EXPECTED_MACHINE_ID_SHA256` | SHA-256 of normalized `/etc/machine-id` |
-| `BABY_QUIRT_OWNER_PRINCIPAL_FINGERPRINT` | SHA-256 of the gateway authority public PEM |
+The canonical production lifecycle is Baby-owned standalone v2:
 
-The workflow checks out the exact commit, validates ancestry, builds the native addon, runs unit/integration/acceptance/contract tests, creates a deterministic release, pins its manifest and digest, verifies host identity over pinned SSH, stages the public gateway key, installs an immutable release, and runs the installed verifier.
+1. `baby.release.build`
+2. `baby.release.stage`
+3. `baby.release.verify`
+4. `baby.release.activate`
+5. `baby.selfhost.acceptance.run`
+6. `baby.release.status` and `baby.release.verify` readback
+7. `baby.release.rollback` or `baby.release.repair` when required
+8. `baby.release.prune` only after protected-reference checks
 
-## Local release build
+Do not replace this lifecycle with ad hoc symlink changes or service restarts.
 
-From a Git checkout:
+### Build
 
-```bash
-BABY_QUIRT_SOURCE_COMMIT=$(git rev-parse HEAD) \
-  bash scripts/release.sh <version>
-```
+`baby.release.build` binds:
 
-From a source archive without `.git`, the commit must be supplied explicitly:
+- deployment ID and generation;
+- immutable plan digest;
+- deadline;
+- exact Baby commit and tree;
+- exact gateway commit and tree.
 
-```bash
-BABY_QUIRT_SOURCE_COMMIT=<40-character-source-commit> \
-  bash scripts/release.sh <version>
-```
+Build must be reproducible and evidence backed.
 
-The release output is:
+### Stage
 
-```text
-release/baby-quirt-<version>.tar.gz
-release/baby-quirt-<version>.sha256
-release/baby-quirt-<version>.manifest.json
-```
+`baby.release.stage` verifies compatibility, host preconditions, signatures, and inactive create-once targets. It must not mutate active pointers.
 
-## Manual host staging and activation
+### Verify
 
-The installer accepts only this staging directory:
+`baby.release.verify` checks deployment database integrity, exact source and product identity, evidence, candidates, guard state, and terminal truth.
 
-```text
-/tmp/baby-quirt-deploy-<version>
-```
+### Activate
 
-It must contain regular, non-symlink files with these names:
+`baby.release.activate` requires the exact expected state sequence and confirmation digest. It snapshots production, arms and reads back the independent guard, activates the gateway first, proves compatibility, activates Baby, runs mandatory acceptance, records success, and disarms only after readback.
 
-```text
-baby-quirt-<version>.tar.gz
-baby-quirt-<version>.sha256
-baby-quirt-<version>.manifest.json
-bootstrap-safe-extract.py
-gateway-authority-public.pem
-```
+### Acceptance
 
-Run `scripts/remote-install.sh` from the exact source commit as the authorized non-root deployment user with passwordless sudo:
+Use `baby.selfhost.acceptance.run` with `preactivation`, `postactivation`, or `full` as required. Acceptance includes packaged runtime identity, signed discovery, signed health, one-tool/42-operation behavior, service restart, OAuth/MCP behavior, and public readback.
 
-```bash
-BABY_QUIRT_VERSION=<version> \
-BABY_QUIRT_STAGING_PATH=/tmp/baby-quirt-deploy-<version> \
-BABY_QUIRT_EXPECTED_COMMIT=<40-character-source-commit> \
-BABY_QUIRT_EXPECTED_HOSTNAME=vps-c9f04f5e \
-BABY_QUIRT_EXPECTED_MACHINE_ID_SHA256=cd189817b39fea60d338b73878240a6fe7db71374c7a0f35ad60f8eb641e8817 \
-BABY_QUIRT_EXPECTED_GATEWAY_PUBLIC_KEY_SHA256=0288179e795a801111cebfbba1b43fd3792f08b38c861974eff4a915d61b1ed7 \
-bash scripts/remote-install.sh
-```
+### Rollback and repair
 
-The installer refuses a wrong host, wrong machine identity, wrong public key, wrong version/commit/digest, unsafe archive, or pre-existing immutable target.
+Use `baby.release.rollback` for deterministic restoration of the exact guarded snapshot. Use `baby.release.repair` to reconcile incomplete, conflicting, ambiguous, unknown, or rollback-failed state by exact readback.
 
-## Mandatory key permission contract
+Manual pointer mutation is break glass, not the normal path.
 
-Before starting or restarting the MCP gateway, enforce and verify:
+## Production mutation doctrine
 
-```bash
-sudo install -d -o root -g horsey -m 0750 /etc/baby-quirt
-sudo chown root:horsey \
-  /etc/baby-quirt/gateway-authority-public.pem \
-  /etc/baby-quirt/supervisor-receipt-public.pem
-sudo chmod 0640 \
-  /etc/baby-quirt/gateway-authority-public.pem \
-  /etc/baby-quirt/supervisor-receipt-public.pem
-sudo chown root:root /etc/baby-quirt/supervisor-receipt-private.pem
-sudo chmod 0600 /etc/baby-quirt/supervisor-receipt-private.pem
-sudo -u fix-mcp test -r /etc/baby-quirt/gateway-authority-public.pem
-sudo -u fix-mcp test -r /etc/baby-quirt/supervisor-receipt-public.pem
-```
+Unrestricted root is the execution capability; production state remains artifact first.
 
-The public PEM files are deliberately readable by the gateway; the supervisor receipt private key is not.
+Every production mutation preserves:
 
-## Native peer-credential addon invariant
+- exact source commit and tree;
+- reproducible artifact digests;
+- immutable release targets;
+- guarded atomic pointer changes;
+- service, process, socket, and public acceptance readback;
+- signed durable evidence;
+- deterministic rollback;
+- reconciliation of emergency host fixes into source.
 
-The compiled release loads:
-
-```text
-/opt/baby-quirt/current/lib/build/Release/peer_cred.node
-```
-
-For source commit `6db0298758ef8080cd80adbce2b652333018e3f1`, the archive places the same addon under `lib/native/build/Release`. Production contains a verified copy at the runtime lookup path. Until the packager is corrected, verify or repair the active release as follows:
-
-```bash
-B=$(sudo readlink -f /opt/baby-quirt/current)
-sudo test -f "$B/lib/native/build/Release/peer_cred.node"
-sudo install -d -o root -g root -m 0755 "$B/lib/build/Release"
-sudo install -o root -g root -m 0755 \
-  "$B/lib/native/build/Release/peer_cred.node" \
-  "$B/lib/build/Release/peer_cred.node"
-sudo cmp -s \
-  "$B/lib/native/build/Release/peer_cred.node" \
-  "$B/lib/build/Release/peer_cred.node"
-sudo /opt/node-v24.18.0-linux-x64/bin/node -e \
-  'const m=require(process.argv[1]); if (!m || !m.getPeerCred) process.exit(1)' \
-  "$B/lib/build/Release/peer_cred.node"
-```
-
-A release is not qualified merely because the source-tree native tests pass; the addon must load from the extracted archive.
+Do not leave undocumented live edits.
 
 ## Service management
 
-```bash
-sudo systemctl daemon-reload
-sudo systemctl enable baby-quirt.socket
-sudo systemctl restart baby-quirt.socket baby-quirt.service
-sudo systemctl status baby-quirt.socket baby-quirt.service --no-pager
-sudo journalctl -u baby-quirt.service -n 100 --no-pager
+systemd is the durable host lifecycle manager.
+
+The expected units include:
+
+```text
+baby-quirt.socket
+baby-quirt.service
+baby-quirt-mcp.service
 ```
 
-The service is socket-activated. `baby-quirt.socket` must be active even if the service has not yet handled a connection.
+Additional standalone deployment controllers, timers, and guards must be exact, generation fenced, and read back after mutation.
 
-## Required verification
+Normal service inspection and mutation should run through Baby, for example with `baby.exec` or `baby.shell`, then be polled to terminal state.
 
-### Installed runtime verifier
+Required readback includes:
 
-```bash
-sudo /opt/baby-quirt/current/bin/baby-quirt-verify
+- unit active and enabled state;
+- exact `ExecStart` process;
+- UID and group;
+- socket path, owner, group, mode, and peer;
+- recent bounded journal output;
+- active release pointer and manifest;
+- signed health and receipt verification.
+
+## Key and permission contract
+
+| Path | Owner:group | Mode | Purpose |
+| --- | --- | --- | --- |
+| `/etc/baby-quirt` | `root:horsey` | `0750` | Runtime verification material root |
+| `gateway-authority-public.pem` | `root:horsey` | `0640` | Verify gateway QRT1 requests |
+| `supervisor-receipt-public.pem` | `root:horsey` | `0640` | Gateway receipt verification |
+| `supervisor-receipt-private.pem` | `root:root` | `0600` | Baby receipt signing only |
+
+The gateway must read only public verification material. Private keys remain least-readable and never enter logs, source, evidence, or prompts.
+
+## Manifest invariant
+
+The active runtime reads:
+
+```text
+/opt/baby-quirt/current/manifest.json
 ```
 
-### Exact release pointer
+The manifest must identify version, commit, tree, and source date epoch and must agree with the intended immutable release.
 
-```bash
-sudo readlink -f /opt/baby-quirt/current
-python3 -c 'import json; print(json.load(open("/opt/baby-quirt/current/manifest.json")))'
-```
+The current `0.2.3` deployment uses a systemd read-only bind to reconcile a packaging omission without changing immutable release contents. Future clean releases must package the manifest at the exact runtime path and eliminate that external dependency.
 
-The active path, version, commit, and manifest must agree with the intended immutable release.
+## Native peer-credential invariant
 
-### Signed live QRT1 smoke
+The extracted packaged runtime must load the Linux peer-credential addon at its compiled lookup path and prove `SO_PEERCRED` against the exact gateway peer. Source-tree tests alone are insufficient.
 
-Run the gateway-owned smoke as the exact socket peer:
+Never disable peer-credential enforcement in production.
 
-```bash
-sudo -u fix-mcp -- /bin/bash -c '
-  set -a
-  . /etc/baby-quirt-mcp/environment
-  set +a
-  exec /opt/node-v24.18.0-linux-x64/bin/node \
-    /opt/baby-quirt-mcp/current/scripts/live-smoke.js
-'
-```
+## Required live verification
 
-Success requires `status: ok`, operation `baby.health`, exact host and machine identity, and `receiptVerified: true`. This check is mandatory because it covers the native peer credential, request signature, private socket, supervisor dispatch, result correlation, and receipt verification in one call.
+A complete verification includes:
 
-## Rollback
+1. `baby.describe` — exact installed protocol, operations, host, release, and authority.
+2. `baby.health` — runtime health and exact host identity.
+3. `baby.release.status` — deployment state and evidence index.
+4. `baby.release.verify` — deployment integrity when a deployment ID exists.
+5. active Baby and gateway pointer readback.
+6. systemd service and socket readback.
+7. local gateway health.
+8. signed `baby.health` through the gateway with `receiptVerified: true`.
+9. public TLS, protected-resource metadata, authorization-server metadata, JWKS, challenge, authenticated initialize, and one-tool catalog as applicable.
+10. restart readback proving the deployment stuck.
 
-Preferred installed command:
+## Evidence record
 
-```bash
-sudo /opt/baby-quirt/current/bin/baby-quirt-rollback
-sudo systemctl restart baby-quirt.socket baby-quirt.service
-sudo /opt/baby-quirt/current/bin/baby-quirt-verify
-```
+For each meaningful operation retain:
 
-Repository recovery script:
+- operation and payload identity;
+- idempotency key;
+- request and job IDs;
+- terminal status and exit code;
+- stdout and stderr references;
+- result digest;
+- receipt ID and verification state;
+- exact source commit and tree;
+- before and after pointers or service state;
+- public acceptance readback where applicable.
 
-```bash
-sudo bash scripts/remote-rollback.sh
-```
+## Break-glass recovery
 
-Rollback requires `/opt/baby-quirt/previous` to resolve to a distinct existing release. Never invent a previous target on first install.
+Use Termius, manual SSH, browser terminals, or user-pasted commands only when Baby itself cannot be reached or durable signed failure evidence establishes that the normal path cannot repair itself.
 
-## Repair
+Break-glass procedure:
 
-```bash
-sudo /opt/baby-quirt/current/bin/baby-quirt-repair
-sudo systemctl restart baby-quirt.socket baby-quirt.service
-sudo /opt/baby-quirt/current/bin/baby-quirt-verify
-```
+1. preserve current pointers, unit files, manifests, and failure evidence;
+2. make the minimum reversible repair;
+3. restore Baby connectivity;
+4. verify signed health and release identity;
+5. capture the repair into source, release packaging, and durable evidence;
+6. remove temporary access or overrides.
 
-Repair does not replace the mandatory key-permission, native-addon, or signed live-smoke checks above.
-
-## Troubleshooting
-
-### Socket missing or inaccessible
-
-```bash
-sudo systemd-tmpfiles --create /etc/tmpfiles.d/baby-quirt.conf
-sudo systemctl restart baby-quirt.socket
-sudo stat /run/horsey/baby-quirt.sock
-id fix-mcp
-```
-
-Expected socket ownership is `root:horsey` with mode `0660`, and `fix-mcp` must belong to `horsey`.
-
-### `Unix peer credentials unavailable`
-
-Verify that `lib/build/Release/peer_cred.node` exists and loads, then restart `baby-quirt.service`. Do not disable peer-credential enforcement in production.
-
-### `EACCES` reading a public key
-
-Verify directory traversal and public-key modes with the permission contract above. Do not make either private key group-readable.
-
-### Job recovery
-
-```bash
-sudo journalctl -u baby-quirt.service | grep recovered
-sudo find /var/lib/baby-quirt/jobs -maxdepth 1 -type f -name '*.json' -print
-```
-
-Running jobs are reconciled to `adopted` or `lost`; tmux-backed PTYs are reconciled to `active` or `lost`.
+Break glass must never become the routine workflow.
 
 ## Directory reference
 
 | Path | Purpose |
 | --- | --- |
 | `/run/horsey/baby-quirt.sock` | Private QRT1 socket |
-| `/etc/baby-quirt/` | Runtime config and key material |
-| `/var/lib/baby-quirt/` | Jobs, streams, PTYs, artifacts, replay state |
-| `/opt/baby-quirt/releases/` | Immutable releases |
-| `/opt/baby-quirt/current` | Active release |
-| `/opt/baby-quirt/previous` | Rollback target |
+| `/etc/baby-quirt/` | Runtime configuration and key material |
+| `/var/lib/baby-quirt/jobs/` | Durable jobs |
+| `/var/lib/baby-quirt/streams/` | Job and PTY streams |
+| `/var/lib/baby-quirt/pty/` | PTY state |
+| `/var/lib/baby-quirt/artifacts/` | Artifacts and manifests |
+| `/var/lib/baby-quirt/deployments/` | Standalone deployment state and evidence |
+| `/var/lib/baby-quirt/workspaces/` | Baby-owned engineering and source workspaces |
+| `/opt/baby-quirt/releases/` | Immutable Baby releases |
+| `/opt/baby-quirt/current` | Active Baby pointer |
+| `/opt/baby-quirt/previous` | Baby rollback pointer |
+| `/opt/baby-quirt-mcp/releases/` | Immutable gateway releases |
+| `/opt/baby-quirt-mcp/current` | Active gateway pointer |
+| `/opt/baby-quirt-mcp/previous` | Gateway rollback pointer |
