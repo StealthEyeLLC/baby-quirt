@@ -24,6 +24,21 @@ describe('acceptance: secret redaction', () => {
     await stopTestServer(ctx);
   });
 
+  it('rejects secret-like literals in structured and legacy environment inputs before job creation', async () => {
+    const before = readdirSync(join(ctx.stateRoot, 'jobs')).length;
+    for (const input of [
+      { argv: ['sh', '-c', 'true'], environment: [{ name: 'GH_TOKEN', value: CANARY }] },
+      { argv: ['sh', '-c', 'true'], env: { API_KEY: CANARY } },
+    ]) {
+      const response = await client.request('baby.exec', input);
+      const error = (response.result as { error?: { code?: string; message?: string } }).error;
+      assert.equal(error?.code, 'operation_failed');
+      assert.match(error?.message ?? '', /must use secretReference/u);
+      assertNoSecretLeak(JSON.stringify(response), CANARY, 'secret-like literal rejection response');
+    }
+    assert.equal(readdirSync(join(ctx.stateRoot, 'jobs')).length, before);
+  });
+
   it('never leaks canary secret through job APIs or persisted state', async () => {
     const exec = await client.request('baby.exec', {
       argv: ['sh', '-c', 'printf %s "$CANARY" 1>&2; echo done'],

@@ -142,10 +142,10 @@ export class JobManager {
       return resolveEnvironment(payload.environment, this.secretProvider);
     }
     if (payload.env) {
-      return {
-        env: payload.env,
-        persisted: Object.entries(payload.env).map(([name, value]) => ({ name, value })),
-      };
+      return resolveEnvironment(
+        Object.entries(payload.env).map(([name, value]) => ({ name, value })),
+        this.secretProvider,
+      );
     }
     return { env: {}, persisted: [] };
   }

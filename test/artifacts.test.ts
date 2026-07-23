@@ -49,6 +49,18 @@ describe('artifact manager', () => {
     );
   });
 
+  it('rejects file capture above the configured bound before object persistence', () => {
+    const { root, store } = makeManager();
+    const manager = new ArtifactManager(store, 4);
+    const source = join(root, 'oversized.bin');
+    writeFileSync(source, '12345');
+    assert.throws(
+      () => manager.createFromFile({ name: 'oversized.bin', sourcePath: source }),
+      (error: unknown) => error instanceof OperationError && error.code === 'artifact_too_large',
+    );
+    assert.equal(readdirSync(join(store.artifactsDir(), 'sha256')).length, 0);
+  });
+
   it('uploads contiguous chunks and finalizes only with matching size and digest', () => {
     const { manager } = makeManager();
     const expected = 'hello world';

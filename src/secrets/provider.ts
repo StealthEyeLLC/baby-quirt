@@ -15,6 +15,18 @@ export interface SecretProvider {
   resolve(reference: string): Promise<string | undefined>;
 }
 
+const SECRET_LIKE_ENVIRONMENT_NAME = /(?:^|_)(?:TOKEN|SECRET|PASSWORD|PASSWD|API_KEY|PRIVATE_KEY|CREDENTIAL|AUTH)(?:_|$)/iu;
+
+export function isSecretLikeEnvironmentName(name: string): boolean {
+  return SECRET_LIKE_ENVIRONMENT_NAME.test(name);
+}
+
+function rejectSecretLikeLiteral(name: string): void {
+  if (isSecretLikeEnvironmentName(name)) {
+    throw new Error(`Environment variable ${name} must use secretReference`);
+  }
+}
+
 export class MapSecretProvider implements SecretProvider {
   constructor(private readonly secrets: Map<string, string>) {}
 
@@ -68,6 +80,7 @@ export async function resolveEnvironment(
       env[name] = value;
       persisted.push(toPersistedSecretReference(name, obj.secretReference));
     } else if (typeof obj.value === 'string') {
+      rejectSecretLikeLiteral(name);
       env[name] = obj.value;
       persisted.push({ name, value: obj.value });
     }

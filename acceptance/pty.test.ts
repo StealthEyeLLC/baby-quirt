@@ -33,6 +33,14 @@ describe('acceptance: PTY sessions', () => {
       encoding: 'utf8',
     });
 
+    const binaryInput = Buffer.from("printf '\\377'\n", 'utf8');
+    const binaryWrite = await client.request('baby.pty.input', {
+      sessionId: session.sessionId,
+      data: binaryInput.toString('base64'),
+      encoding: 'base64',
+    });
+    assert.equal((binaryWrite.result as { bytesWritten: number }).bytesWritten, binaryInput.length);
+
     await client.request('baby.pty.resize', {
       sessionId: session.sessionId,
       cols: 120,
@@ -45,8 +53,10 @@ describe('acceptance: PTY sessions', () => {
       sessionId: session.sessionId,
       offset: 0,
     });
-    const output = Buffer.from((read.result as { data: string }).data, 'base64').toString('utf8');
+    const rawOutput = Buffer.from((read.result as { data: string }).data, 'base64');
+    const output = rawOutput.toString('utf8');
     assert.match(output, /pty-acceptance/);
+    assert.ok(rawOutput.includes(Buffer.from([0xff])), 'base64 PTY input must preserve raw non-UTF-8 bytes');
 
     const closed = await client.request('baby.pty.close', { sessionId: session.sessionId });
     assert.equal((closed.result as { status: string }).status, 'closed');

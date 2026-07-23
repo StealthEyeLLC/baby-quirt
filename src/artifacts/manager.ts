@@ -14,9 +14,11 @@ import {
   unlinkSync,
   writeFileSync,
   writeSync,
+  type Stats,
 } from 'node:fs';
 import { dirname, join } from 'node:path';
 import type { StateStore } from '../state/store.js';
+import { DEFAULTS } from '../config.js';
 import { OperationError } from '../operations/errors.js';
 
 export interface ArtifactCreatePayload {
@@ -73,32 +75,73 @@ export interface ArtifactRecord {
   path: string;
 }
 
-function hashFile(path: string): { sha256: string; size: number } {
+interface FileIdentity {
+  dev: number;
+  ino: number;
+  size: number;
+  mtimeMs: number;
+}
+
+function identityFromStat(stat: Stats): FileIdentity {
+  return { dev: stat.dev, ino: stat.ino, size: stat.size, mtimeMs: stat.mtimeMs };
+}
+
+function identitiesEqual(left: FileIdentity, right: FileIdentity): boolean {
+  return left.dev === right.dev && left.ino === right.ino && left.size === right.size && left.mtimeMs === right.mtimeMs;
+}
+
+function hashFile(path: string, maximumBytes: number): { sha256: string; size: number; identity: FileIdentity } {
+  const initial = statSync(path);
+  if (!initial.isFile()) {
+    throw new OperationError('artifact_source_invalid', 'Artifact source must be a regular file');
+  }
+  if (initial.size > maximumBytes) {
+    throw new OperationError('artifact_too_large', 'Artifact source exceeds the configured hard bound', false, {
+      size: initial.size,
+      maximumBytes,
+    });
+  }
+  const identity = identityFromStat(initial);
   const hash = createHash('sha256');
   const fd = openSync(path, 'r');
   const buf = Buffer.alloc(64 * 1024);
   let pos = 0;
   try {
     let bytesRead = 0;
-    while ((bytesRead = readSync(fd, buf, 0, buf.length, pos)) > 0) {
-      hash.update(buf.subarray(0, bytesRead));
+    while ((bytesRead = readSync(fd, buf, 0, Math.min(buf.length, maximumBytes - pos + 1), pos)) > 0) {
       pos += bytesRead;
+      if (pos > maximumBytes) {
+        throw new OperationError('artifact_too_large', 'Artifact source exceeds the configured hard bound', false, {
+          size: pos,
+          maximumBytes,
+        });
+      }
+      hash.update(buf.subarray(0, bytesRead));
     }
   } finally {
     closeSync(fd);
   }
-  return { sha256: hash.digest('hex'), size: pos };
+  const final = identityFromStat(statSync(path));
+  if (!identitiesEqual(identity, final) || pos !== identity.size) {
+    throw new OperationError('artifact_source_changed', 'Artifact source changed while it was being hashed');
+  }
+  return { sha256: hash.digest('hex'), size: pos, identity };
 }
 
 export class ArtifactManager {
   private readonly manifestPath: string;
   private readonly uploadRoot: string;
   private readonly objectRoot: string;
+  private readonly maximumArtifactBytes: number;
 
-  constructor(store: StateStore) {
+  constructor(store: StateStore, maximumArtifactBytes = DEFAULTS.maxArchiveFileBytes) {
     this.manifestPath = join(store.artifactsDir(), 'manifest.json');
     this.uploadRoot = join(store.artifactsDir(), 'uploads');
     this.objectRoot = join(store.artifactsDir(), 'sha256');
+    if (!Number.isSafeInteger(maximumArtifactBytes) || maximumArtifactBytes < 1) {
+      throw new Error('maximumArtifactBytes must be a positive safe integer');
+    }
+    this.maximumArtifactBytes = maximumArtifactBytes;
     mkdirSync(this.uploadRoot, { recursive: true, mode: 0o750 });
     mkdirSync(this.objectRoot, { recursive: true, mode: 0o750 });
   }
@@ -162,23 +205,62 @@ export class ArtifactManager {
     return join(this.objectRoot, sha256);
   }
 
-  private persistObject(sourcePath: string, sha256: string): string {
+  private persistObject(
+    sourcePath: string,
+    sha256: string,
+    expectedSize: number,
+    expectedIdentity: FileIdentity,
+  ): string {
     const destination = this.objectPath(sha256);
-    if (!existsSync(destination)) {
-      const data = readFileSync(sourcePath);
-      writeFileSync(destination, data, { mode: 0o600, flag: 'wx' });
-      const fd = openSync(destination, 'r');
-      try {
-        fsyncSync(fd);
-      } finally {
-        closeSync(fd);
+    if (existsSync(destination)) return destination;
+
+    const sourceFd = openSync(sourcePath, 'r');
+    let destinationFd: number | undefined;
+    const hash = createHash('sha256');
+    const buffer = Buffer.alloc(64 * 1024);
+    let position = 0;
+    try {
+      destinationFd = openSync(destination, 'wx', 0o600);
+      let bytesRead = 0;
+      while ((bytesRead = readSync(sourceFd, buffer, 0, Math.min(buffer.length, this.maximumArtifactBytes - position + 1), position)) > 0) {
+        position += bytesRead;
+        if (position > this.maximumArtifactBytes) {
+          throw new OperationError('artifact_too_large', 'Artifact source exceeds the configured hard bound', false, {
+            size: position,
+            maximumBytes: this.maximumArtifactBytes,
+          });
+        }
+        const chunk = buffer.subarray(0, bytesRead);
+        hash.update(chunk);
+        let written = 0;
+        while (written < chunk.length) {
+          written += writeSync(destinationFd, chunk, written, chunk.length - written, null);
+        }
       }
-      const directoryFd = openSync(this.objectRoot, 'r');
-      try {
-        fsyncSync(directoryFd);
-      } finally {
-        closeSync(directoryFd);
-      }
+      fsyncSync(destinationFd);
+    } catch (error) {
+      if (existsSync(destination)) unlinkSync(destination);
+      throw error;
+    } finally {
+      closeSync(sourceFd);
+      if (destinationFd !== undefined) closeSync(destinationFd);
+    }
+
+    const finalIdentity = identityFromStat(statSync(sourcePath));
+    const copiedDigest = hash.digest('hex');
+    if (
+      !identitiesEqual(expectedIdentity, finalIdentity) ||
+      position !== expectedSize ||
+      copiedDigest !== sha256
+    ) {
+      if (existsSync(destination)) unlinkSync(destination);
+      throw new OperationError('artifact_source_changed', 'Artifact source changed while it was being captured');
+    }
+    const directoryFd = openSync(this.objectRoot, 'r');
+    try {
+      fsyncSync(directoryFd);
+    } finally {
+      closeSync(directoryFd);
     }
     return destination;
   }
@@ -187,8 +269,8 @@ export class ArtifactManager {
     if (!payload.name || !payload.sourcePath) {
       throw new OperationError('invalid_request', 'name and sourcePath are required');
     }
-    const digest = hashFile(payload.sourcePath);
-    const destPath = this.persistObject(payload.sourcePath, digest.sha256);
+    const digest = hashFile(payload.sourcePath, this.maximumArtifactBytes);
+    const destPath = this.persistObject(payload.sourcePath, digest.sha256, digest.size, digest.identity);
     const now = new Date().toISOString();
     const record: ArtifactRecord = {
       artifactId: randomUUID(),
@@ -272,7 +354,7 @@ export class ArtifactManager {
     this.saveManifest(manifest);
 
     if (payload.finalize) {
-      const digest = hashFile(record.path);
+      const digest = hashFile(record.path, this.maximumArtifactBytes);
       return this.finalize({
         artifactId: record.artifactId,
         expectedSize: record.expectedSize ?? digest.size,
@@ -296,7 +378,7 @@ export class ArtifactManager {
       });
     }
 
-    const digest = hashFile(record.path);
+    const digest = hashFile(record.path, this.maximumArtifactBytes);
     if (digest.size !== payload.expectedSize) {
       throw new OperationError('artifact_size_mismatch', 'Artifact size does not match', false, {
         expectedSize: payload.expectedSize,
