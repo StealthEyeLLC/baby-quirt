@@ -1,13 +1,11 @@
 /** Production runtime registration for the safely deployable GitHub read surface. */
 
 import { execFileSync, spawnSync } from 'node:child_process';
-import { createHash } from 'node:crypto';
-import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { chmodSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import type { RuntimeConfig } from '../config.js';
 import { OperationError } from '../operations/errors.js';
 import { GITHUB_AUTHORITY_CONTRACT_VERSION } from './contracts.js';
-import type { GitHubHelperRequest, GitHubHelperResult } from './helper.js';
 
 export const PRODUCTION_GITHUB_AUTHORITY_ID = 'github-baby-quirt';
 export const PRODUCTION_GITHUB_REMOTE = 'git@github.com:StealthEyeLLC/baby-quirt.git';
@@ -28,23 +26,12 @@ export interface GitHubRuntimeServiceOptions {
   verifyRemote?: (requestId: string, input: GitHubRemoteVerifyInput) => Record<string, unknown>;
 }
 
-function sha256(value: string): string {
-  return createHash('sha256').update(value).digest('hex');
-}
-
 function requiredString(body: Record<string, unknown>, key: string): string {
   const value = body[key];
   if (typeof value !== 'string' || value.length === 0) {
     throw new OperationError('invalid_request', `${key} must be a non-empty string`, false, { key });
   }
   return value;
-}
-
-function parseHelperResult(stdout: string): GitHubHelperResult {
-  const lines = stdout.trim().split(/\r?\n/u).filter(Boolean);
-  const candidate = lines.at(-1);
-  if (!candidate) throw new Error('GitHub helper returned no structured result');
-  return JSON.parse(candidate) as GitHubHelperResult;
 }
 
 export class GitHubRuntimeService {
@@ -100,7 +87,7 @@ export class GitHubRuntimeService {
     };
   }
 
-  private verifyRemote(requestId: string, input: GitHubRemoteVerifyInput): Record<string, unknown> {
+  private verifyRemote(_requestId: string, input: GitHubRemoteVerifyInput): Record<string, unknown> {
     if (input.repositoryAuthorityId !== PRODUCTION_GITHUB_AUTHORITY_ID) {
       throw new OperationError('github_authority_not_found', 'Repository authority is not registered', false, {
         repositoryAuthorityId: input.repositoryAuthorityId,
@@ -119,53 +106,48 @@ export class GitHubRuntimeService {
     const repository = join(temporary, 'repository.git');
     try {
       execFileSync('/usr/bin/git', ['init', '--bare', '--quiet', repository], { stdio: 'pipe' });
-      const helperPath = '/opt/baby-quirt/current/libexec/baby-quirt/baby-github';
       const destination = 'refs/heads/baby-runtime-verify';
-      const helperRequest: GitHubHelperRequest = {
-        protocolVersion: '1.0.0',
-        requestId,
-        operation: 'git',
-        credentialName: PRODUCTION_GITHUB_CREDENTIAL_NAME,
-        knownHosts: PRODUCTION_GITHUB_KNOWN_HOSTS,
-        pinnedSshHostKeyDigest: sha256(PRODUCTION_GITHUB_KNOWN_HOSTS),
-        git: {
-          kind: 'fetch',
-          remote: PRODUCTION_GITHUB_REMOTE,
-          refspecs: [`+refs/heads/${input.branch}:${destination}`],
-          prune: false,
+      const keyPath = join(temporary, 'github-ssh-key');
+      const knownHostsPath = join(temporary, 'known_hosts');
+      chmodSync(temporary, 0o700);
+      execFileSync('/usr/bin/systemd-creds', [
+        'decrypt',
+        `--name=${PRODUCTION_GITHUB_CREDENTIAL_NAME}`,
+        PRODUCTION_GITHUB_CREDENTIAL_PATH,
+        keyPath,
+      ], { stdio: 'pipe' });
+      chmodSync(keyPath, 0o600);
+      writeFileSync(knownHostsPath, PRODUCTION_GITHUB_KNOWN_HOSTS, { mode: 0o600 });
+      const sshCommand = [
+        '/usr/bin/ssh',
+        '-i', keyPath,
+        '-o', 'BatchMode=yes',
+        '-o', 'IdentitiesOnly=yes',
+        '-o', 'StrictHostKeyChecking=yes',
+        '-o', `UserKnownHostsFile=${knownHostsPath}`,
+      ].join(' ');
+      const execution = spawnSync('/usr/bin/git', [
+        '--git-dir', repository,
+        'fetch',
+        '--no-tags',
+        '--no-write-fetch-head',
+        PRODUCTION_GITHUB_REMOTE,
+        `+refs/heads/${input.branch}:${destination}`,
+      ], {
+        encoding: 'utf8',
+        maxBuffer: 1_048_576,
+        env: {
+          PATH: '/usr/bin:/bin',
+          HOME: temporary,
+          GIT_ASKPASS: '/bin/false',
+          GIT_TERMINAL_PROMPT: '0',
+          GIT_SSH_COMMAND: sshCommand,
         },
-        maximumOutputBytes: 65_536,
-      };
-      const requestPath = join(temporary, 'request.json');
-      const stdoutPath = join(temporary, 'helper.stdout');
-      const stderrPath = join(temporary, 'helper.stderr');
-      writeFileSync(requestPath, `${JSON.stringify(helperRequest)}\n`, { mode: 0o600 });
-      const unit = `baby-github-read-${sha256(requestId).slice(0, 20)}`;
-      const execution = spawnSync('/usr/bin/systemd-run', [
-        '--wait', '--collect', '--quiet',
-        `--unit=${unit}`,
-        '--property=Type=exec',
-        '--property=NoNewPrivileges=yes',
-        '--property=PrivateTmp=yes',
-        '--property=ProtectSystem=strict',
-        '--property=ProtectHome=yes',
-        '--property=RestrictSUIDSGID=yes',
-        `--property=WorkingDirectory=${repository}`,
-        `--property=ReadWritePaths=${temporary}`,
-        `--property=StandardInput=file:${requestPath}`,
-        `--property=StandardOutput=file:${stdoutPath}`,
-        `--property=StandardError=file:${stderrPath}`,
-        `--property=LoadCredentialEncrypted=${PRODUCTION_GITHUB_CREDENTIAL_NAME}:${PRODUCTION_GITHUB_CREDENTIAL_PATH}`,
-        '--', helperPath,
-      ], { encoding: 'utf8', maxBuffer: 1_048_576 });
-      const helperStdout = readFileSync(stdoutPath, 'utf8');
-      const helperStderr = readFileSync(stderrPath, 'utf8');
-      const helper = parseHelperResult(helperStdout);
-      if (execution.status !== 0 || helper.status !== 'completed' || helper.exitCode !== 0) {
+      });
+      if (execution.status !== 0) {
         throw new OperationError('github_remote_unavailable', 'GitHub remote verification failed', true, {
-          helperStatus: helper.status,
-          exitCode: helper.exitCode,
-          stderr: helper.stderr || helperStderr || execution.stderr,
+          exitCode: execution.status,
+          stderr: (execution.stderr ?? '').slice(0, 65_536),
         });
       }
       const commit = execFileSync('/usr/bin/git', ['--git-dir', repository, 'rev-parse', destination], { encoding: 'utf8' }).trim();
