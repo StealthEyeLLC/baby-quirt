@@ -12,6 +12,7 @@ import {
 import { dirname } from 'node:path';
 import { DatabaseSync, type SQLInputValue } from 'node:sqlite';
 import { canonicalJson, sha256Hex } from '../crypto/canonical.js';
+import { DELIVERY_LEDGER_MIGRATION, DeliveryPersistence } from '../delivery/persistence.js';
 import {
   DEPLOYMENT_PRODUCTS,
   DeploymentError,
@@ -238,6 +239,7 @@ interface Migration {
 
 const MIGRATIONS: readonly Migration[] = [
   { version: 1, name: 'standalone_deployment_ledger', sql: MIGRATION_1 },
+  DELIVERY_LEDGER_MIGRATION,
 ];
 
 type SqlRow = Record<string, unknown>;
@@ -457,6 +459,7 @@ function queryParameters(values: SQLInputValue[]): SQLInputValue[] {
 
 export class DeploymentDatabase {
   private readonly database: DatabaseSync;
+  readonly deliveries: DeliveryPersistence;
   private closed = false;
 
   constructor(readonly databasePath: string) {
@@ -475,6 +478,7 @@ export class DeploymentDatabase {
     });
     this.configure();
     this.migrate();
+    this.deliveries = new DeliveryPersistence(this.database);
     this.assertIntegrity();
 
     if (databasePath !== ':memory:') {
