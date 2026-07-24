@@ -105,6 +105,8 @@ interface Fixture {
   root: string;
   seed: string;
   remote: string;
+  databasePath: string;
+  storageRoot: string;
   base: string;
   baseTree: string;
   head: string;
@@ -141,7 +143,8 @@ function makeFixture(): Fixture {
   const headTree = git(seed, ['rev-parse', 'HEAD^{tree}']);
   git(root, ['clone', '--bare', '--', seed, remote]);
 
-  const database = new DeploymentDatabase(join(root, 'state', 'deployment.sqlite'));
+  const databasePath = join(root, 'state', 'deployment.sqlite');
+  const database = new DeploymentDatabase(databasePath);
   const snapshotBody = {
     snapshotId: 'checkpoint-d-permissions',
     repositoryPermissions: { contents: 'write' } as const,
@@ -191,7 +194,7 @@ function makeFixture(): Fixture {
     publicationRegistry: database.githubSafePublications, repositoryTruth: truth, transport, apiReadback: api,
     now: () => '2026-07-24T10:00:00.000Z',
   });
-  return { root, seed, remote, base, baseTree, head, headTree, database, truth, publication, transport, api, authorityId, credentialReferenceId, workspaceId };
+  return { root, seed, remote, databasePath, storageRoot, base, baseTree, head, headTree, database, truth, publication, transport, api, authorityId, credentialReferenceId, workspaceId };
 }
 
 function preview(fixture: Fixture) {
@@ -270,6 +273,49 @@ describe('safe Git publication', () => {
     assert.equal(apply(fixture, plan, 'checkpoint-d-response-loss').state, 'verified');
     assert.equal(fixture.transport.pushCount, 1);
     fixture.database.close();
+  });
+
+  it('reconciles lost response across database restart without a duplicate push', () => {
+    const fixture = makeFixture();
+    fixture.transport.responseLoss = true;
+    const plan = preview(fixture);
+    const mutationId = 'checkpoint-g-response-loss-restart';
+    const result = apply(fixture, plan, mutationId);
+    assert.equal(result.state, 'verified');
+    assert.equal(fixture.transport.pushCount, 1);
+    fixture.database.close();
+
+    const reopened = new DeploymentDatabase(fixture.databasePath);
+    const truth = new GitRepositoryTruth({
+      storageRoot: fixture.storageRoot,
+      authorityRegistry: reopened.githubAuthorities,
+      workspaceRegistry: reopened.githubGitWorkspaces,
+      now: () => '2026-07-24T10:01:00.000Z',
+    });
+    const publication = new GitSafePublication({
+      authorityRegistry: reopened.githubAuthorities,
+      workspaceRegistry: reopened.githubGitWorkspaces,
+      publicationRegistry: reopened.githubSafePublications,
+      repositoryTruth: truth,
+      transport: fixture.transport,
+      apiReadback: fixture.api,
+      now: () => '2026-07-24T10:01:00.000Z',
+    });
+    const replay = publication.apply({
+      mutationId,
+      semanticIdempotencyFingerprint: sha256Hex(`semantic:${plan.planDigest}`),
+      repositoryAuthorityId: fixture.authorityId,
+      planId: plan.planId,
+      planDigest: plan.planDigest,
+      expectedLocalHead: fixture.head,
+      expectedLocalTree: fixture.headTree,
+      expectedRemoteOldObject: fixture.base,
+      authorizationReference: 'owner-authorization-d',
+    });
+    assert.equal(replay.state, 'verified');
+    assert.equal(fixture.transport.pushCount, 1);
+    assert.equal(reopened.githubSafePublications.getRun(mutationId)?.state, 'verified');
+    reopened.close();
   });
 
   it('refuses mutation when the destination changes after preview', () => {

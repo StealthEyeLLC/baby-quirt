@@ -209,3 +209,8 @@ A new engineering conversation should be told:
 7. Use Baby unrestricted root for host and production work.
 8. Treat Termius and manual SSH as break-glass only.
 9. Keep production changes reproducible, immutable, guarded, verified, and rollback protected.
+
+
+## Universal GitHub Authority source-only operations
+
+Do not invoke or claim `baby.git.*` or `baby.github.*` operations are live until `baby.describe` advertises them after a separately authorized deployment. During source work, use current Baby file/job/shell primitives and preserve exact commit, tree, remote-ref, CI, artifact, receipt, and nspawn evidence. See the [operation reference](GITHUB_AUTHORITY_OPERATION_REFERENCE_V1.md).

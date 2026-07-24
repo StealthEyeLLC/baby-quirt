@@ -426,9 +426,73 @@ async function runGatewaySuite(root, babyRoot) {
   );
 }
 
+async function runDisposableGitHubCredentialProbe() {
+  const plain = join(WORK_ROOT, 'github-authority-disposable-credential');
+  const encrypted = join(WORK_ROOT, 'github-authority-disposable-credential.cred');
+  writeFileSync(plain, 'checkpoint-g-disposable-credential\n', { mode: 0o600, flag: 'wx' });
+  const encryptedRecord = await runCommand(
+    'cycle 1 GitHub encrypted credential creation',
+    '/usr/bin/systemd-creds',
+    ['encrypt', '--name=github-cert', plain, encrypted],
+  );
+  const plaintextRemoved = await runCommand(
+    'cycle 1 GitHub plaintext credential removal',
+    '/usr/bin/rm',
+    ['--force', '--', plain],
+  );
+  const injected = await runCommand(
+    'cycle 1 GitHub encrypted credential injection',
+    '/usr/bin/systemd-run',
+    [
+      '--quiet', '--wait', '--pipe', '--collect',
+      '--unit=bq-cert-github-credential',
+      `--property=LoadCredentialEncrypted=github-cert:${encrypted}`,
+      '--property=NoNewPrivileges=yes',
+      '--property=PrivateTmp=yes',
+      '/usr/bin/bash', '-c',
+      'test -n "$CREDENTIALS_DIRECTORY" && test -s "$CREDENTIALS_DIRECTORY/github-cert"',
+    ],
+  );
+  return succeeded(encryptedRecord) && succeeded(plaintextRemoved) && succeeded(injected);
+}
+
 async function runProductionShapedCycles(plan) {
   const npm = `${NODE_ROOT}/bin/npm`;
+  const node = `${NODE_ROOT}/bin/node`;
+  const cycleSpecs = [
+    {
+      id: 'successful-publication',
+      description: 'verified Git CAS publication plus compound draft-PR/workflow/artifact delivery',
+      pattern: 'previews, persists intent before push|publishes push, draft PR|uses isolated noninteractive Git|builds a noninteractive systemd credential plan',
+      files: [
+        'test/github-safe-publication.test.ts',
+        'test/github-provider-delivery.test.ts',
+        'test/github-helper.test.ts',
+        'test/github-credential-execution.test.ts',
+      ],
+    },
+    {
+      id: 'response-loss-restart-reconciliation',
+      description: 'lost push and PR responses reconcile across durable restart with no duplicate mutation',
+      pattern: 'reconciles a lost push response|reconciles lost response across database restart|reconciles a lost pull-request response',
+      files: [
+        'test/github-safe-publication.test.ts',
+        'test/github-provider-delivery.test.ts',
+      ],
+    },
+    {
+      id: 'failure-truth',
+      description: 'non-fast-forward rejection and terminal partial success preserve exact remote truth',
+      pattern: 'rejects non-fast-forward publication|records partial success after a verified push',
+      files: [
+        'test/github-safe-publication.test.ts',
+        'test/github-provider-delivery.test.ts',
+      ],
+    },
+  ];
+  const githubCycles = [];
   for (let cycle = 1; cycle <= 3; cycle += 1) {
+    const spec = cycleSpecs[cycle - 1];
     const cycleRoot = join(WORK_ROOT, `production-shaped-cycle-${cycle}`);
     mkdirSync(cycleRoot, { mode: 0o700 });
     const babyRoot = join(cycleRoot, 'baby-quirt');
@@ -441,23 +505,50 @@ async function runProductionShapedCycles(plan) {
     );
     if (!babyReady || !gatewayReady) {
       recordSkipped(`production-shaped cycle ${cycle}`, 'clean exact source materialization failed');
+      githubCycles.push({ cycle, id: spec.id, outcome: 'skipped', credentialInjection: false });
       continue;
     }
-    await runCommand(`cycle ${cycle} baby npm ci`, npm, ['ci', '--include=dev'], { cwd: babyRoot });
-    await runCommand(
+    const install = await runCommand(`cycle ${cycle} baby npm ci`, npm, ['ci', '--include=dev'], { cwd: babyRoot });
+    const github = await runCommand(
+      `cycle ${cycle} GitHub authority ${spec.id}`,
+      node,
+      ['--import', 'tsx', '--test', '--test-name-pattern', spec.pattern, ...spec.files],
+      { cwd: babyRoot },
+    );
+    const credentialInjection = cycle === 1 ? await runDisposableGitHubCredentialProbe() : true;
+    const deployment = await runCommand(
       `cycle ${cycle} Baby success rollback reboot`,
-      `${NODE_ROOT}/bin/node`,
+      node,
       ['--import', 'tsx', '--test', 'test/deployment-operations.test.ts'],
       { cwd: babyRoot, env: { BABY_QUIRT_DEPLOYMENT_FIXTURE_MODE: '1' } },
     );
-    await runCommand(`cycle ${cycle} gateway npm ci`, npm, ['ci', '--ignore-scripts'], { cwd: gatewayRoot });
-    await runCommand(
+    const gatewayInstall = await runCommand(`cycle ${cycle} gateway npm ci`, npm, ['ci', '--ignore-scripts'], { cwd: gatewayRoot });
+    const gatewayContract = await runCommand(
       `cycle ${cycle} gateway contract`,
-      `${NODE_ROOT}/bin/node`,
+      node,
       ['--test', 'test/contract.test.js', 'test/config.test.js'],
       { cwd: gatewayRoot },
     );
+    const passed = [install, github, deployment, gatewayInstall, gatewayContract].every(succeeded) && credentialInjection;
+    githubCycles.push({
+      cycle,
+      id: spec.id,
+      description: spec.description,
+      outcome: passed ? 'passed' : 'failed',
+      credentialInjection,
+      exactSourceCommit: plan.inputs.baby.commit,
+      exactSourceTree: plan.inputs.baby.tree,
+      testPattern: spec.pattern,
+    });
   }
+  durableJson(join(EVIDENCE_ROOT, 'github-authority-cycles.json'), {
+    recordVersion: '1.0.0',
+    recordType: 'universal-github-authority-nspawn-cycles',
+    runId: plan.runId,
+    planDigest: plan.planDigest,
+    cycleCount: githubCycles.length,
+    cycles: githubCycles,
+  });
 }
 
 async function main() {

@@ -117,3 +117,10 @@ Legacy workflow files may remain for historical or emergency recovery purposes, 
 ## License
 
 Proprietary — StealthEye LLC
+
+
+## Universal GitHub Authority v1
+
+The implementation branch carries source-complete, deliberately undeployed Git and GitHub authority through Checkpoint G. It provides exact repository truth, safe compare-and-swap publication, durable draft-PR/workflow/artifact delivery, response-loss reconciliation, credential-reference isolation, final documentation, reproducible build gates, and three-cycle disposable nspawn certification. The provider operations remain unregistered until a separately authorized coordinated deployment; the public MCP surface remains the single `call_quirt` tool.
+
+See [Checkpoint G](docs/GITHUB_AUTHORITY_CHECKPOINT_G_V1.md), the [operation reference](docs/GITHUB_AUTHORITY_OPERATION_REFERENCE_V1.md), [credentials](docs/GITHUB_AUTHORITY_CREDENTIALS_V1.md), and the [publication/recovery runbook](docs/GITHUB_AUTHORITY_RUNBOOK_V1.md).
