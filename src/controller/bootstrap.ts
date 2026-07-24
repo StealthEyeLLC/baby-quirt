@@ -25,7 +25,7 @@ import { CONTROLLER_RECORD_VERSION, ControllerError } from './types.js';
 const DIGEST = /^[a-f0-9]{64}$/;
 const GIT_OBJECT = /^(?:[a-f0-9]{40}|[a-f0-9]{64})$/;
 const IDENTIFIER = /^[A-Za-z0-9][A-Za-z0-9._:-]{0,255}$/;
-const RELATIVE_PATH = /^(?!\/)(?!.*(?:^|\/)\.\.(?:\/|$))(?!.*\\)[A-Za-z0-9._/-]+$/;
+const RELATIVE_PATH = /^(?!\/)(?!.*(?:^|\/)\.\.(?:\/|$))(?!.*\\)[A-Za-z0-9.@_/-]+$/;
 const MAX_CONTROLLER_FILE_BYTES = 64 * 1024 * 1024;
 const MAX_CONTROLLER_FILES = 4096;
 
