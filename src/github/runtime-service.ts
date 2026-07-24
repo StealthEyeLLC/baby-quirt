@@ -138,7 +138,7 @@ export class GitHubRuntimeService {
       };
       const unit = `baby-github-read-${sha256(requestId).slice(0, 20)}`;
       const execution = spawnSync('/usr/bin/systemd-run', [
-        '--pipe', '--wait', '--collect', '--quiet',
+        '--pipe', '--wait', '--collect',
         `--unit=${unit}`,
         '--property=Type=exec',
         '--property=NoNewPrivileges=yes',
