@@ -183,3 +183,16 @@ describe('fixed controller bootstrap and A/B upgrade', () => {
     }
   });
 });
+
+it('controller bootstrap accepts systemd template unit paths containing @', () => {
+  const root = mkdtempSync(join(tmpdir(), 'baby-controller-template-path-'));
+  try {
+    const candidateRoot = candidate(root, 'template-candidate');
+    mkdirSync(join(candidateRoot, 'ops', 'systemd'), { recursive: true });
+    writeFileSync(join(candidateRoot, 'ops', 'systemd', 'baby-quirt-deploy-guard@.service'), '[Service]\n', { mode: 0o644 });
+    const files = inventoryControllerCandidate(candidateRoot);
+    assert.ok(files.some((file) => file.path === 'ops/systemd/baby-quirt-deploy-guard@.service'));
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
