@@ -14,6 +14,7 @@ import { DatabaseSync, type SQLInputValue } from 'node:sqlite';
 import { canonicalJson, sha256Hex } from '../crypto/canonical.js';
 import { DELIVERY_LEDGER_MIGRATION, DeliveryPersistence } from '../delivery/persistence.js';
 import { GITHUB_AUTHORITY_REGISTRY_MIGRATION, GitHubAuthorityRegistry } from '../github/authority-registry.js';
+import { GITHUB_REPOSITORY_TRUTH_MIGRATION, GitWorkspaceRegistry } from '../github/repository-truth.js';
 import {
   DEPLOYMENT_PRODUCTS,
   DeploymentError,
@@ -242,6 +243,7 @@ const MIGRATIONS: readonly Migration[] = [
   { version: 1, name: 'standalone_deployment_ledger', sql: MIGRATION_1 },
   DELIVERY_LEDGER_MIGRATION,
   GITHUB_AUTHORITY_REGISTRY_MIGRATION,
+  GITHUB_REPOSITORY_TRUTH_MIGRATION,
 ];
 
 type SqlRow = Record<string, unknown>;
@@ -463,6 +465,7 @@ export class DeploymentDatabase {
   private readonly database: DatabaseSync;
   readonly deliveries: DeliveryPersistence;
   readonly githubAuthorities: GitHubAuthorityRegistry;
+  readonly githubGitWorkspaces: GitWorkspaceRegistry;
   private closed = false;
 
   constructor(readonly databasePath: string) {
@@ -483,6 +486,7 @@ export class DeploymentDatabase {
     this.migrate();
     this.deliveries = new DeliveryPersistence(this.database);
     this.githubAuthorities = new GitHubAuthorityRegistry(this.database);
+    this.githubGitWorkspaces = new GitWorkspaceRegistry(this.database);
     this.assertIntegrity();
 
     if (databasePath !== ':memory:') {
