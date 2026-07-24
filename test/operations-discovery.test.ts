@@ -34,9 +34,10 @@ describe('operation discovery', () => {
     assert.deepEqual(OPERATIONS, names);
     assert.ok(names.includes('baby.describe'));
     assert.ok(names.includes('baby.health'));
-    assert.equal(names.length, 42);
+    assert.equal(names.length, 52);
     assert.equal(names.filter((name) => name.startsWith('baby.release.')).length, 8);
     assert.equal(names.filter((name) => name.startsWith('baby.selfhost.')).length, 3);
+    assert.equal(names.filter((name) => name.startsWith('baby.delivery.')).length, 10);
   });
 
   it('locks the single-tool ChatGPT invocation wording', () => {

@@ -8,6 +8,8 @@ import { canonicalJson, sha256Hex } from '../crypto/canonical.js';
 import { signEd25519 } from '../crypto/signing.js';
 import { OperationError } from '../operations/errors.js';
 import { DeploymentDatabase } from './database.js';
+import { AutomatedDeliveryService } from '../delivery/service.js';
+import { DeliveryError } from '../delivery/types.js';
 import { getTransitionRule, TERMINAL_STATES } from './state-machine.js';
 import {
   DeploymentError,
@@ -79,6 +81,7 @@ function integer(value: unknown, label: string): number {
 
 function mappedError(error: unknown): OperationError {
   if (error instanceof OperationError) return error;
+  if (error instanceof DeliveryError) return new OperationError(error.code, error.message, false, error.details);
   if (error instanceof DeploymentError) {
     return new OperationError(error.code, error.message, false, error.details);
   }
@@ -91,6 +94,7 @@ function mappedError(error: unknown): OperationError {
 export class StandaloneDeploymentService {
   private readonly database: DeploymentDatabase;
   private readonly now: () => Date;
+  private readonly deliveries: AutomatedDeliveryService;
 
   constructor(
     private readonly config: RuntimeConfig,
@@ -98,10 +102,11 @@ export class StandaloneDeploymentService {
   ) {
     this.database = new DeploymentDatabase(join(config.stateRoot, 'deployment-state.sqlite'));
     this.now = options.now ?? (() => new Date());
+    this.deliveries = new AutomatedDeliveryService(this.database, options.fixtureMode === true, this.now);
   }
 
   static handles(operation: string): boolean {
-    return RELEASE_OPERATIONS.has(operation);
+    return RELEASE_OPERATIONS.has(operation) || AutomatedDeliveryService.handles(operation);
   }
 
   close(): void {
@@ -112,6 +117,7 @@ export class StandaloneDeploymentService {
     if (!StandaloneDeploymentService.handles(operation)) {
       throw new OperationError('unknown_operation', `Unknown deployment operation: ${operation}`);
     }
+    if (AutomatedDeliveryService.handles(operation)) return this.deliveries.execute(operation, requestId, raw);
     const semanticDigest = sha256Hex(canonicalJson({ operation, payload: raw }));
     const deploymentId = typeof raw.deploymentId === 'string' ? raw.deploymentId : undefined;
     const reservation = this.database.reserveIntent({

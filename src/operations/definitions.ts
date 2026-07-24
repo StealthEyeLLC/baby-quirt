@@ -3,6 +3,7 @@
 import { existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import type { RuntimeConfig } from '../config.js';
+import { DELIVERY_OPERATION_CONTRACTS, DELIVERY_TYPED_ERRORS, DELIVERY_LIMITS } from '../delivery/contracts.js';
 import {
   CONTRACT_VERSION,
   DEFAULTS,
@@ -27,7 +28,8 @@ export interface OperationDefinition {
     | 'pty'
     | 'artifact'
     | 'release'
-    | 'selfhost';
+    | 'selfhost'
+    | 'delivery';
   version: string;
   description: string;
   mutation: boolean;
@@ -48,7 +50,7 @@ export interface OperationDefinition {
     provider: 'baby-standalone-deployment-v2';
   }>;
   errors?: readonly string[];
-  cancellation?: 'not_applicable' | 'pre_arm_cleanup_post_arm_rollback';
+  cancellation?: 'not_applicable' | 'pre_arm_cleanup_post_arm_rollback' | 'pre_arm_cancel_post_arm_rollback';
   restartBehavior?: 'read_only' | 'durable_reconcile';
   postActionVerification?: boolean;
   receiptVersion?: '2.0.0';
@@ -122,6 +124,41 @@ function releaseOperation(
     limits: { maxInlineEvidenceBytes: 65536, defaultPageSize: 50, maximumPageSize: 200 },
   };
 }
+
+const DELIVERY_DESCRIPTIONS: Readonly<Record<string, string>> = Object.freeze({
+  'baby.delivery.plan': 'Validate, authorize, and persist one immutable automated-delivery plan.',
+  'baby.delivery.execute': 'Start or resume the authorized durable delivery controller.',
+  'baby.delivery.get': 'Read one durable delivery run.',
+  'baby.delivery.list': 'List durable delivery runs with bounded pagination.',
+  'baby.delivery.events': 'Read the append-only delivery event stream.',
+  'baby.delivery.verify': 'Verify delivery plan, run, events, and evidence integrity.',
+  'baby.delivery.cancel': 'Cancel a delivery before activation is armed.',
+  'baby.delivery.rollback': 'Request deterministic rollback for one delivery.',
+  'baby.delivery.repair': 'Request exact reconciliation for an interrupted or ambiguous delivery.',
+  'baby.delivery.evidence.get': 'Read bounded redacted delivery evidence.',
+});
+
+const DELIVERY_DEFINITIONS: readonly OperationDefinition[] = DELIVERY_OPERATION_CONTRACTS.map((contract): OperationDefinition => ({
+  operation: contract.operation,
+  family: 'delivery',
+  version: contract.version,
+  description: DELIVERY_DESCRIPTIONS[contract.operation] ?? 'Automated delivery operation.',
+  mutation: contract.mutation,
+  idempotency: contract.idempotency === 'semantic_replay_or_conflict' ? 'caller_key' : 'read_only',
+  risk: contract.risk,
+  input: contract.input,
+  output: contract.output,
+  errors: DELIVERY_TYPED_ERRORS,
+  cancellation: contract.cancellation,
+  restartBehavior: contract.restartBehavior,
+  postActionVerification: true,
+  receiptVersion: '2.0.0',
+  limits: {
+    maxInlineResultBytes: DELIVERY_LIMITS.maximumInlineBytes,
+    defaultPageSize: DELIVERY_LIMITS.defaultPageSize,
+    maximumPageSize: DELIVERY_LIMITS.maximumPageSize,
+  },
+}));
 
 export const OPERATION_DEFINITIONS: readonly OperationDefinition[] = [
   {
@@ -345,6 +382,7 @@ export const OPERATION_DEFINITIONS: readonly OperationDefinition[] = [
     input: objectSchema({ deploymentId: identifier, kind: identifier, offset: integer, limit: { type: 'integer', minimum: 1, maximum: 200 } }, ['deploymentId']),
     output: objectSchema({ deploymentId: identifier, offset: integer, nextOffset: integer, total: integer, items: { type: 'array' } }),
   }),
+  ...DELIVERY_DEFINITIONS,
 ] as const;
 
 function discoveredDefinition(definition: OperationDefinition): Record<string, unknown> {
