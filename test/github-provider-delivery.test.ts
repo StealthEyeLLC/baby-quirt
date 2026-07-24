@@ -621,8 +621,11 @@ describe('GitHub provider and compound delivery', () => {
     fixture.database.close();
   });
 
-  it('keeps Checkpoint F source-only and leaves the active runtime registry unchanged', () => {
-    const runtime = OPERATION_DEFINITIONS.map((definition) => definition.operation);
-    assert.equal(runtime.some((operation) => operation.startsWith('baby.github.')), false);
+  it('keeps GitHub mutations unregistered while enabling the production read surface', () => {
+    const registered = new Set(OPERATION_DEFINITIONS.map((definition) => definition.operation));
+    assert.equal(registered.has('baby.github.describe'), true);
+    assert.equal(registered.has('baby.github.remote.verify'), true);
+    assert.equal(registered.has('baby.github.pr.upsert'), false);
+    assert.equal(registered.has('baby.github.delivery.publish'), false);
   });
 });
