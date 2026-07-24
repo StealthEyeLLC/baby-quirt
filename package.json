@@ -25,7 +25,8 @@
     "test:contracts": "node --import tsx scripts/validate-contracts.ts",
     "lint": "tsc -p tsconfig.json --noEmit",
     "release:bundle": "bash scripts/release.sh",
-    "start": "node dist/index.js"
+    "start": "node dist/index.js",
+    "test:unit": "npm test"
   },
   "dependencies": {
     "node-addon-api": "^8.3.0"

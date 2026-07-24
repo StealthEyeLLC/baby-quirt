@@ -349,3 +349,103 @@ describe('Git repository truth', () => {
     fixture.database.close();
   });
 });
+
+describe('Git working-tree truth', () => {
+  it('returns bounded structured diffs, ignore and attribute truth, and stages exact observed paths', () => {
+    const fixture = makeFixture();
+    const materialized = materialize(fixture);
+    fixture.truth.createBranch({
+      repositoryAuthorityId: fixture.authorityId,
+      workspaceId: fixture.workspaceId,
+      branch: 'build/working-tree',
+      expectedCommit: fixture.commit,
+      expectedTree: fixture.tree,
+    });
+
+    writeFileSync(join(materialized.workspace.worktreePath, 'README.md'), '# fixture\nworking tree\n', 'utf8');
+    writeFileSync(join(materialized.workspace.worktreePath, '.gitignore'), '*.ignored\n', 'utf8');
+    writeFileSync(join(materialized.workspace.worktreePath, 'new.txt'), 'new\n', 'utf8');
+    writeFileSync(join(materialized.workspace.worktreePath, 'fixture.ignored'), 'ignored\n', 'utf8');
+
+    const observed = fixture.truth.status({
+      repositoryAuthorityId: fixture.authorityId,
+      workspaceId: fixture.workspaceId,
+    });
+    assert.deepEqual(observed.unstagedPaths, ['README.md']);
+    assert.deepEqual(observed.untrackedPaths, ['.gitignore', 'new.txt']);
+    assert.match(observed.resultDigest, /^[a-f0-9]{64}$/u);
+
+    const diff = fixture.truth.diff({
+      repositoryAuthorityId: fixture.authorityId,
+      workspaceId: fixture.workspaceId,
+      scope: 'head',
+      maximumBytes: 32,
+    });
+    assert.deepEqual(diff.paths, ['README.md']);
+    assert.equal(diff.truncated, true);
+    assert.ok(diff.bytes > diff.patch.length);
+    assert.match(diff.contentDigest, /^[a-f0-9]{64}$/u);
+
+    const stat = fixture.truth.diffStat({
+      repositoryAuthorityId: fixture.authorityId,
+      workspaceId: fixture.workspaceId,
+      scope: 'head',
+    });
+    assert.deepEqual(stat.entries.map((entry) => entry.path), ['README.md']);
+    assert.equal(stat.binaryPaths, 0);
+    assert.ok(stat.additions > 0);
+
+    const nameStatus = fixture.truth.diffNameStatus({
+      repositoryAuthorityId: fixture.authorityId,
+      workspaceId: fixture.workspaceId,
+      scope: 'head',
+    });
+    assert.deepEqual(nameStatus.entries, [{ status: 'M', path: 'README.md' }]);
+
+    const ignored = fixture.truth.checkIgnore({
+      repositoryAuthorityId: fixture.authorityId,
+      workspaceId: fixture.workspaceId,
+      paths: ['fixture.ignored', 'README.md'],
+    });
+    assert.equal(ignored.items.find((item) => item.path === 'fixture.ignored')?.ignored, true);
+    assert.equal(ignored.items.find((item) => item.path === 'README.md')?.ignored, false);
+
+    const attributes = fixture.truth.checkAttributes({
+      repositoryAuthorityId: fixture.authorityId,
+      workspaceId: fixture.workspaceId,
+      paths: ['assets/fixture.bin'],
+    });
+    assert.equal(attributes.items[0]?.attributes.filter, 'lfs');
+    assert.equal(attributes.items[0]?.attributes.diff, 'lfs');
+    assert.equal(attributes.items[0]?.attributes.text, 'unset');
+
+    writeFileSync(join(materialized.workspace.worktreePath, 'later.txt'), 'later\n', 'utf8');
+    assertTruthCode(() => fixture.truth.add({
+      repositoryAuthorityId: fixture.authorityId,
+      workspaceId: fixture.workspaceId,
+      paths: ['README.md'],
+      expectedHead: fixture.commit,
+      expectedStatusDigest: observed.resultDigest,
+    }), 'repository_mismatch');
+
+    const current = fixture.truth.status({
+      repositoryAuthorityId: fixture.authorityId,
+      workspaceId: fixture.workspaceId,
+    });
+    const staged = fixture.truth.add({
+      repositoryAuthorityId: fixture.authorityId,
+      workspaceId: fixture.workspaceId,
+      paths: ['.gitignore', 'README.md', 'later.txt', 'new.txt'],
+      expectedHead: fixture.commit,
+      expectedStatusDigest: current.resultDigest,
+    });
+    assert.deepEqual(staged.stagedPaths, ['.gitignore', 'later.txt', 'new.txt', 'README.md']);
+    assert.match(staged.statusDigest, /^[a-f0-9]{64}$/u);
+    assertTruthCode(() => fixture.truth.checkIgnore({
+      repositoryAuthorityId: fixture.authorityId,
+      workspaceId: fixture.workspaceId,
+      paths: ['../escape'],
+    }), 'invalid_request');
+    fixture.database.close();
+  });
+});

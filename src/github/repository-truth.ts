@@ -65,6 +65,68 @@ export interface GitRepositoryStatus {
     deletions: number;
     truncated: boolean;
   };
+  resultDigest: string;
+}
+
+export type GitDiffScope = 'worktree' | 'staged' | 'head';
+
+export interface GitDiffResult {
+  scope: GitDiffScope;
+  paths: string[];
+  patch: string;
+  bytes: number;
+  truncated: boolean;
+  contentDigest: string;
+  resultDigest: string;
+}
+
+export interface GitDiffStatEntry {
+  path: string;
+  oldPath?: string;
+  additions?: number;
+  deletions?: number;
+  binary: boolean;
+}
+
+export interface GitDiffStatResult {
+  scope: GitDiffScope;
+  entries: GitDiffStatEntry[];
+  additions: number;
+  deletions: number;
+  binaryPaths: number;
+  resultDigest: string;
+}
+
+export interface GitNameStatusEntry {
+  status: string;
+  path: string;
+  oldPath?: string;
+}
+
+export interface GitNameStatusResult {
+  scope: GitDiffScope;
+  entries: GitNameStatusEntry[];
+  resultDigest: string;
+}
+
+export interface GitAddResult {
+  workspace: GitWorkspaceIdentity;
+  stagedPaths: string[];
+  statusDigest: string;
+  resultDigest: string;
+}
+
+export interface GitIgnoreCheckResult {
+  path: string;
+  ignored: boolean;
+  source?: string;
+  line?: number;
+  pattern?: string;
+}
+
+export interface GitAttributesCheckResult {
+  path: string;
+  attributes: Record<string, string>;
 }
 
 export interface GitIdentity {
@@ -536,6 +598,7 @@ export class GitRepositoryTruth {
 
   status(input: { repositoryAuthorityId: string; workspaceId: string }): GitRepositoryStatus {
     const record = this.loadWorkspace(input);
+    this.authorizeRepositoryRead(record);
     return this.withGitEnvironment((environment) => {
       this.assertWorkspacePaths(record);
       const parts = this.readStatus(record.worktreePath, environment);
@@ -560,7 +623,7 @@ export class GitRepositoryTruth {
         clean: this.isClean(parts),
         updatedAt: this.now(),
       });
-      return {
+      const body = {
         workspace: this.publicWorkspace(updated),
         ...(upstream ? { upstream } : {}),
         ahead,
@@ -569,6 +632,268 @@ export class GitRepositoryTruth {
         sequencerState: this.sequencerState(record.worktreePath, environment),
         boundedDiffSummary: summary,
       };
+      return { ...body, resultDigest: resultDigest(body) };
+    });
+  }
+
+  diff(input: {
+    repositoryAuthorityId: string;
+    workspaceId: string;
+    scope?: GitDiffScope;
+    paths?: string[];
+    maximumBytes?: number;
+  }): GitDiffResult {
+    const record = this.loadWorkspace(input);
+    const scope = input.scope ?? 'head';
+    const paths = this.normalizeOptionalPaths(input.paths);
+    const maximumBytes = this.normalizeMaximumBytes(input.maximumBytes);
+    this.authorizeRepositoryRead(record);
+    return this.withGitEnvironment((environment) => {
+      this.assertWorkspacePaths(record);
+      const args = this.diffArguments(scope, ['--no-ext-diff', '--binary', '--no-color'], paths);
+      const output = this.runGit(args, record.worktreePath, environment).stdout;
+      const pathOutput = this.runGit(
+        this.diffArguments(scope, ['--name-only', '-z', '--no-ext-diff', '--no-color'], paths),
+        record.worktreePath,
+        environment,
+      ).stdout;
+      const bytes = Buffer.byteLength(output, 'utf8');
+      const patch = bytes > maximumBytes
+        ? Buffer.from(output, 'utf8').subarray(0, maximumBytes).toString('utf8')
+        : output;
+      const body = {
+        scope,
+        paths: sortedUnique(pathOutput.split('\0').filter(Boolean)),
+        patch,
+        bytes,
+        truncated: bytes > maximumBytes,
+        contentDigest: sha256Hex(output),
+      };
+      return { ...body, resultDigest: resultDigest(body) };
+    });
+  }
+
+  diffStat(input: {
+    repositoryAuthorityId: string;
+    workspaceId: string;
+    scope?: GitDiffScope;
+    paths?: string[];
+  }): GitDiffStatResult {
+    const record = this.loadWorkspace(input);
+    const scope = input.scope ?? 'head';
+    const paths = this.normalizeOptionalPaths(input.paths);
+    this.authorizeRepositoryRead(record);
+    return this.withGitEnvironment((environment) => {
+      this.assertWorkspacePaths(record);
+      const output = this.runGit(
+        this.diffArguments(scope, ['--numstat', '-z', '--no-ext-diff'], paths),
+        record.worktreePath,
+        environment,
+      ).stdout;
+      const tokens = output.split('\0');
+      const entries: GitDiffStatEntry[] = [];
+      for (let index = 0; index < tokens.length;) {
+        const token = tokens[index++] ?? '';
+        if (!token) continue;
+        const firstTab = token.indexOf('\t');
+        const secondTab = token.indexOf('\t', firstTab + 1);
+        if (firstTab < 0 || secondTab < 0) {
+          throw new GitRepositoryTruthError('unknown', 'Git numstat output is malformed');
+        }
+        const additionsText = token.slice(0, firstTab);
+        const deletionsText = token.slice(firstTab + 1, secondTab);
+        let path = token.slice(secondTab + 1);
+        let oldPath: string | undefined;
+        if (!path) {
+          oldPath = tokens[index++] ?? '';
+          path = tokens[index++] ?? '';
+        }
+        if (!path) throw new GitRepositoryTruthError('unknown', 'Git numstat path is missing');
+        const binary = additionsText === '-' || deletionsText === '-';
+        entries.push({
+          path,
+          ...(oldPath ? { oldPath } : {}),
+          ...(binary ? {} : {
+            additions: Number.parseInt(additionsText, 10),
+            deletions: Number.parseInt(deletionsText, 10),
+          }),
+          binary,
+        });
+      }
+      const body = {
+        scope,
+        entries,
+        additions: entries.reduce((sum, entry) => sum + (entry.additions ?? 0), 0),
+        deletions: entries.reduce((sum, entry) => sum + (entry.deletions ?? 0), 0),
+        binaryPaths: entries.filter((entry) => entry.binary).length,
+      };
+      return { ...body, resultDigest: resultDigest(body) };
+    });
+  }
+
+  diffNameStatus(input: {
+    repositoryAuthorityId: string;
+    workspaceId: string;
+    scope?: GitDiffScope;
+    paths?: string[];
+  }): GitNameStatusResult {
+    const record = this.loadWorkspace(input);
+    const scope = input.scope ?? 'head';
+    const paths = this.normalizeOptionalPaths(input.paths);
+    this.authorizeRepositoryRead(record);
+    return this.withGitEnvironment((environment) => {
+      this.assertWorkspacePaths(record);
+      const output = this.runGit(
+        this.diffArguments(scope, ['--name-status', '-z', '--no-ext-diff'], paths),
+        record.worktreePath,
+        environment,
+      ).stdout;
+      const tokens = output.split('\0').filter(Boolean);
+      const entries: GitNameStatusEntry[] = [];
+      for (let index = 0; index < tokens.length;) {
+        let status = tokens[index++] as string;
+        let path: string;
+        const tab = status.indexOf('\t');
+        if (tab >= 0) {
+          path = status.slice(tab + 1);
+          status = status.slice(0, tab);
+        } else {
+          path = tokens[index++] ?? '';
+        }
+        if (!path) throw new GitRepositoryTruthError('unknown', 'Git name-status path is missing');
+        if (/^[RC]/u.test(status)) {
+          const renamedPath = tokens[index++] ?? '';
+          if (!renamedPath) throw new GitRepositoryTruthError('unknown', 'Git rename destination is missing');
+          entries.push({ status, path: renamedPath, oldPath: path });
+        } else {
+          entries.push({ status, path });
+        }
+      }
+      const body = { scope, entries };
+      return { ...body, resultDigest: resultDigest(body) };
+    });
+  }
+
+  add(input: {
+    repositoryAuthorityId: string;
+    workspaceId: string;
+    paths: string[];
+    expectedHead: string;
+    expectedStatusDigest: string;
+  }): GitAddResult {
+    const record = this.loadWorkspace(input);
+    assertObject(input.expectedHead, 'expectedHead');
+    if (!/^[a-f0-9]{64}$/u.test(input.expectedStatusDigest)) {
+      throw new GitRepositoryTruthError('invalid_request', 'expectedStatusDigest is invalid');
+    }
+    const paths = sortedUnique(input.paths.map(safeRelativePath));
+    if (paths.length === 0) throw new GitRepositoryTruthError('invalid_request', 'At least one path is required');
+    const authority = this.requireAuthority(input.repositoryAuthorityId);
+    this.options.authorityRegistry.resolveAuthorizedCredential({
+      authorityId: input.repositoryAuthorityId,
+      credentialReferenceId: authority.credentialReferenceId,
+      operationFamily: 'git.repository.write',
+      branch: record.branch ? `refs/heads/${record.branch}` : undefined,
+      requireWrite: true,
+    });
+    const before = this.status(input);
+    if (before.workspace.head !== input.expectedHead) {
+      throw new GitRepositoryTruthError('ref_mismatch', 'Workspace HEAD does not equal expectedHead');
+    }
+    if (before.resultDigest !== input.expectedStatusDigest) {
+      throw new GitRepositoryTruthError('repository_mismatch', 'Workspace status changed after caller observation');
+    }
+    if (before.conflicts.length > 0 || before.sequencerState !== 'none') {
+      throw new GitRepositoryTruthError('workspace_dirty', 'Staging is forbidden during conflicts or an active sequencer');
+    }
+    const changed = new Set([...before.stagedPaths, ...before.unstagedPaths, ...before.untrackedPaths]);
+    for (const path of paths) {
+      if (!changed.has(path)) {
+        throw new GitRepositoryTruthError('undeclared_path_change', `Path is not an observed change: ${path}`);
+      }
+    }
+    this.withGitEnvironment((environment) => {
+      this.assertWorkspacePaths(record);
+      this.runGit(['add', '--', ...paths], record.worktreePath, environment);
+    });
+    const after = this.status(input);
+    for (const path of paths) {
+      if (!after.stagedPaths.includes(path)) {
+        throw new GitRepositoryTruthError('unknown', `Path was not staged: ${path}`);
+      }
+    }
+    const body = {
+      workspace: after.workspace,
+      stagedPaths: after.stagedPaths,
+      statusDigest: after.resultDigest,
+    };
+    return { ...body, resultDigest: resultDigest(body) };
+  }
+
+  checkIgnore(input: {
+    repositoryAuthorityId: string;
+    workspaceId: string;
+    paths: string[];
+  }): { items: GitIgnoreCheckResult[]; resultDigest: string } {
+    const record = this.loadWorkspace(input);
+    const paths = sortedUnique(input.paths.map(safeRelativePath));
+    if (paths.length === 0) throw new GitRepositoryTruthError('invalid_request', 'At least one path is required');
+    this.authorizeRepositoryRead(record);
+    return this.withGitEnvironment((environment) => {
+      this.assertWorkspacePaths(record);
+      const items = paths.map((path): GitIgnoreCheckResult => {
+        const result = this.runGit(
+          ['check-ignore', '--no-index', '-v', '-z', '--stdin'],
+          record.worktreePath,
+          environment,
+          [0, 1],
+          `${path}\0`,
+        );
+        if (result.status === 1) return { path, ignored: false };
+        const [source, lineText, pattern, observedPath] = result.stdout.split('\0');
+        if (!source || !pattern || observedPath !== path) {
+          throw new GitRepositoryTruthError('unknown', 'Git check-ignore output is malformed');
+        }
+        const line = Number.parseInt(lineText ?? '', 10);
+        return {
+          path,
+          ignored: true,
+          source,
+          ...(Number.isSafeInteger(line) ? { line } : {}),
+          pattern,
+        };
+      });
+      return { items, resultDigest: resultDigest(items) };
+    });
+  }
+
+  checkAttributes(input: {
+    repositoryAuthorityId: string;
+    workspaceId: string;
+    paths: string[];
+  }): { items: GitAttributesCheckResult[]; resultDigest: string } {
+    const record = this.loadWorkspace(input);
+    const paths = sortedUnique(input.paths.map(safeRelativePath));
+    if (paths.length === 0) throw new GitRepositoryTruthError('invalid_request', 'At least one path is required');
+    this.authorizeRepositoryRead(record);
+    return this.withGitEnvironment((environment) => {
+      this.assertWorkspacePaths(record);
+      const items = paths.map((path): GitAttributesCheckResult => {
+        const output = this.runGit(['check-attr', '-z', '--all', '--', path], record.worktreePath, environment).stdout;
+        const tokens = output.split('\0').filter(Boolean);
+        const attributes: Record<string, string> = {};
+        for (let index = 0; index < tokens.length; index += 3) {
+          const observedPath = tokens[index];
+          const attribute = tokens[index + 1];
+          const value = tokens[index + 2];
+          if (observedPath !== path || !attribute || value === undefined) {
+            throw new GitRepositoryTruthError('unknown', 'Git check-attr output is malformed');
+          }
+          attributes[attribute] = value;
+        }
+        return { path, attributes };
+      });
+      return { items, resultDigest: resultDigest(items) };
     });
   }
 
@@ -784,6 +1109,36 @@ export class GitRepositoryTruth {
     });
   }
 
+  private authorizeRepositoryRead(record: GitWorkspaceRecord): void {
+    const authority = this.requireAuthority(record.repositoryAuthorityId);
+    this.options.authorityRegistry.resolveAuthorizedCredential({
+      authorityId: record.repositoryAuthorityId,
+      credentialReferenceId: authority.credentialReferenceId,
+      operationFamily: 'git.repository.read',
+    });
+  }
+
+  private normalizeOptionalPaths(paths: string[] | undefined): string[] {
+    return sortedUnique((paths ?? []).map(safeRelativePath));
+  }
+
+  private normalizeMaximumBytes(value: number | undefined): number {
+    const maximumBytes = value ?? 262_144;
+    if (!Number.isSafeInteger(maximumBytes) || maximumBytes < 1 || maximumBytes > 1_048_576) {
+      throw new GitRepositoryTruthError('invalid_request', 'maximumBytes must be between 1 and 1048576');
+    }
+    return maximumBytes;
+  }
+
+  private diffArguments(scope: GitDiffScope, options: string[], paths: string[]): string[] {
+    const prefix = scope === 'staged'
+      ? ['diff', '--cached']
+      : scope === 'head'
+        ? ['diff', 'HEAD']
+        : ['diff'];
+    return [...prefix, ...options, '--', ...paths];
+  }
+
   private requireAuthority(authorityId: string): GitHubRepositoryAuthority {
     const authority = this.options.authorityRegistry.getRepositoryAuthority(authorityId);
     if (!authority) throw new GitRepositoryTruthError('authority_missing', 'Repository authority does not exist');
@@ -941,6 +1296,7 @@ export class GitRepositoryTruth {
     cwd: string | undefined,
     environment: NodeJS.ProcessEnv,
     allowedStatuses: readonly number[] = [0],
+    input?: string,
   ): GitResult {
     const result = spawnSync(this.gitPath, ['-c', 'core.hooksPath=/dev/null', '-c', 'protocol.file.allow=always', ...args], {
       ...(cwd ? { cwd } : {}),
@@ -949,6 +1305,7 @@ export class GitRepositoryTruth {
       timeout: this.timeoutMs,
       maxBuffer: MAX_GIT_OUTPUT,
       windowsHide: true,
+      ...(input === undefined ? {} : { input }),
     });
     if (result.error) {
       throw new GitRepositoryTruthError('unknown', 'Git process failed to start', { message: result.error.message });
