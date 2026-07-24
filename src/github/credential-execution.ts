@@ -1,7 +1,7 @@
 /** Secure execution planning for encrypted GitHub credential references. */
 
 import { lstatSync, readFileSync, realpathSync, statSync } from 'node:fs';
-import { basename, resolve, sep } from 'node:path';
+import { basename, isAbsolute, resolve, sep } from 'node:path';
 import { sha256Hex } from '../crypto/canonical.js';
 import type { GitHubCredentialEnrollmentRecord, GitHubRepositoryAuthority } from './contracts.js';
 import { GITHUB_HELPER_PROTOCOL_VERSION, type GitHubHelperGitOperation, type GitHubHelperRequest } from './helper.js';
@@ -20,6 +20,8 @@ export interface EncryptedCredentialExecutionInput {
   helperPath?: string;
   expectedOwnerUid?: number;
   maximumOutputBytes?: number;
+  workingDirectory?: string;
+  workingDirectoryRoot?: string;
 }
 
 export interface EncryptedCredentialExecutionPlan {
@@ -35,6 +37,7 @@ export interface EncryptedCredentialExecutionPlan {
   stdin: string;
   nonInteractive: true;
   plaintextPersisted: false;
+  workingDirectory?: string;
 }
 
 function fail(message: string): never {
@@ -48,6 +51,18 @@ function confinedPath(rootPath: string, candidatePath: string): string {
   if (metadata.isSymbolicLink() || !metadata.isFile()) fail('Encrypted credential must be a regular non-symlink file');
   const real = realpathSync(candidate);
   if (real !== root && !real.startsWith(`${root}${sep}`)) fail('Encrypted credential path escapes approved root');
+  return real;
+}
+
+function protectedWorkingDirectory(candidatePath: string, rootPath?: string): string {
+  if (!isAbsolute(candidatePath)) fail('Working directory must be absolute');
+  const metadata = lstatSync(candidatePath);
+  if (metadata.isSymbolicLink() || !metadata.isDirectory()) fail('Working directory must be a regular non-symlink directory');
+  const real = realpathSync(candidatePath);
+  if (rootPath) {
+    const root = realpathSync(rootPath);
+    if (real !== root && !real.startsWith(`${root}${sep}`)) fail('Working directory escapes approved root');
+  }
   return real;
 }
 
@@ -68,6 +83,7 @@ export function createEncryptedCredentialExecutionPlan(input: EncryptedCredentia
   if (input.expectedOwnerUid !== undefined && metadata.uid !== input.expectedOwnerUid) fail('Encrypted credential owner does not match policy');
   const encryptedDigest = sha256Hex(readFileSync(credentialPath));
   if (encryptedDigest !== input.credential.encryptedCredentialDigest) fail('Encrypted credential digest mismatch');
+  const workingDirectory = input.workingDirectory ? protectedWorkingDirectory(input.workingDirectory, input.workingDirectoryRoot) : undefined;
   const helperPath = input.helperPath ?? '/usr/local/libexec/baby-quirt/baby-github';
   if (!helperPath.startsWith('/')) fail('Helper path must be absolute');
   const helperRequest: GitHubHelperRequest = {
@@ -103,6 +119,7 @@ export function createEncryptedCredentialExecutionPlan(input: EncryptedCredentia
       '--property=ProtectSystem=strict',
       '--property=ProtectHome=yes',
       '--property=RestrictSUIDSGID=yes',
+      ...(workingDirectory ? [`--property=WorkingDirectory=${workingDirectory}`] : []),
       `--property=LoadCredentialEncrypted=${input.credential.encryptedCredentialName}:${credentialPath}`,
       '--',
       helperPath,
@@ -110,5 +127,6 @@ export function createEncryptedCredentialExecutionPlan(input: EncryptedCredentia
     stdin: `${JSON.stringify(helperRequest)}\n`,
     nonInteractive: true,
     plaintextPersisted: false,
+    ...(workingDirectory ? { workingDirectory } : {}),
   };
 }

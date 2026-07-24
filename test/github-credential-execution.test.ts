@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { chmodSync, mkdtempSync, rmSync, symlinkSync, unlinkSync, writeFileSync } from 'node:fs';
+import { chmodSync, mkdirSync, mkdtempSync, rmSync, symlinkSync, unlinkSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, describe, it } from 'node:test';
@@ -25,6 +25,8 @@ function fixtures() {
   const encrypted = Buffer.from('systemd-encrypted-credential-fixture');
   writeFileSync(credentialPath, encrypted, { mode: 0o600 });
   chmodSync(credentialPath, 0o600);
+  const workingDirectory = join(root, 'workspace');
+  mkdirSync(workingDirectory, { recursive: true });
   const knownHosts = 'github.com ssh-ed25519 AAAAC3NzaFixturePinnedHostKey\n';
   const permissionSnapshot: GitHubPermissionSnapshot = {
     snapshotId: 'permission-snapshot-plan',
@@ -70,7 +72,7 @@ function fixtures() {
     revoked: false,
     health: 'healthy',
   };
-  return { root, credentialPath, knownHosts, credential, authority };
+  return { root, credentialPath, workingDirectory, knownHosts, credential, authority };
 }
 
 describe('encrypted credential execution planning', () => {
@@ -89,12 +91,16 @@ describe('encrypted credential execution planning', () => {
         refspecs: ['0857bc9fc2af88c529044515c2b5bbf1f478042a:refs/heads/build/universal-github-authority-v1'],
       },
       expectedOwnerUid: process.getuid?.(),
+      workingDirectory: value.workingDirectory,
+      workingDirectoryRoot: value.root,
     });
     assert.equal(plan.nonInteractive, true);
     assert.equal(plan.plaintextPersisted, false);
     assert.equal(plan.encryptedCredentialMode, 0o600);
     assert.ok(plan.systemdRunArgv.includes('/usr/local/libexec/baby-quirt/baby-github'));
     assert.ok(plan.systemdRunArgv.some((arg) => arg.startsWith('--property=LoadCredentialEncrypted=github-baby-quirt-ssh:')));
+    assert.ok(plan.systemdRunArgv.includes(`--property=WorkingDirectory=${value.workingDirectory}`));
+    assert.equal(plan.workingDirectory, value.workingDirectory);
     assert.doesNotMatch(JSON.stringify(plan), /PRIVATE KEY|systemd-encrypted-credential-fixture/u);
     const helperRequest = JSON.parse(plan.stdin) as { operation: string; credentialName: string };
     assert.deepEqual({ operation: helperRequest.operation, credentialName: helperRequest.credentialName }, {

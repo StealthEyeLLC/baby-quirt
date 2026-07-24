@@ -267,6 +267,19 @@ export class GitWorkspaceRegistry {
     return record;
   }
 
+  listByAuthority(repositoryAuthorityId: string, input: { limit?: number; offset?: number } = {}): GitWorkspaceRecord[] {
+    assertIdentifier(repositoryAuthorityId, 'repositoryAuthorityId');
+    const limit = input.limit ?? 100;
+    const offset = input.offset ?? 0;
+    if (!Number.isSafeInteger(limit) || limit < 1 || limit > 500 || !Number.isSafeInteger(offset) || offset < 0) {
+      throw new GitRepositoryTruthError('invalid_request', 'Workspace pagination is invalid');
+    }
+    const rows = this.database.prepare(`SELECT workspace_id FROM github_git_workspaces
+      WHERE repository_authority_id = ? ORDER BY updated_at DESC, workspace_id LIMIT ? OFFSET ?`)
+      .all(repositoryAuthorityId, limit, offset) as SqlRow[];
+    return rows.map((row) => this.get(asString(row, 'workspace_id')) as GitWorkspaceRecord);
+  }
+
   updateObservation(input: {
     workspaceId: string;
     branch?: string;

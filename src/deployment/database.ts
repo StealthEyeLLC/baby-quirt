@@ -15,6 +15,7 @@ import { canonicalJson, sha256Hex } from '../crypto/canonical.js';
 import { DELIVERY_LEDGER_MIGRATION, DeliveryPersistence } from '../delivery/persistence.js';
 import { GITHUB_AUTHORITY_REGISTRY_MIGRATION, GitHubAuthorityRegistry } from '../github/authority-registry.js';
 import { GITHUB_REPOSITORY_TRUTH_MIGRATION, GitWorkspaceRegistry } from '../github/repository-truth.js';
+import { GITHUB_SAFE_PUBLICATION_MIGRATION, GitSafePublicationRegistry } from '../github/safe-publication.js';
 import {
   DEPLOYMENT_PRODUCTS,
   DeploymentError,
@@ -244,6 +245,7 @@ const MIGRATIONS: readonly Migration[] = [
   DELIVERY_LEDGER_MIGRATION,
   GITHUB_AUTHORITY_REGISTRY_MIGRATION,
   GITHUB_REPOSITORY_TRUTH_MIGRATION,
+  GITHUB_SAFE_PUBLICATION_MIGRATION,
 ];
 
 type SqlRow = Record<string, unknown>;
@@ -466,6 +468,7 @@ export class DeploymentDatabase {
   readonly deliveries: DeliveryPersistence;
   readonly githubAuthorities: GitHubAuthorityRegistry;
   readonly githubGitWorkspaces: GitWorkspaceRegistry;
+  readonly githubSafePublications: GitSafePublicationRegistry;
   private closed = false;
 
   constructor(readonly databasePath: string) {
@@ -487,6 +490,7 @@ export class DeploymentDatabase {
     this.deliveries = new DeliveryPersistence(this.database);
     this.githubAuthorities = new GitHubAuthorityRegistry(this.database);
     this.githubGitWorkspaces = new GitWorkspaceRegistry(this.database);
+    this.githubSafePublications = new GitSafePublicationRegistry(this.database);
     this.assertIntegrity();
 
     if (databasePath !== ':memory:') {
