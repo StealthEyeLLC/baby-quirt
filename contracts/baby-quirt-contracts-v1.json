@@ -948,7 +948,24 @@
       "mutation": false,
       "idempotency": "read_only",
       "risk": "low",
-      "input": { "type": "object", "additionalProperties": false, "properties": { "deploymentId": { "type": "string" }, "offset": { "type": "integer", "minimum": 0 }, "limit": { "type": "integer", "minimum": 1, "maximum": 200 } } }
+      "input": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "deploymentId": {
+            "type": "string"
+          },
+          "offset": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "limit": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 200
+          }
+        }
+      }
     },
     {
       "operation": "baby.release.build",
@@ -958,7 +975,37 @@
       "mutation": true,
       "idempotency": "caller_key",
       "risk": "medium",
-      "input": { "type": "object", "additionalProperties": false, "properties": { "deploymentId": { "type": "string" }, "generation": { "type": "integer", "minimum": 1 }, "planDigest": { "type": "string", "pattern": "^[a-f0-9]{64}$" }, "deadline": { "type": "string", "format": "date-time" }, "sources": { "type": "object" } }, "required": ["deploymentId", "generation", "planDigest", "deadline", "sources"] }
+      "input": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "deploymentId": {
+            "type": "string"
+          },
+          "generation": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "planDigest": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{64}$"
+          },
+          "deadline": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "sources": {
+            "type": "object"
+          }
+        },
+        "required": [
+          "deploymentId",
+          "generation",
+          "planDigest",
+          "deadline",
+          "sources"
+        ]
+      }
     },
     {
       "operation": "baby.release.stage",
@@ -968,7 +1015,23 @@
       "mutation": true,
       "idempotency": "caller_key",
       "risk": "medium",
-      "input": { "type": "object", "additionalProperties": false, "properties": { "deploymentId": { "type": "string" }, "expectedSequence": { "type": "integer", "minimum": 0 } }, "required": ["deploymentId", "expectedSequence"] }
+      "input": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "deploymentId": {
+            "type": "string"
+          },
+          "expectedSequence": {
+            "type": "integer",
+            "minimum": 0
+          }
+        },
+        "required": [
+          "deploymentId",
+          "expectedSequence"
+        ]
+      }
     },
     {
       "operation": "baby.release.verify",
@@ -978,7 +1041,18 @@
       "mutation": false,
       "idempotency": "read_only",
       "risk": "low",
-      "input": { "type": "object", "additionalProperties": false, "properties": { "deploymentId": { "type": "string" } }, "required": ["deploymentId"] }
+      "input": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "deploymentId": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "deploymentId"
+        ]
+      }
     },
     {
       "operation": "baby.release.activate",
@@ -988,7 +1062,28 @@
       "mutation": true,
       "idempotency": "caller_key",
       "risk": "high",
-      "input": { "type": "object", "additionalProperties": false, "properties": { "deploymentId": { "type": "string" }, "expectedSequence": { "type": "integer", "minimum": 0 }, "confirmationDigest": { "type": "string", "pattern": "^[a-f0-9]{64}$" } }, "required": ["deploymentId", "expectedSequence", "confirmationDigest"] }
+      "input": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "deploymentId": {
+            "type": "string"
+          },
+          "expectedSequence": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "confirmationDigest": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{64}$"
+          }
+        },
+        "required": [
+          "deploymentId",
+          "expectedSequence",
+          "confirmationDigest"
+        ]
+      }
     },
     {
       "operation": "baby.release.rollback",
@@ -998,7 +1093,24 @@
       "mutation": true,
       "idempotency": "caller_key",
       "risk": "high",
-      "input": { "type": "object", "additionalProperties": false, "properties": { "deploymentId": { "type": "string" }, "reason": { "type": "string", "minLength": 8, "maxLength": 512 } }, "required": ["deploymentId", "reason"] }
+      "input": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "deploymentId": {
+            "type": "string"
+          },
+          "reason": {
+            "type": "string",
+            "minLength": 8,
+            "maxLength": 512
+          }
+        },
+        "required": [
+          "deploymentId",
+          "reason"
+        ]
+      }
     },
     {
       "operation": "baby.release.repair",
@@ -1008,7 +1120,23 @@
       "mutation": true,
       "idempotency": "caller_key",
       "risk": "high",
-      "input": { "type": "object", "additionalProperties": false, "properties": { "deploymentId": { "type": "string" }, "expectedSequence": { "type": "integer", "minimum": 0 } }, "required": ["deploymentId", "expectedSequence"] }
+      "input": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "deploymentId": {
+            "type": "string"
+          },
+          "expectedSequence": {
+            "type": "integer",
+            "minimum": 0
+          }
+        },
+        "required": [
+          "deploymentId",
+          "expectedSequence"
+        ]
+      }
     },
     {
       "operation": "baby.release.prune",
@@ -1018,7 +1146,23 @@
       "mutation": true,
       "idempotency": "caller_key",
       "risk": "medium",
-      "input": { "type": "object", "additionalProperties": false, "properties": { "dryRun": { "type": "boolean" }, "retain": { "type": "integer", "minimum": 2, "maximum": 100 } }, "required": ["dryRun"] }
+      "input": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "dryRun": {
+            "type": "boolean"
+          },
+          "retain": {
+            "type": "integer",
+            "minimum": 2,
+            "maximum": 100
+          }
+        },
+        "required": [
+          "dryRun"
+        ]
+      }
     },
     {
       "operation": "baby.selfhost.source.get",
@@ -1028,7 +1172,25 @@
       "mutation": true,
       "idempotency": "caller_key",
       "risk": "medium",
-      "input": { "type": "object", "additionalProperties": false, "properties": { "deploymentId": { "type": "string" }, "product": { "enum": ["baby-quirt", "baby-quirt-mcp"] } }, "required": ["deploymentId", "product"] }
+      "input": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "deploymentId": {
+            "type": "string"
+          },
+          "product": {
+            "enum": [
+              "baby-quirt",
+              "baby-quirt-mcp"
+            ]
+          }
+        },
+        "required": [
+          "deploymentId",
+          "product"
+        ]
+      }
     },
     {
       "operation": "baby.selfhost.acceptance.run",
@@ -1038,7 +1200,26 @@
       "mutation": true,
       "idempotency": "caller_key",
       "risk": "medium",
-      "input": { "type": "object", "additionalProperties": false, "properties": { "deploymentId": { "type": "string" }, "profile": { "enum": ["preactivation", "postactivation", "full"] } }, "required": ["deploymentId", "profile"] }
+      "input": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "deploymentId": {
+            "type": "string"
+          },
+          "profile": {
+            "enum": [
+              "preactivation",
+              "postactivation",
+              "full"
+            ]
+          }
+        },
+        "required": [
+          "deploymentId",
+          "profile"
+        ]
+      }
     },
     {
       "operation": "baby.selfhost.evidence.get",
@@ -1048,7 +1229,2288 @@
       "mutation": false,
       "idempotency": "read_only",
       "risk": "low",
-      "input": { "type": "object", "additionalProperties": false, "properties": { "deploymentId": { "type": "string" }, "kind": { "type": "string" }, "offset": { "type": "integer", "minimum": 0 }, "limit": { "type": "integer", "minimum": 1, "maximum": 200 } }, "required": ["deploymentId"] }
+      "input": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "deploymentId": {
+            "type": "string"
+          },
+          "kind": {
+            "type": "string"
+          },
+          "offset": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "limit": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 200
+          }
+        },
+        "required": [
+          "deploymentId"
+        ]
+      }
+    },
+    {
+      "operation": "baby.delivery.plan",
+      "family": "delivery",
+      "version": "1.0.0",
+      "description": "Validate, authorize, and persist one immutable automated-delivery plan.",
+      "mutation": true,
+      "idempotency": "caller_key",
+      "risk": "medium",
+      "input": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "plan": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "schemaVersion": {
+                "const": "1.0.0"
+              },
+              "deliveryId": {
+                "type": "string",
+                "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,255}$"
+              },
+              "ownerPrincipal": {
+                "type": "string",
+                "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,255}$"
+              },
+              "authorizationReference": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 4096
+              },
+              "targetHostname": {
+                "type": "string",
+                "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,255}$"
+              },
+              "targetMachineIdentity": {
+                "type": "string",
+                "pattern": "^[a-f0-9]{64}$"
+              },
+              "products": {
+                "type": "array",
+                "minItems": 2,
+                "maxItems": 2,
+                "items": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "product": {
+                      "enum": [
+                        "baby-quirt",
+                        "baby-quirt-mcp"
+                      ]
+                    },
+                    "repository": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 4096
+                    },
+                    "commit": {
+                      "type": "string",
+                      "pattern": "^(?:[a-f0-9]{40}|[a-f0-9]{64})$"
+                    },
+                    "tree": {
+                      "type": "string",
+                      "pattern": "^(?:[a-f0-9]{40}|[a-f0-9]{64})$"
+                    },
+                    "adapter": {
+                      "enum": [
+                        "baby_selfhost",
+                        "immutable_source_artifact",
+                        "authenticated_git",
+                        "connector_handoff"
+                      ]
+                    },
+                    "immutableDigest": {
+                      "type": "string",
+                      "pattern": "^[a-f0-9]{64}$"
+                    },
+                    "credentialReference": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 4096
+                    }
+                  },
+                  "required": [
+                    "product",
+                    "repository",
+                    "commit",
+                    "tree",
+                    "adapter",
+                    "immutableDigest"
+                  ]
+                }
+              },
+              "buildProfile": {
+                "type": "object"
+              },
+              "testProfile": {
+                "type": "object"
+              },
+              "certificationProfile": {
+                "type": "object"
+              },
+              "targetReleaseIdentifiers": {
+                "type": "object"
+              },
+              "protectedReleases": {
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 4096
+                }
+              },
+              "protectedPaths": {
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 4096
+                }
+              },
+              "candidateVerificationProfile": {
+                "type": "object"
+              },
+              "activationOrder": {
+                "type": "array",
+                "prefixItems": [
+                  {
+                    "const": "baby-quirt-mcp"
+                  },
+                  {
+                    "const": "baby-quirt"
+                  }
+                ],
+                "minItems": 2,
+                "maxItems": 2
+              },
+              "acceptanceProfile": {
+                "type": "object"
+              },
+              "soakProfile": {
+                "type": "object"
+              },
+              "rollbackPolicy": {
+                "type": "object"
+              },
+              "timeBounds": {
+                "type": "object"
+              },
+              "allowedExternalSideEffects": {
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 4096
+                }
+              },
+              "resourceBounds": {
+                "type": "object"
+              },
+              "costBounds": {
+                "type": "object"
+              },
+              "evidenceRequirements": {
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,255}$"
+                }
+              },
+              "retentionPolicy": {
+                "type": "object"
+              }
+            },
+            "required": [
+              "schemaVersion",
+              "deliveryId",
+              "ownerPrincipal",
+              "authorizationReference",
+              "targetHostname",
+              "targetMachineIdentity",
+              "products",
+              "buildProfile",
+              "testProfile",
+              "certificationProfile",
+              "targetReleaseIdentifiers",
+              "protectedReleases",
+              "protectedPaths",
+              "candidateVerificationProfile",
+              "activationOrder",
+              "acceptanceProfile",
+              "soakProfile",
+              "rollbackPolicy",
+              "timeBounds",
+              "allowedExternalSideEffects",
+              "resourceBounds",
+              "costBounds",
+              "evidenceRequirements",
+              "retentionPolicy"
+            ]
+          },
+          "authorizedPlanDigest": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{64}$"
+          }
+        },
+        "required": [
+          "plan",
+          "authorizedPlanDigest"
+        ]
+      },
+      "output": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "run": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "deliveryId": {
+                "type": "string",
+                "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,255}$"
+              },
+              "planDigest": {
+                "type": "string",
+                "pattern": "^[a-f0-9]{64}$"
+              },
+              "ownerPrincipal": {
+                "type": "string",
+                "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,255}$"
+              },
+              "authorizationReference": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 4096
+              },
+              "targetHostname": {
+                "type": "string",
+                "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,255}$"
+              },
+              "targetMachineIdentity": {
+                "type": "string",
+                "pattern": "^[a-f0-9]{64}$"
+              },
+              "generation": {
+                "type": "integer",
+                "minimum": 1
+              },
+              "state": {
+                "enum": [
+                  "PLANNED",
+                  "SOURCE_VERIFIED",
+                  "SOURCE_MATERIALIZED",
+                  "BUILDING",
+                  "TESTING",
+                  "CERTIFYING",
+                  "ARTIFACT_FINALIZED",
+                  "STAGING",
+                  "CANDIDATE_VERIFIED",
+                  "ROLLBACK_ARMED",
+                  "ACTIVATING",
+                  "ACCEPTING",
+                  "SOAKING",
+                  "SUCCEEDED",
+                  "REJECTED",
+                  "FAILED",
+                  "CANCELLED_PRE_ARM",
+                  "ROLLBACK_REQUESTED",
+                  "ROLLING_BACK",
+                  "ROLLED_BACK",
+                  "ROLLBACK_FAILED",
+                  "REPAIR_REQUIRED",
+                  "MANUAL_RECOVERY_REQUIRED",
+                  "PARTIAL",
+                  "AMBIGUOUS",
+                  "UNKNOWN"
+                ]
+              },
+              "stateSequence": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "deploymentId": {
+                "type": "string",
+                "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,255}$"
+              },
+              "deploymentState": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 4096
+              },
+              "activeControllerLease": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 4096
+              },
+              "childJobs": {
+                "type": "array"
+              },
+              "artifacts": {
+                "type": "array"
+              },
+              "createdAt": {
+                "type": "string",
+                "format": "date-time"
+              },
+              "updatedAt": {
+                "type": "string",
+                "format": "date-time"
+              },
+              "expiresAt": {
+                "type": "string",
+                "format": "date-time"
+              },
+              "terminal": {
+                "type": "boolean"
+              }
+            },
+            "required": [
+              "deliveryId",
+              "planDigest",
+              "ownerPrincipal",
+              "authorizationReference",
+              "targetHostname",
+              "targetMachineIdentity",
+              "generation",
+              "state",
+              "stateSequence",
+              "childJobs",
+              "artifacts",
+              "createdAt",
+              "updatedAt",
+              "expiresAt",
+              "terminal"
+            ]
+          },
+          "resultDigest": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{64}$"
+          },
+          "receiptBinding": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "receiptVersion": {
+                "const": "2.0.0"
+              },
+              "required": {
+                "const": true
+              }
+            },
+            "required": [
+              "receiptVersion",
+              "required"
+            ]
+          }
+        },
+        "required": [
+          "run",
+          "resultDigest",
+          "receiptBinding"
+        ]
+      },
+      "errors": [
+        "delivery_invalid",
+        "delivery_not_found",
+        "delivery_conflict",
+        "delivery_plan_changed",
+        "delivery_authorization_invalid",
+        "delivery_expired",
+        "delivery_wrong_host",
+        "delivery_wrong_machine",
+        "delivery_source_mismatch",
+        "delivery_tree_mismatch",
+        "delivery_source_digest_mismatch",
+        "delivery_credential_unavailable",
+        "delivery_controller_conflict",
+        "delivery_generation_conflict",
+        "delivery_state_conflict",
+        "delivery_receipt_invalid",
+        "delivery_evidence_insufficient",
+        "delivery_rollback_failed",
+        "delivery_manual_recovery_required",
+        "delivery_unknown",
+        "idempotency_conflict"
+      ],
+      "cancellation": "pre_arm_cancel_post_arm_rollback",
+      "restartBehavior": "durable_reconcile",
+      "postActionVerification": true,
+      "receiptVersion": "2.0.0",
+      "limits": {
+        "maxInlineResultBytes": 65536,
+        "defaultPageSize": 50,
+        "maximumPageSize": 200
+      }
+    },
+    {
+      "operation": "baby.delivery.execute",
+      "family": "delivery",
+      "version": "1.0.0",
+      "description": "Start or resume the authorized durable delivery controller.",
+      "mutation": true,
+      "idempotency": "caller_key",
+      "risk": "high",
+      "input": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "deliveryId": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,255}$"
+          },
+          "planDigest": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{64}$"
+          },
+          "expectedSequence": {
+            "type": "integer",
+            "minimum": 0
+          }
+        },
+        "required": [
+          "deliveryId",
+          "planDigest",
+          "expectedSequence"
+        ]
+      },
+      "output": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "run": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "deliveryId": {
+                "type": "string",
+                "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,255}$"
+              },
+              "planDigest": {
+                "type": "string",
+                "pattern": "^[a-f0-9]{64}$"
+              },
+              "ownerPrincipal": {
+                "type": "string",
+                "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,255}$"
+              },
+              "authorizationReference": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 4096
+              },
+              "targetHostname": {
+                "type": "string",
+                "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,255}$"
+              },
+              "targetMachineIdentity": {
+                "type": "string",
+                "pattern": "^[a-f0-9]{64}$"
+              },
+              "generation": {
+                "type": "integer",
+                "minimum": 1
+              },
+              "state": {
+                "enum": [
+                  "PLANNED",
+                  "SOURCE_VERIFIED",
+                  "SOURCE_MATERIALIZED",
+                  "BUILDING",
+                  "TESTING",
+                  "CERTIFYING",
+                  "ARTIFACT_FINALIZED",
+                  "STAGING",
+                  "CANDIDATE_VERIFIED",
+                  "ROLLBACK_ARMED",
+                  "ACTIVATING",
+                  "ACCEPTING",
+                  "SOAKING",
+                  "SUCCEEDED",
+                  "REJECTED",
+                  "FAILED",
+                  "CANCELLED_PRE_ARM",
+                  "ROLLBACK_REQUESTED",
+                  "ROLLING_BACK",
+                  "ROLLED_BACK",
+                  "ROLLBACK_FAILED",
+                  "REPAIR_REQUIRED",
+                  "MANUAL_RECOVERY_REQUIRED",
+                  "PARTIAL",
+                  "AMBIGUOUS",
+                  "UNKNOWN"
+                ]
+              },
+              "stateSequence": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "deploymentId": {
+                "type": "string",
+                "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,255}$"
+              },
+              "deploymentState": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 4096
+              },
+              "activeControllerLease": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 4096
+              },
+              "childJobs": {
+                "type": "array"
+              },
+              "artifacts": {
+                "type": "array"
+              },
+              "createdAt": {
+                "type": "string",
+                "format": "date-time"
+              },
+              "updatedAt": {
+                "type": "string",
+                "format": "date-time"
+              },
+              "expiresAt": {
+                "type": "string",
+                "format": "date-time"
+              },
+              "terminal": {
+                "type": "boolean"
+              }
+            },
+            "required": [
+              "deliveryId",
+              "planDigest",
+              "ownerPrincipal",
+              "authorizationReference",
+              "targetHostname",
+              "targetMachineIdentity",
+              "generation",
+              "state",
+              "stateSequence",
+              "childJobs",
+              "artifacts",
+              "createdAt",
+              "updatedAt",
+              "expiresAt",
+              "terminal"
+            ]
+          },
+          "resultDigest": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{64}$"
+          },
+          "receiptBinding": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "receiptVersion": {
+                "const": "2.0.0"
+              },
+              "required": {
+                "const": true
+              }
+            },
+            "required": [
+              "receiptVersion",
+              "required"
+            ]
+          }
+        },
+        "required": [
+          "run",
+          "resultDigest",
+          "receiptBinding"
+        ]
+      },
+      "errors": [
+        "delivery_invalid",
+        "delivery_not_found",
+        "delivery_conflict",
+        "delivery_plan_changed",
+        "delivery_authorization_invalid",
+        "delivery_expired",
+        "delivery_wrong_host",
+        "delivery_wrong_machine",
+        "delivery_source_mismatch",
+        "delivery_tree_mismatch",
+        "delivery_source_digest_mismatch",
+        "delivery_credential_unavailable",
+        "delivery_controller_conflict",
+        "delivery_generation_conflict",
+        "delivery_state_conflict",
+        "delivery_receipt_invalid",
+        "delivery_evidence_insufficient",
+        "delivery_rollback_failed",
+        "delivery_manual_recovery_required",
+        "delivery_unknown",
+        "idempotency_conflict"
+      ],
+      "cancellation": "pre_arm_cancel_post_arm_rollback",
+      "restartBehavior": "durable_reconcile",
+      "postActionVerification": true,
+      "receiptVersion": "2.0.0",
+      "limits": {
+        "maxInlineResultBytes": 65536,
+        "defaultPageSize": 50,
+        "maximumPageSize": 200
+      }
+    },
+    {
+      "operation": "baby.delivery.get",
+      "family": "delivery",
+      "version": "1.0.0",
+      "description": "Read one durable delivery run.",
+      "mutation": false,
+      "idempotency": "read_only",
+      "risk": "low",
+      "input": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "deliveryId": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,255}$"
+          }
+        },
+        "required": [
+          "deliveryId"
+        ]
+      },
+      "output": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "run": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "deliveryId": {
+                "type": "string",
+                "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,255}$"
+              },
+              "planDigest": {
+                "type": "string",
+                "pattern": "^[a-f0-9]{64}$"
+              },
+              "ownerPrincipal": {
+                "type": "string",
+                "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,255}$"
+              },
+              "authorizationReference": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 4096
+              },
+              "targetHostname": {
+                "type": "string",
+                "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,255}$"
+              },
+              "targetMachineIdentity": {
+                "type": "string",
+                "pattern": "^[a-f0-9]{64}$"
+              },
+              "generation": {
+                "type": "integer",
+                "minimum": 1
+              },
+              "state": {
+                "enum": [
+                  "PLANNED",
+                  "SOURCE_VERIFIED",
+                  "SOURCE_MATERIALIZED",
+                  "BUILDING",
+                  "TESTING",
+                  "CERTIFYING",
+                  "ARTIFACT_FINALIZED",
+                  "STAGING",
+                  "CANDIDATE_VERIFIED",
+                  "ROLLBACK_ARMED",
+                  "ACTIVATING",
+                  "ACCEPTING",
+                  "SOAKING",
+                  "SUCCEEDED",
+                  "REJECTED",
+                  "FAILED",
+                  "CANCELLED_PRE_ARM",
+                  "ROLLBACK_REQUESTED",
+                  "ROLLING_BACK",
+                  "ROLLED_BACK",
+                  "ROLLBACK_FAILED",
+                  "REPAIR_REQUIRED",
+                  "MANUAL_RECOVERY_REQUIRED",
+                  "PARTIAL",
+                  "AMBIGUOUS",
+                  "UNKNOWN"
+                ]
+              },
+              "stateSequence": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "deploymentId": {
+                "type": "string",
+                "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,255}$"
+              },
+              "deploymentState": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 4096
+              },
+              "activeControllerLease": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 4096
+              },
+              "childJobs": {
+                "type": "array"
+              },
+              "artifacts": {
+                "type": "array"
+              },
+              "createdAt": {
+                "type": "string",
+                "format": "date-time"
+              },
+              "updatedAt": {
+                "type": "string",
+                "format": "date-time"
+              },
+              "expiresAt": {
+                "type": "string",
+                "format": "date-time"
+              },
+              "terminal": {
+                "type": "boolean"
+              }
+            },
+            "required": [
+              "deliveryId",
+              "planDigest",
+              "ownerPrincipal",
+              "authorizationReference",
+              "targetHostname",
+              "targetMachineIdentity",
+              "generation",
+              "state",
+              "stateSequence",
+              "childJobs",
+              "artifacts",
+              "createdAt",
+              "updatedAt",
+              "expiresAt",
+              "terminal"
+            ]
+          },
+          "resultDigest": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{64}$"
+          },
+          "receiptBinding": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "receiptVersion": {
+                "const": "2.0.0"
+              },
+              "required": {
+                "const": true
+              }
+            },
+            "required": [
+              "receiptVersion",
+              "required"
+            ]
+          }
+        },
+        "required": [
+          "run",
+          "resultDigest",
+          "receiptBinding"
+        ]
+      },
+      "errors": [
+        "delivery_invalid",
+        "delivery_not_found",
+        "delivery_conflict",
+        "delivery_plan_changed",
+        "delivery_authorization_invalid",
+        "delivery_expired",
+        "delivery_wrong_host",
+        "delivery_wrong_machine",
+        "delivery_source_mismatch",
+        "delivery_tree_mismatch",
+        "delivery_source_digest_mismatch",
+        "delivery_credential_unavailable",
+        "delivery_controller_conflict",
+        "delivery_generation_conflict",
+        "delivery_state_conflict",
+        "delivery_receipt_invalid",
+        "delivery_evidence_insufficient",
+        "delivery_rollback_failed",
+        "delivery_manual_recovery_required",
+        "delivery_unknown",
+        "idempotency_conflict"
+      ],
+      "cancellation": "not_applicable",
+      "restartBehavior": "read_only",
+      "postActionVerification": true,
+      "receiptVersion": "2.0.0",
+      "limits": {
+        "maxInlineResultBytes": 65536,
+        "defaultPageSize": 50,
+        "maximumPageSize": 200
+      }
+    },
+    {
+      "operation": "baby.delivery.list",
+      "family": "delivery",
+      "version": "1.0.0",
+      "description": "List durable delivery runs with bounded pagination.",
+      "mutation": false,
+      "idempotency": "read_only",
+      "risk": "low",
+      "input": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "offset": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "limit": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 200
+          },
+          "state": {
+            "enum": [
+              "PLANNED",
+              "SOURCE_VERIFIED",
+              "SOURCE_MATERIALIZED",
+              "BUILDING",
+              "TESTING",
+              "CERTIFYING",
+              "ARTIFACT_FINALIZED",
+              "STAGING",
+              "CANDIDATE_VERIFIED",
+              "ROLLBACK_ARMED",
+              "ACTIVATING",
+              "ACCEPTING",
+              "SOAKING",
+              "SUCCEEDED",
+              "REJECTED",
+              "FAILED",
+              "CANCELLED_PRE_ARM",
+              "ROLLBACK_REQUESTED",
+              "ROLLING_BACK",
+              "ROLLED_BACK",
+              "ROLLBACK_FAILED",
+              "REPAIR_REQUIRED",
+              "MANUAL_RECOVERY_REQUIRED",
+              "PARTIAL",
+              "AMBIGUOUS",
+              "UNKNOWN"
+            ]
+          }
+        }
+      },
+      "output": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "run": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "deliveryId": {
+                "type": "string",
+                "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,255}$"
+              },
+              "planDigest": {
+                "type": "string",
+                "pattern": "^[a-f0-9]{64}$"
+              },
+              "ownerPrincipal": {
+                "type": "string",
+                "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,255}$"
+              },
+              "authorizationReference": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 4096
+              },
+              "targetHostname": {
+                "type": "string",
+                "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,255}$"
+              },
+              "targetMachineIdentity": {
+                "type": "string",
+                "pattern": "^[a-f0-9]{64}$"
+              },
+              "generation": {
+                "type": "integer",
+                "minimum": 1
+              },
+              "state": {
+                "enum": [
+                  "PLANNED",
+                  "SOURCE_VERIFIED",
+                  "SOURCE_MATERIALIZED",
+                  "BUILDING",
+                  "TESTING",
+                  "CERTIFYING",
+                  "ARTIFACT_FINALIZED",
+                  "STAGING",
+                  "CANDIDATE_VERIFIED",
+                  "ROLLBACK_ARMED",
+                  "ACTIVATING",
+                  "ACCEPTING",
+                  "SOAKING",
+                  "SUCCEEDED",
+                  "REJECTED",
+                  "FAILED",
+                  "CANCELLED_PRE_ARM",
+                  "ROLLBACK_REQUESTED",
+                  "ROLLING_BACK",
+                  "ROLLED_BACK",
+                  "ROLLBACK_FAILED",
+                  "REPAIR_REQUIRED",
+                  "MANUAL_RECOVERY_REQUIRED",
+                  "PARTIAL",
+                  "AMBIGUOUS",
+                  "UNKNOWN"
+                ]
+              },
+              "stateSequence": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "deploymentId": {
+                "type": "string",
+                "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,255}$"
+              },
+              "deploymentState": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 4096
+              },
+              "activeControllerLease": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 4096
+              },
+              "childJobs": {
+                "type": "array"
+              },
+              "artifacts": {
+                "type": "array"
+              },
+              "createdAt": {
+                "type": "string",
+                "format": "date-time"
+              },
+              "updatedAt": {
+                "type": "string",
+                "format": "date-time"
+              },
+              "expiresAt": {
+                "type": "string",
+                "format": "date-time"
+              },
+              "terminal": {
+                "type": "boolean"
+              }
+            },
+            "required": [
+              "deliveryId",
+              "planDigest",
+              "ownerPrincipal",
+              "authorizationReference",
+              "targetHostname",
+              "targetMachineIdentity",
+              "generation",
+              "state",
+              "stateSequence",
+              "childJobs",
+              "artifacts",
+              "createdAt",
+              "updatedAt",
+              "expiresAt",
+              "terminal"
+            ]
+          },
+          "resultDigest": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{64}$"
+          },
+          "receiptBinding": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "receiptVersion": {
+                "const": "2.0.0"
+              },
+              "required": {
+                "const": true
+              }
+            },
+            "required": [
+              "receiptVersion",
+              "required"
+            ]
+          }
+        },
+        "required": [
+          "run",
+          "resultDigest",
+          "receiptBinding"
+        ]
+      },
+      "errors": [
+        "delivery_invalid",
+        "delivery_not_found",
+        "delivery_conflict",
+        "delivery_plan_changed",
+        "delivery_authorization_invalid",
+        "delivery_expired",
+        "delivery_wrong_host",
+        "delivery_wrong_machine",
+        "delivery_source_mismatch",
+        "delivery_tree_mismatch",
+        "delivery_source_digest_mismatch",
+        "delivery_credential_unavailable",
+        "delivery_controller_conflict",
+        "delivery_generation_conflict",
+        "delivery_state_conflict",
+        "delivery_receipt_invalid",
+        "delivery_evidence_insufficient",
+        "delivery_rollback_failed",
+        "delivery_manual_recovery_required",
+        "delivery_unknown",
+        "idempotency_conflict"
+      ],
+      "cancellation": "not_applicable",
+      "restartBehavior": "read_only",
+      "postActionVerification": true,
+      "receiptVersion": "2.0.0",
+      "limits": {
+        "maxInlineResultBytes": 65536,
+        "defaultPageSize": 50,
+        "maximumPageSize": 200
+      }
+    },
+    {
+      "operation": "baby.delivery.events",
+      "family": "delivery",
+      "version": "1.0.0",
+      "description": "Read the append-only delivery event stream.",
+      "mutation": false,
+      "idempotency": "read_only",
+      "risk": "low",
+      "input": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "deliveryId": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,255}$"
+          },
+          "offset": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "limit": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 200
+          }
+        },
+        "required": [
+          "deliveryId"
+        ]
+      },
+      "output": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "deliveryId": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,255}$"
+          },
+          "offset": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "nextOffset": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "items": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "deliveryId": {
+                  "type": "string",
+                  "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,255}$"
+                },
+                "offset": {
+                  "type": "integer",
+                  "minimum": 0
+                },
+                "generation": {
+                  "type": "integer",
+                  "minimum": 1
+                },
+                "planDigest": {
+                  "type": "string",
+                  "pattern": "^[a-f0-9]{64}$"
+                },
+                "state": {
+                  "enum": [
+                    "PLANNED",
+                    "SOURCE_VERIFIED",
+                    "SOURCE_MATERIALIZED",
+                    "BUILDING",
+                    "TESTING",
+                    "CERTIFYING",
+                    "ARTIFACT_FINALIZED",
+                    "STAGING",
+                    "CANDIDATE_VERIFIED",
+                    "ROLLBACK_ARMED",
+                    "ACTIVATING",
+                    "ACCEPTING",
+                    "SOAKING",
+                    "SUCCEEDED",
+                    "REJECTED",
+                    "FAILED",
+                    "CANCELLED_PRE_ARM",
+                    "ROLLBACK_REQUESTED",
+                    "ROLLING_BACK",
+                    "ROLLED_BACK",
+                    "ROLLBACK_FAILED",
+                    "REPAIR_REQUIRED",
+                    "MANUAL_RECOVERY_REQUIRED",
+                    "PARTIAL",
+                    "AMBIGUOUS",
+                    "UNKNOWN"
+                  ]
+                },
+                "phase": {
+                  "type": "string",
+                  "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,255}$"
+                },
+                "kind": {
+                  "type": "string",
+                  "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,255}$"
+                },
+                "message": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 4096
+                },
+                "childJobId": {
+                  "type": "string",
+                  "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,255}$"
+                },
+                "artifactReference": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 4096
+                },
+                "receiptId": {
+                  "type": "string",
+                  "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,255}$"
+                },
+                "occurredAt": {
+                  "type": "string",
+                  "format": "date-time"
+                },
+                "eventDigest": {
+                  "type": "string",
+                  "pattern": "^[a-f0-9]{64}$"
+                }
+              },
+              "required": [
+                "deliveryId",
+                "offset",
+                "generation",
+                "planDigest",
+                "state",
+                "phase",
+                "kind",
+                "message",
+                "occurredAt",
+                "eventDigest"
+              ]
+            }
+          }
+        },
+        "required": [
+          "deliveryId",
+          "offset",
+          "nextOffset",
+          "items"
+        ]
+      },
+      "errors": [
+        "delivery_invalid",
+        "delivery_not_found",
+        "delivery_conflict",
+        "delivery_plan_changed",
+        "delivery_authorization_invalid",
+        "delivery_expired",
+        "delivery_wrong_host",
+        "delivery_wrong_machine",
+        "delivery_source_mismatch",
+        "delivery_tree_mismatch",
+        "delivery_source_digest_mismatch",
+        "delivery_credential_unavailable",
+        "delivery_controller_conflict",
+        "delivery_generation_conflict",
+        "delivery_state_conflict",
+        "delivery_receipt_invalid",
+        "delivery_evidence_insufficient",
+        "delivery_rollback_failed",
+        "delivery_manual_recovery_required",
+        "delivery_unknown",
+        "idempotency_conflict"
+      ],
+      "cancellation": "not_applicable",
+      "restartBehavior": "read_only",
+      "postActionVerification": true,
+      "receiptVersion": "2.0.0",
+      "limits": {
+        "maxInlineResultBytes": 65536,
+        "defaultPageSize": 50,
+        "maximumPageSize": 200
+      }
+    },
+    {
+      "operation": "baby.delivery.verify",
+      "family": "delivery",
+      "version": "1.0.0",
+      "description": "Verify delivery plan, run, events, and evidence integrity.",
+      "mutation": false,
+      "idempotency": "read_only",
+      "risk": "low",
+      "input": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "deliveryId": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,255}$"
+          }
+        },
+        "required": [
+          "deliveryId"
+        ]
+      },
+      "output": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "run": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "deliveryId": {
+                "type": "string",
+                "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,255}$"
+              },
+              "planDigest": {
+                "type": "string",
+                "pattern": "^[a-f0-9]{64}$"
+              },
+              "ownerPrincipal": {
+                "type": "string",
+                "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,255}$"
+              },
+              "authorizationReference": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 4096
+              },
+              "targetHostname": {
+                "type": "string",
+                "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,255}$"
+              },
+              "targetMachineIdentity": {
+                "type": "string",
+                "pattern": "^[a-f0-9]{64}$"
+              },
+              "generation": {
+                "type": "integer",
+                "minimum": 1
+              },
+              "state": {
+                "enum": [
+                  "PLANNED",
+                  "SOURCE_VERIFIED",
+                  "SOURCE_MATERIALIZED",
+                  "BUILDING",
+                  "TESTING",
+                  "CERTIFYING",
+                  "ARTIFACT_FINALIZED",
+                  "STAGING",
+                  "CANDIDATE_VERIFIED",
+                  "ROLLBACK_ARMED",
+                  "ACTIVATING",
+                  "ACCEPTING",
+                  "SOAKING",
+                  "SUCCEEDED",
+                  "REJECTED",
+                  "FAILED",
+                  "CANCELLED_PRE_ARM",
+                  "ROLLBACK_REQUESTED",
+                  "ROLLING_BACK",
+                  "ROLLED_BACK",
+                  "ROLLBACK_FAILED",
+                  "REPAIR_REQUIRED",
+                  "MANUAL_RECOVERY_REQUIRED",
+                  "PARTIAL",
+                  "AMBIGUOUS",
+                  "UNKNOWN"
+                ]
+              },
+              "stateSequence": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "deploymentId": {
+                "type": "string",
+                "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,255}$"
+              },
+              "deploymentState": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 4096
+              },
+              "activeControllerLease": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 4096
+              },
+              "childJobs": {
+                "type": "array"
+              },
+              "artifacts": {
+                "type": "array"
+              },
+              "createdAt": {
+                "type": "string",
+                "format": "date-time"
+              },
+              "updatedAt": {
+                "type": "string",
+                "format": "date-time"
+              },
+              "expiresAt": {
+                "type": "string",
+                "format": "date-time"
+              },
+              "terminal": {
+                "type": "boolean"
+              }
+            },
+            "required": [
+              "deliveryId",
+              "planDigest",
+              "ownerPrincipal",
+              "authorizationReference",
+              "targetHostname",
+              "targetMachineIdentity",
+              "generation",
+              "state",
+              "stateSequence",
+              "childJobs",
+              "artifacts",
+              "createdAt",
+              "updatedAt",
+              "expiresAt",
+              "terminal"
+            ]
+          },
+          "resultDigest": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{64}$"
+          },
+          "receiptBinding": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "receiptVersion": {
+                "const": "2.0.0"
+              },
+              "required": {
+                "const": true
+              }
+            },
+            "required": [
+              "receiptVersion",
+              "required"
+            ]
+          }
+        },
+        "required": [
+          "run",
+          "resultDigest",
+          "receiptBinding"
+        ]
+      },
+      "errors": [
+        "delivery_invalid",
+        "delivery_not_found",
+        "delivery_conflict",
+        "delivery_plan_changed",
+        "delivery_authorization_invalid",
+        "delivery_expired",
+        "delivery_wrong_host",
+        "delivery_wrong_machine",
+        "delivery_source_mismatch",
+        "delivery_tree_mismatch",
+        "delivery_source_digest_mismatch",
+        "delivery_credential_unavailable",
+        "delivery_controller_conflict",
+        "delivery_generation_conflict",
+        "delivery_state_conflict",
+        "delivery_receipt_invalid",
+        "delivery_evidence_insufficient",
+        "delivery_rollback_failed",
+        "delivery_manual_recovery_required",
+        "delivery_unknown",
+        "idempotency_conflict"
+      ],
+      "cancellation": "not_applicable",
+      "restartBehavior": "read_only",
+      "postActionVerification": true,
+      "receiptVersion": "2.0.0",
+      "limits": {
+        "maxInlineResultBytes": 65536,
+        "defaultPageSize": 50,
+        "maximumPageSize": 200
+      }
+    },
+    {
+      "operation": "baby.delivery.cancel",
+      "family": "delivery",
+      "version": "1.0.0",
+      "description": "Cancel a delivery before activation is armed.",
+      "mutation": true,
+      "idempotency": "caller_key",
+      "risk": "high",
+      "input": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "deliveryId": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,255}$"
+          },
+          "planDigest": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{64}$"
+          },
+          "reason": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 4096
+          }
+        },
+        "required": [
+          "deliveryId",
+          "planDigest",
+          "reason"
+        ]
+      },
+      "output": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "run": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "deliveryId": {
+                "type": "string",
+                "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,255}$"
+              },
+              "planDigest": {
+                "type": "string",
+                "pattern": "^[a-f0-9]{64}$"
+              },
+              "ownerPrincipal": {
+                "type": "string",
+                "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,255}$"
+              },
+              "authorizationReference": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 4096
+              },
+              "targetHostname": {
+                "type": "string",
+                "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,255}$"
+              },
+              "targetMachineIdentity": {
+                "type": "string",
+                "pattern": "^[a-f0-9]{64}$"
+              },
+              "generation": {
+                "type": "integer",
+                "minimum": 1
+              },
+              "state": {
+                "enum": [
+                  "PLANNED",
+                  "SOURCE_VERIFIED",
+                  "SOURCE_MATERIALIZED",
+                  "BUILDING",
+                  "TESTING",
+                  "CERTIFYING",
+                  "ARTIFACT_FINALIZED",
+                  "STAGING",
+                  "CANDIDATE_VERIFIED",
+                  "ROLLBACK_ARMED",
+                  "ACTIVATING",
+                  "ACCEPTING",
+                  "SOAKING",
+                  "SUCCEEDED",
+                  "REJECTED",
+                  "FAILED",
+                  "CANCELLED_PRE_ARM",
+                  "ROLLBACK_REQUESTED",
+                  "ROLLING_BACK",
+                  "ROLLED_BACK",
+                  "ROLLBACK_FAILED",
+                  "REPAIR_REQUIRED",
+                  "MANUAL_RECOVERY_REQUIRED",
+                  "PARTIAL",
+                  "AMBIGUOUS",
+                  "UNKNOWN"
+                ]
+              },
+              "stateSequence": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "deploymentId": {
+                "type": "string",
+                "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,255}$"
+              },
+              "deploymentState": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 4096
+              },
+              "activeControllerLease": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 4096
+              },
+              "childJobs": {
+                "type": "array"
+              },
+              "artifacts": {
+                "type": "array"
+              },
+              "createdAt": {
+                "type": "string",
+                "format": "date-time"
+              },
+              "updatedAt": {
+                "type": "string",
+                "format": "date-time"
+              },
+              "expiresAt": {
+                "type": "string",
+                "format": "date-time"
+              },
+              "terminal": {
+                "type": "boolean"
+              }
+            },
+            "required": [
+              "deliveryId",
+              "planDigest",
+              "ownerPrincipal",
+              "authorizationReference",
+              "targetHostname",
+              "targetMachineIdentity",
+              "generation",
+              "state",
+              "stateSequence",
+              "childJobs",
+              "artifacts",
+              "createdAt",
+              "updatedAt",
+              "expiresAt",
+              "terminal"
+            ]
+          },
+          "resultDigest": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{64}$"
+          },
+          "receiptBinding": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "receiptVersion": {
+                "const": "2.0.0"
+              },
+              "required": {
+                "const": true
+              }
+            },
+            "required": [
+              "receiptVersion",
+              "required"
+            ]
+          }
+        },
+        "required": [
+          "run",
+          "resultDigest",
+          "receiptBinding"
+        ]
+      },
+      "errors": [
+        "delivery_invalid",
+        "delivery_not_found",
+        "delivery_conflict",
+        "delivery_plan_changed",
+        "delivery_authorization_invalid",
+        "delivery_expired",
+        "delivery_wrong_host",
+        "delivery_wrong_machine",
+        "delivery_source_mismatch",
+        "delivery_tree_mismatch",
+        "delivery_source_digest_mismatch",
+        "delivery_credential_unavailable",
+        "delivery_controller_conflict",
+        "delivery_generation_conflict",
+        "delivery_state_conflict",
+        "delivery_receipt_invalid",
+        "delivery_evidence_insufficient",
+        "delivery_rollback_failed",
+        "delivery_manual_recovery_required",
+        "delivery_unknown",
+        "idempotency_conflict"
+      ],
+      "cancellation": "pre_arm_cancel_post_arm_rollback",
+      "restartBehavior": "durable_reconcile",
+      "postActionVerification": true,
+      "receiptVersion": "2.0.0",
+      "limits": {
+        "maxInlineResultBytes": 65536,
+        "defaultPageSize": 50,
+        "maximumPageSize": 200
+      }
+    },
+    {
+      "operation": "baby.delivery.rollback",
+      "family": "delivery",
+      "version": "1.0.0",
+      "description": "Request deterministic rollback for one delivery.",
+      "mutation": true,
+      "idempotency": "caller_key",
+      "risk": "high",
+      "input": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "deliveryId": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,255}$"
+          },
+          "planDigest": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{64}$"
+          },
+          "reason": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 4096
+          }
+        },
+        "required": [
+          "deliveryId",
+          "planDigest",
+          "reason"
+        ]
+      },
+      "output": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "run": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "deliveryId": {
+                "type": "string",
+                "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,255}$"
+              },
+              "planDigest": {
+                "type": "string",
+                "pattern": "^[a-f0-9]{64}$"
+              },
+              "ownerPrincipal": {
+                "type": "string",
+                "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,255}$"
+              },
+              "authorizationReference": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 4096
+              },
+              "targetHostname": {
+                "type": "string",
+                "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,255}$"
+              },
+              "targetMachineIdentity": {
+                "type": "string",
+                "pattern": "^[a-f0-9]{64}$"
+              },
+              "generation": {
+                "type": "integer",
+                "minimum": 1
+              },
+              "state": {
+                "enum": [
+                  "PLANNED",
+                  "SOURCE_VERIFIED",
+                  "SOURCE_MATERIALIZED",
+                  "BUILDING",
+                  "TESTING",
+                  "CERTIFYING",
+                  "ARTIFACT_FINALIZED",
+                  "STAGING",
+                  "CANDIDATE_VERIFIED",
+                  "ROLLBACK_ARMED",
+                  "ACTIVATING",
+                  "ACCEPTING",
+                  "SOAKING",
+                  "SUCCEEDED",
+                  "REJECTED",
+                  "FAILED",
+                  "CANCELLED_PRE_ARM",
+                  "ROLLBACK_REQUESTED",
+                  "ROLLING_BACK",
+                  "ROLLED_BACK",
+                  "ROLLBACK_FAILED",
+                  "REPAIR_REQUIRED",
+                  "MANUAL_RECOVERY_REQUIRED",
+                  "PARTIAL",
+                  "AMBIGUOUS",
+                  "UNKNOWN"
+                ]
+              },
+              "stateSequence": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "deploymentId": {
+                "type": "string",
+                "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,255}$"
+              },
+              "deploymentState": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 4096
+              },
+              "activeControllerLease": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 4096
+              },
+              "childJobs": {
+                "type": "array"
+              },
+              "artifacts": {
+                "type": "array"
+              },
+              "createdAt": {
+                "type": "string",
+                "format": "date-time"
+              },
+              "updatedAt": {
+                "type": "string",
+                "format": "date-time"
+              },
+              "expiresAt": {
+                "type": "string",
+                "format": "date-time"
+              },
+              "terminal": {
+                "type": "boolean"
+              }
+            },
+            "required": [
+              "deliveryId",
+              "planDigest",
+              "ownerPrincipal",
+              "authorizationReference",
+              "targetHostname",
+              "targetMachineIdentity",
+              "generation",
+              "state",
+              "stateSequence",
+              "childJobs",
+              "artifacts",
+              "createdAt",
+              "updatedAt",
+              "expiresAt",
+              "terminal"
+            ]
+          },
+          "resultDigest": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{64}$"
+          },
+          "receiptBinding": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "receiptVersion": {
+                "const": "2.0.0"
+              },
+              "required": {
+                "const": true
+              }
+            },
+            "required": [
+              "receiptVersion",
+              "required"
+            ]
+          }
+        },
+        "required": [
+          "run",
+          "resultDigest",
+          "receiptBinding"
+        ]
+      },
+      "errors": [
+        "delivery_invalid",
+        "delivery_not_found",
+        "delivery_conflict",
+        "delivery_plan_changed",
+        "delivery_authorization_invalid",
+        "delivery_expired",
+        "delivery_wrong_host",
+        "delivery_wrong_machine",
+        "delivery_source_mismatch",
+        "delivery_tree_mismatch",
+        "delivery_source_digest_mismatch",
+        "delivery_credential_unavailable",
+        "delivery_controller_conflict",
+        "delivery_generation_conflict",
+        "delivery_state_conflict",
+        "delivery_receipt_invalid",
+        "delivery_evidence_insufficient",
+        "delivery_rollback_failed",
+        "delivery_manual_recovery_required",
+        "delivery_unknown",
+        "idempotency_conflict"
+      ],
+      "cancellation": "pre_arm_cancel_post_arm_rollback",
+      "restartBehavior": "durable_reconcile",
+      "postActionVerification": true,
+      "receiptVersion": "2.0.0",
+      "limits": {
+        "maxInlineResultBytes": 65536,
+        "defaultPageSize": 50,
+        "maximumPageSize": 200
+      }
+    },
+    {
+      "operation": "baby.delivery.repair",
+      "family": "delivery",
+      "version": "1.0.0",
+      "description": "Request exact reconciliation for an interrupted or ambiguous delivery.",
+      "mutation": true,
+      "idempotency": "caller_key",
+      "risk": "high",
+      "input": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "deliveryId": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,255}$"
+          },
+          "planDigest": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{64}$"
+          },
+          "expectedSequence": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "authorizationReference": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 4096
+          }
+        },
+        "required": [
+          "deliveryId",
+          "planDigest",
+          "expectedSequence",
+          "authorizationReference"
+        ]
+      },
+      "output": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "run": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "deliveryId": {
+                "type": "string",
+                "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,255}$"
+              },
+              "planDigest": {
+                "type": "string",
+                "pattern": "^[a-f0-9]{64}$"
+              },
+              "ownerPrincipal": {
+                "type": "string",
+                "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,255}$"
+              },
+              "authorizationReference": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 4096
+              },
+              "targetHostname": {
+                "type": "string",
+                "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,255}$"
+              },
+              "targetMachineIdentity": {
+                "type": "string",
+                "pattern": "^[a-f0-9]{64}$"
+              },
+              "generation": {
+                "type": "integer",
+                "minimum": 1
+              },
+              "state": {
+                "enum": [
+                  "PLANNED",
+                  "SOURCE_VERIFIED",
+                  "SOURCE_MATERIALIZED",
+                  "BUILDING",
+                  "TESTING",
+                  "CERTIFYING",
+                  "ARTIFACT_FINALIZED",
+                  "STAGING",
+                  "CANDIDATE_VERIFIED",
+                  "ROLLBACK_ARMED",
+                  "ACTIVATING",
+                  "ACCEPTING",
+                  "SOAKING",
+                  "SUCCEEDED",
+                  "REJECTED",
+                  "FAILED",
+                  "CANCELLED_PRE_ARM",
+                  "ROLLBACK_REQUESTED",
+                  "ROLLING_BACK",
+                  "ROLLED_BACK",
+                  "ROLLBACK_FAILED",
+                  "REPAIR_REQUIRED",
+                  "MANUAL_RECOVERY_REQUIRED",
+                  "PARTIAL",
+                  "AMBIGUOUS",
+                  "UNKNOWN"
+                ]
+              },
+              "stateSequence": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "deploymentId": {
+                "type": "string",
+                "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,255}$"
+              },
+              "deploymentState": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 4096
+              },
+              "activeControllerLease": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 4096
+              },
+              "childJobs": {
+                "type": "array"
+              },
+              "artifacts": {
+                "type": "array"
+              },
+              "createdAt": {
+                "type": "string",
+                "format": "date-time"
+              },
+              "updatedAt": {
+                "type": "string",
+                "format": "date-time"
+              },
+              "expiresAt": {
+                "type": "string",
+                "format": "date-time"
+              },
+              "terminal": {
+                "type": "boolean"
+              }
+            },
+            "required": [
+              "deliveryId",
+              "planDigest",
+              "ownerPrincipal",
+              "authorizationReference",
+              "targetHostname",
+              "targetMachineIdentity",
+              "generation",
+              "state",
+              "stateSequence",
+              "childJobs",
+              "artifacts",
+              "createdAt",
+              "updatedAt",
+              "expiresAt",
+              "terminal"
+            ]
+          },
+          "resultDigest": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{64}$"
+          },
+          "receiptBinding": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "receiptVersion": {
+                "const": "2.0.0"
+              },
+              "required": {
+                "const": true
+              }
+            },
+            "required": [
+              "receiptVersion",
+              "required"
+            ]
+          }
+        },
+        "required": [
+          "run",
+          "resultDigest",
+          "receiptBinding"
+        ]
+      },
+      "errors": [
+        "delivery_invalid",
+        "delivery_not_found",
+        "delivery_conflict",
+        "delivery_plan_changed",
+        "delivery_authorization_invalid",
+        "delivery_expired",
+        "delivery_wrong_host",
+        "delivery_wrong_machine",
+        "delivery_source_mismatch",
+        "delivery_tree_mismatch",
+        "delivery_source_digest_mismatch",
+        "delivery_credential_unavailable",
+        "delivery_controller_conflict",
+        "delivery_generation_conflict",
+        "delivery_state_conflict",
+        "delivery_receipt_invalid",
+        "delivery_evidence_insufficient",
+        "delivery_rollback_failed",
+        "delivery_manual_recovery_required",
+        "delivery_unknown",
+        "idempotency_conflict"
+      ],
+      "cancellation": "pre_arm_cancel_post_arm_rollback",
+      "restartBehavior": "durable_reconcile",
+      "postActionVerification": true,
+      "receiptVersion": "2.0.0",
+      "limits": {
+        "maxInlineResultBytes": 65536,
+        "defaultPageSize": 50,
+        "maximumPageSize": 200
+      }
+    },
+    {
+      "operation": "baby.delivery.evidence.get",
+      "family": "delivery",
+      "version": "1.0.0",
+      "description": "Read bounded redacted delivery evidence.",
+      "mutation": false,
+      "idempotency": "read_only",
+      "risk": "low",
+      "input": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "deliveryId": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,255}$"
+          },
+          "kind": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,255}$"
+          },
+          "offset": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "limit": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 200
+          }
+        },
+        "required": [
+          "deliveryId"
+        ]
+      },
+      "output": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "deliveryId": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,255}$"
+          },
+          "offset": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "nextOffset": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "items": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "deliveryId": {
+                  "type": "string",
+                  "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,255}$"
+                },
+                "generation": {
+                  "type": "integer",
+                  "minimum": 1
+                },
+                "planDigest": {
+                  "type": "string",
+                  "pattern": "^[a-f0-9]{64}$"
+                },
+                "deploymentId": {
+                  "type": "string",
+                  "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,255}$"
+                },
+                "kind": {
+                  "type": "string",
+                  "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,255}$"
+                },
+                "digest": {
+                  "type": "string",
+                  "pattern": "^[a-f0-9]{64}$"
+                },
+                "artifactReference": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 4096
+                },
+                "receiptId": {
+                  "type": "string",
+                  "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,255}$"
+                },
+                "redacted": {
+                  "const": true
+                },
+                "createdAt": {
+                  "type": "string",
+                  "format": "date-time"
+                }
+              },
+              "required": [
+                "deliveryId",
+                "generation",
+                "planDigest",
+                "kind",
+                "digest",
+                "artifactReference",
+                "redacted",
+                "createdAt"
+              ]
+            }
+          }
+        },
+        "required": [
+          "deliveryId",
+          "offset",
+          "nextOffset",
+          "items"
+        ]
+      },
+      "errors": [
+        "delivery_invalid",
+        "delivery_not_found",
+        "delivery_conflict",
+        "delivery_plan_changed",
+        "delivery_authorization_invalid",
+        "delivery_expired",
+        "delivery_wrong_host",
+        "delivery_wrong_machine",
+        "delivery_source_mismatch",
+        "delivery_tree_mismatch",
+        "delivery_source_digest_mismatch",
+        "delivery_credential_unavailable",
+        "delivery_controller_conflict",
+        "delivery_generation_conflict",
+        "delivery_state_conflict",
+        "delivery_receipt_invalid",
+        "delivery_evidence_insufficient",
+        "delivery_rollback_failed",
+        "delivery_manual_recovery_required",
+        "delivery_unknown",
+        "idempotency_conflict"
+      ],
+      "cancellation": "not_applicable",
+      "restartBehavior": "read_only",
+      "postActionVerification": true,
+      "receiptVersion": "2.0.0",
+      "limits": {
+        "maxInlineResultBytes": 65536,
+        "defaultPageSize": 50,
+        "maximumPageSize": 200
+      }
     }
   ],
   "paths": {

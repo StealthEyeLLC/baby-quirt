@@ -166,6 +166,7 @@ const spec: PackageReleaseSpec = {
     'lib/dist/cli/repair.js',
     'lib/dist/cli/rollback.js',
     'lib/dist/cli/verify.js',
+    'libexec/baby-quirt/baby-github',
     'lib/build/Release/peer_cred.node',
   ],
   sbomPackages: Object.entries(lock.packages ?? {})

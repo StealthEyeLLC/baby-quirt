@@ -1,0 +1,1543 @@
+{
+  "schemaVersion": "1.0.0",
+  "controllingCatalog": "Baby Quirt Git and GitHub Maximum-Capability Plan section 6.1-6.17",
+  "checkpointBase": "96b06ced72e0f35cb7df9614e441f37c6c370441",
+  "scope": "G3 local Git mutation and history capability coverage",
+  "publicToolChanged": false,
+  "toolJsChanged": false,
+  "providerDeployed": false,
+  "productionCredentialRequiredForThisCheckpoint": false,
+  "complete": false,
+  "operationCount": 190,
+  "statusCounts": {
+    "contract_only": 1,
+    "partially_implemented": 11,
+    "implemented_but_not_registered": 15,
+    "executable_and_tested": 0,
+    "intentionally_deferred": 163,
+    "unavailable_missing_production_provider_credential": 0,
+    "not_applicable": 0
+  },
+  "entries": [
+    {
+      "group": "6.1 Discovery and repository lifecycle",
+      "operation": "baby.git.describe",
+      "status": "contract_only",
+      "evidence": "Frozen discovery semantics exist; broad G3 support is not advertised or registered",
+      "registered": false,
+      "deployed": false
+    },
+    {
+      "group": "6.1 Discovery and repository lifecycle",
+      "operation": "baby.git.version.get",
+      "status": "intentionally_deferred",
+      "evidence": "Not included in this smallest coherent G3 source checkpoint",
+      "registered": false,
+      "deployed": false
+    },
+    {
+      "group": "6.1 Discovery and repository lifecycle",
+      "operation": "baby.git.repository.init",
+      "status": "intentionally_deferred",
+      "evidence": "Not included in this smallest coherent G3 source checkpoint",
+      "registered": false,
+      "deployed": false
+    },
+    {
+      "group": "6.1 Discovery and repository lifecycle",
+      "operation": "baby.git.repository.clone",
+      "status": "intentionally_deferred",
+      "evidence": "Not included in this smallest coherent G3 source checkpoint",
+      "registered": false,
+      "deployed": false
+    },
+    {
+      "group": "6.1 Discovery and repository lifecycle",
+      "operation": "baby.git.repository.open",
+      "status": "intentionally_deferred",
+      "evidence": "Not included in this smallest coherent G3 source checkpoint",
+      "registered": false,
+      "deployed": false
+    },
+    {
+      "group": "6.1 Discovery and repository lifecycle",
+      "operation": "baby.git.repository.get",
+      "status": "intentionally_deferred",
+      "evidence": "Not included in this smallest coherent G3 source checkpoint",
+      "registered": false,
+      "deployed": false
+    },
+    {
+      "group": "6.1 Discovery and repository lifecycle",
+      "operation": "baby.git.repository.list",
+      "status": "intentionally_deferred",
+      "evidence": "Not included in this smallest coherent G3 source checkpoint",
+      "registered": false,
+      "deployed": false
+    },
+    {
+      "group": "6.1 Discovery and repository lifecycle",
+      "operation": "baby.git.repository.close",
+      "status": "intentionally_deferred",
+      "evidence": "Not included in this smallest coherent G3 source checkpoint",
+      "registered": false,
+      "deployed": false
+    },
+    {
+      "group": "6.1 Discovery and repository lifecycle",
+      "operation": "baby.git.repository.verify",
+      "status": "implemented_but_not_registered",
+      "evidence": "GitRepositoryTruth.verify and deterministic repository-truth fixtures",
+      "registered": false,
+      "deployed": false
+    },
+    {
+      "group": "6.2 Mirrors, acquisition, and materialization",
+      "operation": "baby.git.mirror.create",
+      "status": "intentionally_deferred",
+      "evidence": "Not included in this smallest coherent G3 source checkpoint",
+      "registered": false,
+      "deployed": false
+    },
+    {
+      "group": "6.2 Mirrors, acquisition, and materialization",
+      "operation": "baby.git.mirror.update",
+      "status": "intentionally_deferred",
+      "evidence": "Not included in this smallest coherent G3 source checkpoint",
+      "registered": false,
+      "deployed": false
+    },
+    {
+      "group": "6.2 Mirrors, acquisition, and materialization",
+      "operation": "baby.git.mirror.verify",
+      "status": "intentionally_deferred",
+      "evidence": "Not included in this smallest coherent G3 source checkpoint",
+      "registered": false,
+      "deployed": false
+    },
+    {
+      "group": "6.2 Mirrors, acquisition, and materialization",
+      "operation": "baby.git.mirror.list",
+      "status": "intentionally_deferred",
+      "evidence": "Not included in this smallest coherent G3 source checkpoint",
+      "registered": false,
+      "deployed": false
+    },
+    {
+      "group": "6.2 Mirrors, acquisition, and materialization",
+      "operation": "baby.git.materialize",
+      "status": "partially_implemented",
+      "evidence": "Implemented as frozen compatibility operation baby.git.repository.materialize",
+      "registered": false,
+      "deployed": false
+    },
+    {
+      "group": "6.2 Mirrors, acquisition, and materialization",
+      "operation": "baby.git.fetch",
+      "status": "implemented_but_not_registered",
+      "evidence": "GitRepositoryTruth.fetch and exact-ref fixture coverage",
+      "registered": false,
+      "deployed": false
+    },
+    {
+      "group": "6.2 Mirrors, acquisition, and materialization",
+      "operation": "baby.git.pull.preview",
+      "status": "intentionally_deferred",
+      "evidence": "Not included in this smallest coherent G3 source checkpoint",
+      "registered": false,
+      "deployed": false
+    },
+    {
+      "group": "6.2 Mirrors, acquisition, and materialization",
+      "operation": "baby.git.pull.apply",
+      "status": "intentionally_deferred",
+      "evidence": "Not included in this smallest coherent G3 source checkpoint",
+      "registered": false,
+      "deployed": false
+    },
+    {
+      "group": "6.2 Mirrors, acquisition, and materialization",
+      "operation": "baby.git.checkout",
+      "status": "intentionally_deferred",
+      "evidence": "Not included in this smallest coherent G3 source checkpoint",
+      "registered": false,
+      "deployed": false
+    },
+    {
+      "group": "6.2 Mirrors, acquisition, and materialization",
+      "operation": "baby.git.switch",
+      "status": "intentionally_deferred",
+      "evidence": "Not included in this smallest coherent G3 source checkpoint",
+      "registered": false,
+      "deployed": false
+    },
+    {
+      "group": "6.2 Mirrors, acquisition, and materialization",
+      "operation": "baby.git.sparse.set",
+      "status": "intentionally_deferred",
+      "evidence": "Not included in this smallest coherent G3 source checkpoint",
+      "registered": false,
+      "deployed": false
+    },
+    {
+      "group": "6.2 Mirrors, acquisition, and materialization",
+      "operation": "baby.git.partial.configure",
+      "status": "intentionally_deferred",
+      "evidence": "Not included in this smallest coherent G3 source checkpoint",
+      "registered": false,
+      "deployed": false
+    },
+    {
+      "group": "6.2 Mirrors, acquisition, and materialization",
+      "operation": "baby.git.shallow.deepen",
+      "status": "intentionally_deferred",
+      "evidence": "Not included in this smallest coherent G3 source checkpoint",
+      "registered": false,
+      "deployed": false
+    },
+    {
+      "group": "6.2 Mirrors, acquisition, and materialization",
+      "operation": "baby.git.unshallow",
+      "status": "intentionally_deferred",
+      "evidence": "Not included in this smallest coherent G3 source checkpoint",
+      "registered": false,
+      "deployed": false
+    },
+    {
+      "group": "6.3 Remotes and credentials",
+      "operation": "baby.git.remote.list",
+      "status": "intentionally_deferred",
+      "evidence": "Not included in this smallest coherent G3 source checkpoint",
+      "registered": false,
+      "deployed": false
+    },
+    {
+      "group": "6.3 Remotes and credentials",
+      "operation": "baby.git.remote.get",
+      "status": "intentionally_deferred",
+      "evidence": "Not included in this smallest coherent G3 source checkpoint",
+      "registered": false,
+      "deployed": false
+    },
+    {
+      "group": "6.3 Remotes and credentials",
+      "operation": "baby.git.remote.add",
+      "status": "intentionally_deferred",
+      "evidence": "Not included in this smallest coherent G3 source checkpoint",
+      "registered": false,
+      "deployed": false
+    },
+    {
+      "group": "6.3 Remotes and credentials",
+      "operation": "baby.git.remote.update",
+      "status": "intentionally_deferred",
+      "evidence": "Not included in this smallest coherent G3 source checkpoint",
+      "registered": false,
+      "deployed": false
+    },
+    {
+      "group": "6.3 Remotes and credentials",
+      "operation": "baby.git.remote.remove",
+      "status": "intentionally_deferred",
+      "evidence": "Not included in this smallest coherent G3 source checkpoint",
+      "registered": false,
+      "deployed": false
+    },
+    {
+      "group": "6.3 Remotes and credentials",
+      "operation": "baby.git.remote.rename",
+      "status": "intentionally_deferred",
+      "evidence": "Not included in this smallest coherent G3 source checkpoint",
+      "registered": false,
+      "deployed": false
+    },
+    {
+      "group": "6.3 Remotes and credentials",
+      "operation": "baby.git.remote.prune",
+      "status": "intentionally_deferred",
+      "evidence": "Not included in this smallest coherent G3 source checkpoint",
+      "registered": false,
+      "deployed": false
+    },
+    {
+      "group": "6.3 Remotes and credentials",
+      "operation": "baby.git.remote.refs",
+      "status": "partially_implemented",
+      "evidence": "Exact remote refs are observed through fetch and safe-publication readback, without a dedicated operation",
+      "registered": false,
+      "deployed": false
+    },
+    {
+      "group": "6.3 Remotes and credentials",
+      "operation": "baby.git.credential.status",
+      "status": "partially_implemented",
+      "evidence": "Credential metadata and health are persisted in the authority registry, without a dedicated local-Git operation",
+      "registered": false,
+      "deployed": false
+    },
+    {
+      "group": "6.3 Remotes and credentials",
+      "operation": "baby.git.credential.bind",
+      "status": "partially_implemented",
+      "evidence": "Metadata-only enrollment and repository authority binding exist, without a dedicated local-Git operation",
+      "registered": false,
+      "deployed": false
+    },
+    {
+      "group": "6.3 Remotes and credentials",
+      "operation": "baby.git.credential.unbind",
+      "status": "partially_implemented",
+      "evidence": "Revocation exists in the authority registry, without a dedicated local-Git operation",
+      "registered": false,
+      "deployed": false
+    },
+    {
+      "group": "6.4 Object and history inspection",
+      "operation": "baby.git.object.get",
+      "status": "intentionally_deferred",
+      "evidence": "Not included in this smallest coherent G3 source checkpoint",
+      "registered": false,
+      "deployed": false
+    },
+    {
+      "group": "6.4 Object and history inspection",
+      "operation": "baby.git.object.verify",
+      "status": "partially_implemented",
+      "evidence": "Repository verification proves object availability, without a dedicated object operation",
+      "registered": false,
+      "deployed": false
+    },
+    {
+      "group": "6.4 Object and history inspection",
+      "operation": "baby.git.commit.get",
+      "status": "intentionally_deferred",
+      "evidence": "Not included in this smallest coherent G3 source checkpoint",
+      "registered": false,
+      "deployed": false
+    },
+    {
+      "group": "6.4 Object and history inspection",
+      "operation": "baby.git.commit.list",
+      "status": "intentionally_deferred",
+      "evidence": "Not included in this smallest coherent G3 source checkpoint",
+      "registered": false,
+      "deployed": false
+    },
+    {
+      "group": "6.4 Object and history inspection",
+      "operation": "baby.git.tree.get",
+      "status": "intentionally_deferred",
+      "evidence": "Not included in this smallest coherent G3 source checkpoint",
+      "registered": false,
+      "deployed": false
+    },
+    {
+      "group": "6.4 Object and history inspection",
+      "operation": "baby.git.tree.list",
+      "status": "intentionally_deferred",
+      "evidence": "Not included in this smallest coherent G3 source checkpoint",
+      "registered": false,
+      "deployed": false
+    },
+    {
+      "group": "6.4 Object and history inspection",
+      "operation": "baby.git.blob.get",
+      "status": "intentionally_deferred",
+      "evidence": "Not included in this smallest coherent G3 source checkpoint",
+      "registered": false,
+      "deployed": false
+    },
+    {
+      "group": "6.4 Object and history inspection",
+      "operation": "baby.git.log",
+      "status": "intentionally_deferred",
+      "evidence": "Not included in this smallest coherent G3 source checkpoint",
+      "registered": false,
+      "deployed": false
+    },
+    {
+      "group": "6.4 Object and history inspection",
+      "operation": "baby.git.show",
+      "status": "intentionally_deferred",
+      "evidence": "Not included in this smallest coherent G3 source checkpoint",
+      "registered": false,
+      "deployed": false
+    },
+    {
+      "group": "6.4 Object and history inspection",
+      "operation": "baby.git.name_rev",
+      "status": "intentionally_deferred",
+      "evidence": "Not included in this smallest coherent G3 source checkpoint",
+      "registered": false,
+      "deployed": false
+    },
+    {
+      "group": "6.4 Object and history inspection",
+      "operation": "baby.git.describe.ref",
+      "status": "intentionally_deferred",
+      "evidence": "Not included in this smallest coherent G3 source checkpoint",
+      "registered": false,
+      "deployed": false
+    },
+    {
+      "group": "6.4 Object and history inspection",
+      "operation": "baby.git.ancestry.verify",
+      "status": "partially_implemented",
+      "evidence": "Repository and publication verification prove ancestry, without a dedicated operation",
+      "registered": false,
+      "deployed": false
+    },
+    {
+      "group": "6.4 Object and history inspection",
+      "operation": "baby.git.merge_base",
+      "status": "intentionally_deferred",
+      "evidence": "Not included in this smallest coherent G3 source checkpoint",
+      "registered": false,
+      "deployed": false
+    },
+    {
+      "group": "6.4 Object and history inspection",
+      "operation": "baby.git.rev_parse",
+      "status": "intentionally_deferred",
+      "evidence": "Not included in this smallest coherent G3 source checkpoint",
+      "registered": false,
+      "deployed": false
+    },
+    {
+      "group": "6.4 Object and history inspection",
+      "operation": "baby.git.cat_file",
+      "status": "intentionally_deferred",
+      "evidence": "Not included in this smallest coherent G3 source checkpoint",
+      "registered": false,
+      "deployed": false
+    },
+    {
+      "group": "6.5 Status, diff, staging, and working tree",
+      "operation": "baby.git.status",
+      "status": "implemented_but_not_registered",
+      "evidence": "GitRepositoryTruth.status with structured sequencer, paths, bounded summary, and digest",
+      "registered": false,
+      "deployed": false
+    },
+    {
+      "group": "6.5 Status, diff, staging, and working tree",
+      "operation": "baby.git.diff",
+      "status": "implemented_but_not_registered",
+      "evidence": "GitRepositoryTruth.diff with bounded patch and full-content digest",
+      "registered": false,
+      "deployed": false
+    },
+    {
+      "group": "6.5 Status, diff, staging, and working tree",
+      "operation": "baby.git.diff.stat",
+      "status": "implemented_but_not_registered",
+      "evidence": "GitRepositoryTruth.diffStat with structured numstat readback",
+      "registered": false,
+      "deployed": false
+    },
+    {
+      "group": "6.5 Status, diff, staging, and working tree",
+      "operation": "baby.git.diff.name_status",
+      "status": "implemented_but_not_registered",
+      "evidence": "GitRepositoryTruth.diffNameStatus with structured path status",
+      "registered": false,
+      "deployed": false
+    },
+    {
+      "group": "6.5 Status, diff, staging, and working tree",
+      "operation": "baby.git.add",
+      "status": "implemented_but_not_registered",
+      "evidence": "GitRepositoryTruth.add with exact HEAD and status-digest preconditions",
+      "registered": false,
+      "deployed": false
+    },
+    {
+      "group": "6.5 Status, diff, staging, and working tree",
+      "operation": "baby.git.add.patch",
+      "status": "intentionally_deferred",
+      "evidence": "Not included in this smallest coherent G3 source checkpoint",
+      "registered": false,
+      "deployed": false
+    },
+    {
+      "group": "6.5 Status, diff, staging, and working tree",
+      "operation": "baby.git.restore.staged",
+      "status": "intentionally_deferred",
+      "evidence": "Not included in this smallest coherent G3 source checkpoint",
+      "registered": false,
+      "deployed": false
+    },
+    {
+      "group": "6.5 Status, diff, staging, and working tree",
+      "operation": "baby.git.restore.worktree",
+      "status": "intentionally_deferred",
+      "evidence": "Not included in this smallest coherent G3 source checkpoint",
+      "registered": false,
+      "deployed": false
+    },
+    {
+      "group": "6.5 Status, diff, staging, and working tree",
+      "operation": "baby.git.clean.preview",
+      "status": "intentionally_deferred",
+      "evidence": "Not included in this smallest coherent G3 source checkpoint",
+      "registered": false,
+      "deployed": false
+    },
+    {
+      "group": "6.5 Status, diff, staging, and working tree",
+      "operation": "baby.git.clean.apply",
+      "status": "intentionally_deferred",
+      "evidence": "Not included in this smallest coherent G3 source checkpoint",
+      "registered": false,
+      "deployed": false
+    },
+    {
+      "group": "6.5 Status, diff, staging, and working tree",
+      "operation": "baby.git.rm",
+      "status": "intentionally_deferred",
+      "evidence": "Not included in this smallest coherent G3 source checkpoint",
+      "registered": false,
+      "deployed": false
+    },
+    {
+      "group": "6.5 Status, diff, staging, and working tree",
+      "operation": "baby.git.mv",
+      "status": "intentionally_deferred",
+      "evidence": "Not included in this smallest coherent G3 source checkpoint",
+      "registered": false,
+      "deployed": false
+    },
+    {
+      "group": "6.5 Status, diff, staging, and working tree",
+      "operation": "baby.git.ignore.check",
+      "status": "implemented_but_not_registered",
+      "evidence": "GitRepositoryTruth.checkIgnore with structured provenance",
+      "registered": false,
+      "deployed": false
+    },
+    {
+      "group": "6.5 Status, diff, staging, and working tree",
+      "operation": "baby.git.attributes.check",
+      "status": "implemented_but_not_registered",
+      "evidence": "GitRepositoryTruth.checkAttributes with structured values",
+      "registered": false,
+      "deployed": false
+    },
+    {
+      "group": "6.6 Commits and signatures",
+      "operation": "baby.git.commit.create",
+      "status": "implemented_but_not_registered",
+      "evidence": "GitRepositoryTruth.createCommit with declared paths and explicit identities",
+      "registered": false,
+      "deployed": false
+    },
+    {
+      "group": "6.6 Commits and signatures",
+      "operation": "baby.git.commit.amend",
+      "status": "intentionally_deferred",
+      "evidence": "Not included in this smallest coherent G3 source checkpoint",
+      "registered": false,
+      "deployed": false
+    },
+    {
+      "group": "6.6 Commits and signatures",
+      "operation": "baby.git.commit.verify",
+      "status": "implemented_but_not_registered",
+      "evidence": "GitRepositoryTruth.verifyCommit with exact commit, tree, parent, path, identity, and signature status",
+      "registered": false,
+      "deployed": false
+    },
+    {
+      "group": "6.6 Commits and signatures",
+      "operation": "baby.git.commit.sign",
+      "status": "intentionally_deferred",
+      "evidence": "Not included in this smallest coherent G3 source checkpoint",
+      "registered": false,
+      "deployed": false
+    },
+    {
+      "group": "6.6 Commits and signatures",
+      "operation": "baby.git.commit.signature.verify",
+      "status": "partially_implemented",
+      "evidence": "Commit evidence reports verified, unsigned, or not_configured; configured signing provider is not yet implemented",
+      "registered": false,
+      "deployed": false
+    },
+    {
+      "group": "6.6 Commits and signatures",
+      "operation": "baby.git.commit.message.validate",
+      "status": "intentionally_deferred",
+      "evidence": "Not included in this smallest coherent G3 source checkpoint",
+      "registered": false,
+      "deployed": false
+    },
+    {
+      "group": "6.6 Commits and signatures",
+      "operation": "baby.git.commit.fixup",
+      "status": "intentionally_deferred",
+      "evidence": "Not included in this smallest coherent G3 source checkpoint",
+      "registered": false,
+      "deployed": false
+    },
+    {
+      "group": "6.6 Commits and signatures",
+      "operation": "baby.git.commit.squash.prepare",
+      "status": "intentionally_deferred",
+      "evidence": "Not included in this smallest coherent G3 source checkpoint",
+      "registered": false,
+      "deployed": false
+    },
+    {
+      "group": "6.7 Branches and refs",
+      "operation": "baby.git.branch.list",
+      "status": "intentionally_deferred",
+      "evidence": "Not included in this smallest coherent G3 source checkpoint",
+      "registered": false,
+      "deployed": false
+    },
+    {
+      "group": "6.7 Branches and refs",
+      "operation": "baby.git.branch.get",
+      "status": "intentionally_deferred",
+      "evidence": "Not included in this smallest coherent G3 source checkpoint",
+      "registered": false,
+      "deployed": false
+    },
+    {
+      "group": "6.7 Branches and refs",
+      "operation": "baby.git.branch.create",
+      "status": "implemented_but_not_registered",
+      "evidence": "GitRepositoryTruth.createBranch with clean-worktree and exact object preconditions",
+      "registered": false,
+      "deployed": false
+    },
+    {
+      "group": "6.7 Branches and refs",
+      "operation": "baby.git.branch.rename",
+      "status": "intentionally_deferred",
+      "evidence": "Not included in this smallest coherent G3 source checkpoint",
+      "registered": false,
+      "deployed": false
+    },
+    {
+      "group": "6.7 Branches and refs",
+      "operation": "baby.git.branch.delete",
+      "status": "intentionally_deferred",
+      "evidence": "Not included in this smallest coherent G3 source checkpoint",
+      "registered": false,
+      "deployed": false
+    },
+    {
+      "group": "6.7 Branches and refs",
+      "operation": "baby.git.branch.set_upstream",
+      "status": "intentionally_deferred",
+      "evidence": "Not included in this smallest coherent G3 source checkpoint",
+      "registered": false,
+      "deployed": false
+    },
+    {
+      "group": "6.7 Branches and refs",
+      "operation": "baby.git.branch.unset_upstream",
+      "status": "intentionally_deferred",
+      "evidence": "Not included in this smallest coherent G3 source checkpoint",
+      "registered": false,
+      "deployed": false
+    },
+    {
+      "group": "6.7 Branches and refs",
+      "operation": "baby.git.branch.divergence",
+      "status": "intentionally_deferred",
+      "evidence": "Not included in this smallest coherent G3 source checkpoint",
+      "registered": false,
+      "deployed": false
+    },
+    {
+      "group": "6.7 Branches and refs",
+      "operation": "baby.git.ref.get",
+      "status": "intentionally_deferred",
+      "evidence": "Not included in this smallest coherent G3 source checkpoint",
+      "registered": false,
+      "deployed": false
+    },
+    {
+      "group": "6.7 Branches and refs",
+      "operation": "baby.git.ref.list",
+      "status": "intentionally_deferred",
+      "evidence": "Not included in this smallest coherent G3 source checkpoint",
+      "registered": false,
+      "deployed": false
+    },
+    {
+      "group": "6.7 Branches and refs",
+      "operation": "baby.git.ref.update",
+      "status": "intentionally_deferred",
+      "evidence": "Not included in this smallest coherent G3 source checkpoint",
+      "registered": false,
+      "deployed": false
+    },
+    {
+      "group": "6.7 Branches and refs",
+      "operation": "baby.git.ref.delete",
+      "status": "intentionally_deferred",
+      "evidence": "Not included in this smallest coherent G3 source checkpoint",
+      "registered": false,
+      "deployed": false
+    },
+    {
+      "group": "6.7 Branches and refs",
+      "operation": "baby.git.ref.verify",
+      "status": "partially_implemented",
+      "evidence": "Safe publication verifies exact destination refs, without a dedicated local-ref operation",
+      "registered": false,
+      "deployed": false
+    },
+    {
+      "group": "6.8 Worktrees",
+      "operation": "baby.git.worktree.create",
+      "status": "intentionally_deferred",
+      "evidence": "Not included in this smallest coherent G3 source checkpoint",
+      "registered": false,
+      "deployed": false
+    },
+    {
+      "group": "6.8 Worktrees",
+      "operation": "baby.git.worktree.list",
+      "status": "intentionally_deferred",
+      "evidence": "Not included in this smallest coherent G3 source checkpoint",
+      "registered": false,
+      "deployed": false
+    },
+    {
+      "group": "6.8 Worktrees",
+      "operation": "baby.git.worktree.get",
+      "status": "intentionally_deferred",
+      "evidence": "Not included in this smallest coherent G3 source checkpoint",
+      "registered": false,
+      "deployed": false
+    },
+    {
+      "group": "6.8 Worktrees",
+      "operation": "baby.git.worktree.lock",
+      "status": "intentionally_deferred",
+      "evidence": "Not included in this smallest coherent G3 source checkpoint",
+      "registered": false,
+      "deployed": false
+    },
+    {
+      "group": "6.8 Worktrees",
+      "operation": "baby.git.worktree.unlock",
+      "status": "intentionally_deferred",
+      "evidence": "Not included in this smallest coherent G3 source checkpoint",
+      "registered": false,
+      "deployed": false
+    },
+    {
+      "group": "6.8 Worktrees",
+      "operation": "baby.git.worktree.move",
+      "status": "intentionally_deferred",
+      "evidence": "Not included in this smallest coherent G3 source checkpoint",
+      "registered": false,
+      "deployed": false
+    },
+    {
+      "group": "6.8 Worktrees",
+      "operation": "baby.git.worktree.repair",
+      "status": "intentionally_deferred",
+      "evidence": "Not included in this smallest coherent G3 source checkpoint",
+      "registered": false,
+      "deployed": false
+    },
+    {
+      "group": "6.8 Worktrees",
+      "operation": "baby.git.worktree.prune",
+      "status": "intentionally_deferred",
+      "evidence": "Not included in this smallest coherent G3 source checkpoint",
+      "registered": false,
+      "deployed": false
+    },
+    {
+      "group": "6.8 Worktrees",
+      "operation": "baby.git.worktree.remove",
+      "status": "intentionally_deferred",
+      "evidence": "Not included in this smallest coherent G3 source checkpoint",
+      "registered": false,
+      "deployed": false
+    },
+    {
+      "group": "6.9 Merge and conflicts",
+      "operation": "baby.git.merge.preview",
+      "status": "intentionally_deferred",
+      "evidence": "Not included in this smallest coherent G3 source checkpoint",
+      "registered": false,
+      "deployed": false
+    },
+    {
+      "group": "6.9 Merge and conflicts",
+      "operation": "baby.git.merge.start",
+      "status": "intentionally_deferred",
+      "evidence": "Not included in this smallest coherent G3 source checkpoint",
+      "registered": false,
+      "deployed": false
+    },
+    {
+      "group": "6.9 Merge and conflicts",
+      "operation": "baby.git.merge.status",
+      "status": "intentionally_deferred",
+      "evidence": "Not included in this smallest coherent G3 source checkpoint",
+      "registered": false,
+      "deployed": false
+    },
+    {
+      "group": "6.9 Merge and conflicts",
+      "operation": "baby.git.merge.continue",
+      "status": "intentionally_deferred",
+      "evidence": "Not included in this smallest coherent G3 source checkpoint",
+      "registered": false,
+      "deployed": false
+    },
+    {
+      "group": "6.9 Merge and conflicts",
+      "operation": "baby.git.merge.abort",
+      "status": "intentionally_deferred",
+      "evidence": "Not included in this smallest coherent G3 source checkpoint",
+      "registered": false,
+      "deployed": false
+    },
+    {
+      "group": "6.9 Merge and conflicts",
+      "operation": "baby.git.conflict.list",
+      "status": "intentionally_deferred",
+      "evidence": "Not included in this smallest coherent G3 source checkpoint",
+      "registered": false,
+      "deployed": false
+    },
+    {
+      "group": "6.9 Merge and conflicts",
+      "operation": "baby.git.conflict.get",
+      "status": "intentionally_deferred",
+      "evidence": "Not included in this smallest coherent G3 source checkpoint",
+      "registered": false,
+      "deployed": false
+    },
+    {
+      "group": "6.9 Merge and conflicts",
+      "operation": "baby.git.conflict.resolve",
+      "status": "intentionally_deferred",
+      "evidence": "Not included in this smallest coherent G3 source checkpoint",
+      "registered": false,
+      "deployed": false
+    },
+    {
+      "group": "6.9 Merge and conflicts",
+      "operation": "baby.git.mergetool.run",
+      "status": "intentionally_deferred",
+      "evidence": "Not included in this smallest coherent G3 source checkpoint",
+      "registered": false,
+      "deployed": false
+    },
+    {
+      "group": "6.9 Merge and conflicts",
+      "operation": "baby.git.rerere.status",
+      "status": "intentionally_deferred",
+      "evidence": "Not included in this smallest coherent G3 source checkpoint",
+      "registered": false,
+      "deployed": false
+    },
+    {
+      "group": "6.9 Merge and conflicts",
+      "operation": "baby.git.rerere.forget",
+      "status": "intentionally_deferred",
+      "evidence": "Not included in this smallest coherent G3 source checkpoint",
+      "registered": false,
+      "deployed": false
+    },
+    {
+      "group": "6.10 Rebase",
+      "operation": "baby.git.rebase.preview",
+      "status": "intentionally_deferred",
+      "evidence": "Not included in this smallest coherent G3 source checkpoint",
+      "registered": false,
+      "deployed": false
+    },
+    {
+      "group": "6.10 Rebase",
+      "operation": "baby.git.rebase.start",
+      "status": "intentionally_deferred",
+      "evidence": "Not included in this smallest coherent G3 source checkpoint",
+      "registered": false,
+      "deployed": false
+    },
+    {
+      "group": "6.10 Rebase",
+      "operation": "baby.git.rebase.status",
+      "status": "intentionally_deferred",
+      "evidence": "Not included in this smallest coherent G3 source checkpoint",
+      "registered": false,
+      "deployed": false
+    },
+    {
+      "group": "6.10 Rebase",
+      "operation": "baby.git.rebase.continue",
+      "status": "intentionally_deferred",
+      "evidence": "Not included in this smallest coherent G3 source checkpoint",
+      "registered": false,
+      "deployed": false
+    },
+    {
+      "group": "6.10 Rebase",
+      "operation": "baby.git.rebase.skip",
+      "status": "intentionally_deferred",
+      "evidence": "Not included in this smallest coherent G3 source checkpoint",
+      "registered": false,
+      "deployed": false
+    },
+    {
+      "group": "6.10 Rebase",
+      "operation": "baby.git.rebase.abort",
+      "status": "intentionally_deferred",
+      "evidence": "Not included in this smallest coherent G3 source checkpoint",
+      "registered": false,
+      "deployed": false
+    },
+    {
+      "group": "6.10 Rebase",
+      "operation": "baby.git.rebase.edit_todo",
+      "status": "intentionally_deferred",
+      "evidence": "Not included in this smallest coherent G3 source checkpoint",
+      "registered": false,
+      "deployed": false
+    },
+    {
+      "group": "6.11 Cherry-pick, revert, reset, and restore",
+      "operation": "baby.git.cherry_pick.preview",
+      "status": "intentionally_deferred",
+      "evidence": "Not included in this smallest coherent G3 source checkpoint",
+      "registered": false,
+      "deployed": false
+    },
+    {
+      "group": "6.11 Cherry-pick, revert, reset, and restore",
+      "operation": "baby.git.cherry_pick.start",
+      "status": "intentionally_deferred",
+      "evidence": "Not included in this smallest coherent G3 source checkpoint",
+      "registered": false,
+      "deployed": false
+    },
+    {
+      "group": "6.11 Cherry-pick, revert, reset, and restore",
+      "operation": "baby.git.cherry_pick.continue",
+      "status": "intentionally_deferred",
+      "evidence": "Not included in this smallest coherent G3 source checkpoint",
+      "registered": false,
+      "deployed": false
+    },
+    {
+      "group": "6.11 Cherry-pick, revert, reset, and restore",
+      "operation": "baby.git.cherry_pick.abort",
+      "status": "intentionally_deferred",
+      "evidence": "Not included in this smallest coherent G3 source checkpoint",
+      "registered": false,
+      "deployed": false
+    },
+    {
+      "group": "6.11 Cherry-pick, revert, reset, and restore",
+      "operation": "baby.git.revert.preview",
+      "status": "intentionally_deferred",
+      "evidence": "Not included in this smallest coherent G3 source checkpoint",
+      "registered": false,
+      "deployed": false
+    },
+    {
+      "group": "6.11 Cherry-pick, revert, reset, and restore",
+      "operation": "baby.git.revert.start",
+      "status": "intentionally_deferred",
+      "evidence": "Not included in this smallest coherent G3 source checkpoint",
+      "registered": false,
+      "deployed": false
+    },
+    {
+      "group": "6.11 Cherry-pick, revert, reset, and restore",
+      "operation": "baby.git.revert.continue",
+      "status": "intentionally_deferred",
+      "evidence": "Not included in this smallest coherent G3 source checkpoint",
+      "registered": false,
+      "deployed": false
+    },
+    {
+      "group": "6.11 Cherry-pick, revert, reset, and restore",
+      "operation": "baby.git.revert.abort",
+      "status": "intentionally_deferred",
+      "evidence": "Not included in this smallest coherent G3 source checkpoint",
+      "registered": false,
+      "deployed": false
+    },
+    {
+      "group": "6.11 Cherry-pick, revert, reset, and restore",
+      "operation": "baby.git.reset.preview",
+      "status": "intentionally_deferred",
+      "evidence": "Not included in this smallest coherent G3 source checkpoint",
+      "registered": false,
+      "deployed": false
+    },
+    {
+      "group": "6.11 Cherry-pick, revert, reset, and restore",
+      "operation": "baby.git.reset.apply",
+      "status": "intentionally_deferred",
+      "evidence": "Not included in this smallest coherent G3 source checkpoint",
+      "registered": false,
+      "deployed": false
+    },
+    {
+      "group": "6.12 Tags",
+      "operation": "baby.git.tag.list",
+      "status": "intentionally_deferred",
+      "evidence": "Not included in this smallest coherent G3 source checkpoint",
+      "registered": false,
+      "deployed": false
+    },
+    {
+      "group": "6.12 Tags",
+      "operation": "baby.git.tag.get",
+      "status": "intentionally_deferred",
+      "evidence": "Not included in this smallest coherent G3 source checkpoint",
+      "registered": false,
+      "deployed": false
+    },
+    {
+      "group": "6.12 Tags",
+      "operation": "baby.git.tag.create",
+      "status": "intentionally_deferred",
+      "evidence": "Not included in this smallest coherent G3 source checkpoint",
+      "registered": false,
+      "deployed": false
+    },
+    {
+      "group": "6.12 Tags",
+      "operation": "baby.git.tag.sign",
+      "status": "intentionally_deferred",
+      "evidence": "Not included in this smallest coherent G3 source checkpoint",
+      "registered": false,
+      "deployed": false
+    },
+    {
+      "group": "6.12 Tags",
+      "operation": "baby.git.tag.verify",
+      "status": "intentionally_deferred",
+      "evidence": "Not included in this smallest coherent G3 source checkpoint",
+      "registered": false,
+      "deployed": false
+    },
+    {
+      "group": "6.12 Tags",
+      "operation": "baby.git.tag.delete",
+      "status": "intentionally_deferred",
+      "evidence": "Not included in this smallest coherent G3 source checkpoint",
+      "registered": false,
+      "deployed": false
+    },
+    {
+      "group": "6.13 Push and remote mutation",
+      "operation": "baby.git.push.preview",
+      "status": "implemented_but_not_registered",
+      "evidence": "GitSafePublication.preview with exact local and remote state",
+      "registered": false,
+      "deployed": false
+    },
+    {
+      "group": "6.13 Push and remote mutation",
+      "operation": "baby.git.push.apply",
+      "status": "implemented_but_not_registered",
+      "evidence": "GitSafePublication.apply with durable intent, exact lease, and reconciliation",
+      "registered": false,
+      "deployed": false
+    },
+    {
+      "group": "6.13 Push and remote mutation",
+      "operation": "baby.git.push.verify",
+      "status": "implemented_but_not_registered",
+      "evidence": "GitSafePublication.verify with Git transport and API readback truth",
+      "registered": false,
+      "deployed": false
+    },
+    {
+      "group": "6.13 Push and remote mutation",
+      "operation": "baby.git.push.tags",
+      "status": "intentionally_deferred",
+      "evidence": "Not included in this smallest coherent G3 source checkpoint",
+      "registered": false,
+      "deployed": false
+    },
+    {
+      "group": "6.13 Push and remote mutation",
+      "operation": "baby.git.remote_ref.delete",
+      "status": "intentionally_deferred",
+      "evidence": "Not included in this smallest coherent G3 source checkpoint",
+      "registered": false,
+      "deployed": false
+    },
+    {
+      "group": "6.13 Push and remote mutation",
+      "operation": "baby.git.force_with_lease.preview",
+      "status": "partially_implemented",
+      "evidence": "Push planning binds the exact observed old object; dedicated force-with-lease operation remains absent",
+      "registered": false,
+      "deployed": false
+    },
+    {
+      "group": "6.13 Push and remote mutation",
+      "operation": "baby.git.force_with_lease.apply",
+      "status": "partially_implemented",
+      "evidence": "Push transport uses an exact lease and forbids unconstrained force; dedicated operation remains absent",
+      "registered": false,
+      "deployed": false
+    },
+    {
+      "group": "6.14 Submodules, subtrees, and LFS",
+      "operation": "baby.git.submodule.list",
+      "status": "intentionally_deferred",
+      "evidence": "Not included in this smallest coherent G3 source checkpoint",
+      "registered": false,
+      "deployed": false
+    },
+    {
+      "group": "6.14 Submodules, subtrees, and LFS",
+      "operation": "baby.git.submodule.add",
+      "status": "intentionally_deferred",
+      "evidence": "Not included in this smallest coherent G3 source checkpoint",
+      "registered": false,
+      "deployed": false
+    },
+    {
+      "group": "6.14 Submodules, subtrees, and LFS",
+      "operation": "baby.git.submodule.sync",
+      "status": "intentionally_deferred",
+      "evidence": "Not included in this smallest coherent G3 source checkpoint",
+      "registered": false,
+      "deployed": false
+    },
+    {
+      "group": "6.14 Submodules, subtrees, and LFS",
+      "operation": "baby.git.submodule.update",
+      "status": "intentionally_deferred",
+      "evidence": "Not included in this smallest coherent G3 source checkpoint",
+      "registered": false,
+      "deployed": false
+    },
+    {
+      "group": "6.14 Submodules, subtrees, and LFS",
+      "operation": "baby.git.submodule.deinit",
+      "status": "intentionally_deferred",
+      "evidence": "Not included in this smallest coherent G3 source checkpoint",
+      "registered": false,
+      "deployed": false
+    },
+    {
+      "group": "6.14 Submodules, subtrees, and LFS",
+      "operation": "baby.git.submodule.remove",
+      "status": "intentionally_deferred",
+      "evidence": "Not included in this smallest coherent G3 source checkpoint",
+      "registered": false,
+      "deployed": false
+    },
+    {
+      "group": "6.14 Submodules, subtrees, and LFS",
+      "operation": "baby.git.subtree.add",
+      "status": "intentionally_deferred",
+      "evidence": "Not included in this smallest coherent G3 source checkpoint",
+      "registered": false,
+      "deployed": false
+    },
+    {
+      "group": "6.14 Submodules, subtrees, and LFS",
+      "operation": "baby.git.subtree.pull",
+      "status": "intentionally_deferred",
+      "evidence": "Not included in this smallest coherent G3 source checkpoint",
+      "registered": false,
+      "deployed": false
+    },
+    {
+      "group": "6.14 Submodules, subtrees, and LFS",
+      "operation": "baby.git.subtree.push",
+      "status": "intentionally_deferred",
+      "evidence": "Not included in this smallest coherent G3 source checkpoint",
+      "registered": false,
+      "deployed": false
+    },
+    {
+      "group": "6.14 Submodules, subtrees, and LFS",
+      "operation": "baby.git.lfs.status",
+      "status": "intentionally_deferred",
+      "evidence": "Not included in this smallest coherent G3 source checkpoint",
+      "registered": false,
+      "deployed": false
+    },
+    {
+      "group": "6.14 Submodules, subtrees, and LFS",
+      "operation": "baby.git.lfs.fetch",
+      "status": "intentionally_deferred",
+      "evidence": "Not included in this smallest coherent G3 source checkpoint",
+      "registered": false,
+      "deployed": false
+    },
+    {
+      "group": "6.14 Submodules, subtrees, and LFS",
+      "operation": "baby.git.lfs.pull",
+      "status": "intentionally_deferred",
+      "evidence": "Not included in this smallest coherent G3 source checkpoint",
+      "registered": false,
+      "deployed": false
+    },
+    {
+      "group": "6.14 Submodules, subtrees, and LFS",
+      "operation": "baby.git.lfs.push",
+      "status": "intentionally_deferred",
+      "evidence": "Not included in this smallest coherent G3 source checkpoint",
+      "registered": false,
+      "deployed": false
+    },
+    {
+      "group": "6.14 Submodules, subtrees, and LFS",
+      "operation": "baby.git.lfs.track",
+      "status": "intentionally_deferred",
+      "evidence": "Not included in this smallest coherent G3 source checkpoint",
+      "registered": false,
+      "deployed": false
+    },
+    {
+      "group": "6.14 Submodules, subtrees, and LFS",
+      "operation": "baby.git.lfs.untrack",
+      "status": "intentionally_deferred",
+      "evidence": "Not included in this smallest coherent G3 source checkpoint",
+      "registered": false,
+      "deployed": false
+    },
+    {
+      "group": "6.14 Submodules, subtrees, and LFS",
+      "operation": "baby.git.lfs.locks",
+      "status": "intentionally_deferred",
+      "evidence": "Not included in this smallest coherent G3 source checkpoint",
+      "registered": false,
+      "deployed": false
+    },
+    {
+      "group": "6.15 Patch, mail, bundle, and archive",
+      "operation": "baby.git.patch.create",
+      "status": "intentionally_deferred",
+      "evidence": "Not included in this smallest coherent G3 source checkpoint",
+      "registered": false,
+      "deployed": false
+    },
+    {
+      "group": "6.15 Patch, mail, bundle, and archive",
+      "operation": "baby.git.patch.apply",
+      "status": "intentionally_deferred",
+      "evidence": "Not included in this smallest coherent G3 source checkpoint",
+      "registered": false,
+      "deployed": false
+    },
+    {
+      "group": "6.15 Patch, mail, bundle, and archive",
+      "operation": "baby.git.patch.check",
+      "status": "intentionally_deferred",
+      "evidence": "Not included in this smallest coherent G3 source checkpoint",
+      "registered": false,
+      "deployed": false
+    },
+    {
+      "group": "6.15 Patch, mail, bundle, and archive",
+      "operation": "baby.git.format_patch",
+      "status": "intentionally_deferred",
+      "evidence": "Not included in this smallest coherent G3 source checkpoint",
+      "registered": false,
+      "deployed": false
+    },
+    {
+      "group": "6.15 Patch, mail, bundle, and archive",
+      "operation": "baby.git.am.start",
+      "status": "intentionally_deferred",
+      "evidence": "Not included in this smallest coherent G3 source checkpoint",
+      "registered": false,
+      "deployed": false
+    },
+    {
+      "group": "6.15 Patch, mail, bundle, and archive",
+      "operation": "baby.git.am.continue",
+      "status": "intentionally_deferred",
+      "evidence": "Not included in this smallest coherent G3 source checkpoint",
+      "registered": false,
+      "deployed": false
+    },
+    {
+      "group": "6.15 Patch, mail, bundle, and archive",
+      "operation": "baby.git.am.skip",
+      "status": "intentionally_deferred",
+      "evidence": "Not included in this smallest coherent G3 source checkpoint",
+      "registered": false,
+      "deployed": false
+    },
+    {
+      "group": "6.15 Patch, mail, bundle, and archive",
+      "operation": "baby.git.am.abort",
+      "status": "intentionally_deferred",
+      "evidence": "Not included in this smallest coherent G3 source checkpoint",
+      "registered": false,
+      "deployed": false
+    },
+    {
+      "group": "6.15 Patch, mail, bundle, and archive",
+      "operation": "baby.git.bundle.create",
+      "status": "intentionally_deferred",
+      "evidence": "Not included in this smallest coherent G3 source checkpoint",
+      "registered": false,
+      "deployed": false
+    },
+    {
+      "group": "6.15 Patch, mail, bundle, and archive",
+      "operation": "baby.git.bundle.verify",
+      "status": "intentionally_deferred",
+      "evidence": "Not included in this smallest coherent G3 source checkpoint",
+      "registered": false,
+      "deployed": false
+    },
+    {
+      "group": "6.15 Patch, mail, bundle, and archive",
+      "operation": "baby.git.bundle.unbundle",
+      "status": "intentionally_deferred",
+      "evidence": "Not included in this smallest coherent G3 source checkpoint",
+      "registered": false,
+      "deployed": false
+    },
+    {
+      "group": "6.15 Patch, mail, bundle, and archive",
+      "operation": "baby.git.archive.create",
+      "status": "intentionally_deferred",
+      "evidence": "Not included in this smallest coherent G3 source checkpoint",
+      "registered": false,
+      "deployed": false
+    },
+    {
+      "group": "6.16 Diagnostics and maintenance",
+      "operation": "baby.git.bisect.start",
+      "status": "intentionally_deferred",
+      "evidence": "Not included in this smallest coherent G3 source checkpoint",
+      "registered": false,
+      "deployed": false
+    },
+    {
+      "group": "6.16 Diagnostics and maintenance",
+      "operation": "baby.git.bisect.good",
+      "status": "intentionally_deferred",
+      "evidence": "Not included in this smallest coherent G3 source checkpoint",
+      "registered": false,
+      "deployed": false
+    },
+    {
+      "group": "6.16 Diagnostics and maintenance",
+      "operation": "baby.git.bisect.bad",
+      "status": "intentionally_deferred",
+      "evidence": "Not included in this smallest coherent G3 source checkpoint",
+      "registered": false,
+      "deployed": false
+    },
+    {
+      "group": "6.16 Diagnostics and maintenance",
+      "operation": "baby.git.bisect.run",
+      "status": "intentionally_deferred",
+      "evidence": "Not included in this smallest coherent G3 source checkpoint",
+      "registered": false,
+      "deployed": false
+    },
+    {
+      "group": "6.16 Diagnostics and maintenance",
+      "operation": "baby.git.bisect.reset",
+      "status": "intentionally_deferred",
+      "evidence": "Not included in this smallest coherent G3 source checkpoint",
+      "registered": false,
+      "deployed": false
+    },
+    {
+      "group": "6.16 Diagnostics and maintenance",
+      "operation": "baby.git.blame",
+      "status": "intentionally_deferred",
+      "evidence": "Not included in this smallest coherent G3 source checkpoint",
+      "registered": false,
+      "deployed": false
+    },
+    {
+      "group": "6.16 Diagnostics and maintenance",
+      "operation": "baby.git.reflog.list",
+      "status": "intentionally_deferred",
+      "evidence": "Not included in this smallest coherent G3 source checkpoint",
+      "registered": false,
+      "deployed": false
+    },
+    {
+      "group": "6.16 Diagnostics and maintenance",
+      "operation": "baby.git.reflog.expire.preview",
+      "status": "intentionally_deferred",
+      "evidence": "Not included in this smallest coherent G3 source checkpoint",
+      "registered": false,
+      "deployed": false
+    },
+    {
+      "group": "6.16 Diagnostics and maintenance",
+      "operation": "baby.git.reflog.expire.apply",
+      "status": "intentionally_deferred",
+      "evidence": "Not included in this smallest coherent G3 source checkpoint",
+      "registered": false,
+      "deployed": false
+    },
+    {
+      "group": "6.16 Diagnostics and maintenance",
+      "operation": "baby.git.notes.list",
+      "status": "intentionally_deferred",
+      "evidence": "Not included in this smallest coherent G3 source checkpoint",
+      "registered": false,
+      "deployed": false
+    },
+    {
+      "group": "6.16 Diagnostics and maintenance",
+      "operation": "baby.git.notes.add",
+      "status": "intentionally_deferred",
+      "evidence": "Not included in this smallest coherent G3 source checkpoint",
+      "registered": false,
+      "deployed": false
+    },
+    {
+      "group": "6.16 Diagnostics and maintenance",
+      "operation": "baby.git.notes.remove",
+      "status": "intentionally_deferred",
+      "evidence": "Not included in this smallest coherent G3 source checkpoint",
+      "registered": false,
+      "deployed": false
+    },
+    {
+      "group": "6.16 Diagnostics and maintenance",
+      "operation": "baby.git.fsck",
+      "status": "intentionally_deferred",
+      "evidence": "Not included in this smallest coherent G3 source checkpoint",
+      "registered": false,
+      "deployed": false
+    },
+    {
+      "group": "6.16 Diagnostics and maintenance",
+      "operation": "baby.git.gc.preview",
+      "status": "intentionally_deferred",
+      "evidence": "Not included in this smallest coherent G3 source checkpoint",
+      "registered": false,
+      "deployed": false
+    },
+    {
+      "group": "6.16 Diagnostics and maintenance",
+      "operation": "baby.git.gc.run",
+      "status": "intentionally_deferred",
+      "evidence": "Not included in this smallest coherent G3 source checkpoint",
+      "registered": false,
+      "deployed": false
+    },
+    {
+      "group": "6.16 Diagnostics and maintenance",
+      "operation": "baby.git.maintenance.status",
+      "status": "intentionally_deferred",
+      "evidence": "Not included in this smallest coherent G3 source checkpoint",
+      "registered": false,
+      "deployed": false
+    },
+    {
+      "group": "6.16 Diagnostics and maintenance",
+      "operation": "baby.git.maintenance.run",
+      "status": "intentionally_deferred",
+      "evidence": "Not included in this smallest coherent G3 source checkpoint",
+      "registered": false,
+      "deployed": false
+    },
+    {
+      "group": "6.16 Diagnostics and maintenance",
+      "operation": "baby.git.count_objects",
+      "status": "intentionally_deferred",
+      "evidence": "Not included in this smallest coherent G3 source checkpoint",
+      "registered": false,
+      "deployed": false
+    },
+    {
+      "group": "6.16 Diagnostics and maintenance",
+      "operation": "baby.git.verify_pack",
+      "status": "intentionally_deferred",
+      "evidence": "Not included in this smallest coherent G3 source checkpoint",
+      "registered": false,
+      "deployed": false
+    },
+    {
+      "group": "6.17 Hooks, config, and policy",
+      "operation": "baby.git.hook.list",
+      "status": "intentionally_deferred",
+      "evidence": "Not included in this smallest coherent G3 source checkpoint",
+      "registered": false,
+      "deployed": false
+    },
+    {
+      "group": "6.17 Hooks, config, and policy",
+      "operation": "baby.git.hook.inspect",
+      "status": "intentionally_deferred",
+      "evidence": "Not included in this smallest coherent G3 source checkpoint",
+      "registered": false,
+      "deployed": false
+    },
+    {
+      "group": "6.17 Hooks, config, and policy",
+      "operation": "baby.git.hook.install",
+      "status": "intentionally_deferred",
+      "evidence": "Not included in this smallest coherent G3 source checkpoint",
+      "registered": false,
+      "deployed": false
+    },
+    {
+      "group": "6.17 Hooks, config, and policy",
+      "operation": "baby.git.hook.remove",
+      "status": "intentionally_deferred",
+      "evidence": "Not included in this smallest coherent G3 source checkpoint",
+      "registered": false,
+      "deployed": false
+    },
+    {
+      "group": "6.17 Hooks, config, and policy",
+      "operation": "baby.git.config.get",
+      "status": "intentionally_deferred",
+      "evidence": "Not included in this smallest coherent G3 source checkpoint",
+      "registered": false,
+      "deployed": false
+    },
+    {
+      "group": "6.17 Hooks, config, and policy",
+      "operation": "baby.git.config.list",
+      "status": "intentionally_deferred",
+      "evidence": "Not included in this smallest coherent G3 source checkpoint",
+      "registered": false,
+      "deployed": false
+    },
+    {
+      "group": "6.17 Hooks, config, and policy",
+      "operation": "baby.git.config.set",
+      "status": "intentionally_deferred",
+      "evidence": "Not included in this smallest coherent G3 source checkpoint",
+      "registered": false,
+      "deployed": false
+    },
+    {
+      "group": "6.17 Hooks, config, and policy",
+      "operation": "baby.git.config.unset",
+      "status": "intentionally_deferred",
+      "evidence": "Not included in this smallest coherent G3 source checkpoint",
+      "registered": false,
+      "deployed": false
+    },
+    {
+      "group": "6.17 Hooks, config, and policy",
+      "operation": "baby.git.policy.validate",
+      "status": "intentionally_deferred",
+      "evidence": "Not included in this smallest coherent G3 source checkpoint",
+      "registered": false,
+      "deployed": false
+    }
+  ]
+}

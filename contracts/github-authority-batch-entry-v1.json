@@ -1,0 +1,33 @@
+{
+  "recordVersion": "1.0.0",
+  "recordType": "baby-quirt-batch-capability-entry",
+  "capabilityId": "universal-github-authority-v1",
+  "batchTarget": "coordinated-five-capability-release",
+  "checkpoint": "G",
+  "supportState": "source_complete_certification_required",
+  "deploymentState": "undeployed",
+  "publicToolSurface": "single-call_quirt",
+  "operationRegistration": "deferred",
+  "credentialDeployment": "deferred",
+  "productionMutationAuthorized": false,
+  "sourceBranch": "build/universal-github-authority-v1",
+  "checkpointFCommit": "5a1a2bd801918ef1142e279f887b49f22a506605",
+  "checkpointFTree": "596bb9b90dc5da98cac7912a5047b3791417808a",
+  "requiredActivationGates": [
+    "exact final commit and tree",
+    "byte-identical candidate builds",
+    "signed three-cycle nspawn certification",
+    "exact-head CI success",
+    "verified candidate artifact",
+    "explicit production authorization",
+    "rollback-protected coordinated activation"
+  ],
+  "remainingProductionActions": [
+    "install approved provider credential references",
+    "package and register implemented operations",
+    "deploy immutable Baby and gateway releases",
+    "run preactivation and postactivation acceptance",
+    "verify rollback and durable recovery"
+  ],
+  "notes": "Checkpoint G source and evidence do not activate this capability."
+}

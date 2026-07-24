@@ -297,3 +297,8 @@ Break glass must never become the routine workflow.
 | `/opt/baby-quirt-mcp/releases/` | Immutable gateway releases |
 | `/opt/baby-quirt-mcp/current` | Active gateway pointer |
 | `/opt/baby-quirt-mcp/previous` | Gateway rollback pointer |
+
+
+## Universal GitHub Authority publication
+
+The exact publication, response-loss, restart, rate-limit, PR/CI, artifact, and partial-success procedure is defined in [the Universal GitHub Authority runbook](GITHUB_AUTHORITY_RUNBOOK_V1.md). Checkpoint G remains source-only and must not be treated as production activation.

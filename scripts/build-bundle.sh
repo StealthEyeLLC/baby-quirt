@@ -36,8 +36,8 @@ if [ -e "$RELEASE_DIR" ]; then
 fi
 
 mkdir -p "$RELEASE_DIR/bin" "$RELEASE_DIR/lib/dist" \
-  "$RELEASE_DIR/lib/build/Release" "$RELEASE_DIR/ops" "$OUTPUT_DIR" \
-  "$PRODUCTION_DEPS"
+  "$RELEASE_DIR/lib/build/Release" "$RELEASE_DIR/libexec/baby-quirt" \
+  "$RELEASE_DIR/ops" "$OUTPUT_DIR" "$PRODUCTION_DEPS"
 
 npm run build
 npm run build:native
@@ -85,6 +85,15 @@ exec "\$NODE_BIN" "\$RELEASE_ROOT/lib/dist/cli/$command.js" "\$@"
 EOF
 done
 
+cat > "$RELEASE_DIR/libexec/baby-quirt/baby-github" <<'EOF'
+#!/usr/bin/env bash
+set -euo pipefail
+SCRIPT_DIR=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
+RELEASE_ROOT=$(CDPATH= cd -- "$SCRIPT_DIR/../.." && pwd)
+NODE_BIN=${BABY_QUIRT_NODE_BIN:-/opt/node-v24.18.0-linux-x64/bin/node}
+exec "$NODE_BIN" "$RELEASE_ROOT/lib/dist/github/helper.js"
+EOF
+
 cp -R ops/systemd "$RELEASE_DIR/ops/"
 cp -R ops/tmpfiles "$RELEASE_DIR/ops/"
 cp -R schemas "$RELEASE_DIR/"
@@ -93,6 +102,7 @@ cp -R contracts "$RELEASE_DIR/"
 find "$RELEASE_DIR" -type d -exec chmod 0755 {} +
 find "$RELEASE_DIR" -type f -exec chmod 0644 {} +
 find "$RELEASE_DIR/bin" -type f -exec chmod 0755 {} +
+find "$RELEASE_DIR/libexec" -type f -exec chmod 0755 {} +
 
 NATIVE_EVIDENCE="$BUILD_ROOT/native-load-evidence.json"
 node -e '

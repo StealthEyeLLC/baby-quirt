@@ -1,0 +1,5812 @@
+{
+  "capabilityId": "baby-quirt-universal-github-authority",
+  "capabilityVersion": "1.0.0",
+  "checkpoint": "A",
+  "supportState": "contract_only",
+  "publicTool": "call_quirt",
+  "publicArguments": [
+    "operation",
+    "payload",
+    "idempotencyKey"
+  ],
+  "modelSchemas": {
+    "GitRepositoryIdentity": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "repositoryId": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,255}$"
+        },
+        "canonicalRemote": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 4096
+        },
+        "host": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 4096
+        },
+        "owner": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 4096
+        },
+        "name": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 4096
+        },
+        "numericRepositoryId": {
+          "type": "integer",
+          "minimum": 0
+        }
+      },
+      "required": [
+        "repositoryId",
+        "canonicalRemote",
+        "host",
+        "owner",
+        "name"
+      ]
+    },
+    "GitSourceIdentity": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "repository": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "repositoryId": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,255}$"
+            },
+            "canonicalRemote": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 4096
+            },
+            "host": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 4096
+            },
+            "owner": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 4096
+            },
+            "name": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 4096
+            },
+            "numericRepositoryId": {
+              "type": "integer",
+              "minimum": 0
+            }
+          },
+          "required": [
+            "repositoryId",
+            "canonicalRemote",
+            "host",
+            "owner",
+            "name"
+          ]
+        },
+        "ref": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 4096
+        },
+        "commit": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{40}$"
+        },
+        "tree": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{40}$"
+        },
+        "parents": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{40}$"
+          }
+        }
+      },
+      "required": [
+        "repository",
+        "commit",
+        "tree",
+        "parents"
+      ]
+    },
+    "GitCredentialReference": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "credentialReferenceId": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,255}$"
+        },
+        "credentialType": {
+          "enum": [
+            "ssh_deploy_key",
+            "github_app_installation",
+            "fine_grained_token",
+            "commit_signing"
+          ]
+        },
+        "provider": {
+          "enum": [
+            "git",
+            "github"
+          ]
+        },
+        "accountOrInstallationId": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,255}$"
+        },
+        "repositoryAuthorityId": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,255}$"
+        },
+        "allowedOperationFamilies": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 4096
+          }
+        },
+        "permissionSnapshotDigest": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        "expiresAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "revoked": {
+          "type": "boolean"
+        },
+        "health": {
+          "enum": [
+            "healthy",
+            "degraded",
+            "unavailable",
+            "unknown"
+          ]
+        }
+      },
+      "required": [
+        "credentialReferenceId",
+        "credentialType",
+        "provider",
+        "accountOrInstallationId",
+        "repositoryAuthorityId",
+        "allowedOperationFamilies",
+        "permissionSnapshotDigest",
+        "revoked",
+        "health"
+      ]
+    },
+    "GitWorkspaceIdentity": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "workspaceId": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,255}$"
+        },
+        "repositoryId": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,255}$"
+        },
+        "mirrorPath": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 4096
+        },
+        "worktreePath": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 4096
+        },
+        "branch": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 4096
+        },
+        "head": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{40}$"
+        },
+        "tree": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{40}$"
+        },
+        "clean": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "workspaceId",
+        "repositoryId",
+        "mirrorPath",
+        "worktreePath",
+        "head",
+        "tree",
+        "clean"
+      ]
+    },
+    "GitRefExpectation": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "remote": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 4096
+        },
+        "destinationRef": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 4096
+        },
+        "expectedOldObject": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{40}$"
+        },
+        "newObject": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{40}$"
+        },
+        "newTree": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{40}$"
+        },
+        "fastForwardOnly": {
+          "const": true
+        }
+      },
+      "required": [
+        "remote",
+        "destinationRef",
+        "newObject",
+        "newTree",
+        "fastForwardOnly"
+      ]
+    },
+    "GitPushPlan": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "planId": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,255}$"
+        },
+        "planDigest": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        "principal": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,255}$"
+        },
+        "repositoryAuthorityId": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,255}$"
+        },
+        "workspace": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "workspaceId": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,255}$"
+            },
+            "repositoryId": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,255}$"
+            },
+            "mirrorPath": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 4096
+            },
+            "worktreePath": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 4096
+            },
+            "branch": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 4096
+            },
+            "head": {
+              "type": "string",
+              "pattern": "^[a-f0-9]{40}$"
+            },
+            "tree": {
+              "type": "string",
+              "pattern": "^[a-f0-9]{40}$"
+            },
+            "clean": {
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "workspaceId",
+            "repositoryId",
+            "mirrorPath",
+            "worktreePath",
+            "head",
+            "tree",
+            "clean"
+          ]
+        },
+        "credentialReferenceId": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,255}$"
+        },
+        "sourceRef": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 4096
+        },
+        "expectation": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "remote": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 4096
+            },
+            "destinationRef": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 4096
+            },
+            "expectedOldObject": {
+              "type": "string",
+              "pattern": "^[a-f0-9]{40}$"
+            },
+            "newObject": {
+              "type": "string",
+              "pattern": "^[a-f0-9]{40}$"
+            },
+            "newTree": {
+              "type": "string",
+              "pattern": "^[a-f0-9]{40}$"
+            },
+            "fastForwardOnly": {
+              "const": true
+            }
+          },
+          "required": [
+            "remote",
+            "destinationRef",
+            "newObject",
+            "newTree",
+            "fastForwardOnly"
+          ]
+        },
+        "mergeBase": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{40}$"
+        },
+        "objectsToTransfer": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{40}$"
+          }
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "expiresAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "planId",
+        "planDigest",
+        "principal",
+        "repositoryAuthorityId",
+        "workspace",
+        "credentialReferenceId",
+        "sourceRef",
+        "expectation",
+        "objectsToTransfer",
+        "createdAt",
+        "expiresAt"
+      ]
+    },
+    "GitCommitEvidence": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "commit": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{40}$"
+        },
+        "tree": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{40}$"
+        },
+        "parents": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{40}$"
+          }
+        },
+        "authorIdentityReference": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,255}$"
+        },
+        "committerIdentityReference": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,255}$"
+        },
+        "messageDigest": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        "changedPaths": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 4096
+          }
+        },
+        "signatureStatus": {
+          "enum": [
+            "verified",
+            "unsigned",
+            "not_configured"
+          ]
+        }
+      },
+      "required": [
+        "commit",
+        "tree",
+        "parents",
+        "authorIdentityReference",
+        "committerIdentityReference",
+        "messageDigest",
+        "changedPaths",
+        "signatureStatus"
+      ]
+    },
+    "GitTreeEvidence": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "tree": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{40}$"
+        },
+        "entryCount": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "changedPaths": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 4096
+          }
+        },
+        "digest": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        }
+      },
+      "required": [
+        "tree",
+        "entryCount",
+        "changedPaths",
+        "digest"
+      ]
+    },
+    "GitRemoteReadback": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "repository": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "repositoryId": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,255}$"
+            },
+            "canonicalRemote": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 4096
+            },
+            "host": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 4096
+            },
+            "owner": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 4096
+            },
+            "name": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 4096
+            },
+            "numericRepositoryId": {
+              "type": "integer",
+              "minimum": 0
+            }
+          },
+          "required": [
+            "repositoryId",
+            "canonicalRemote",
+            "host",
+            "owner",
+            "name"
+          ]
+        },
+        "remote": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 4096
+        },
+        "destinationRef": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 4096
+        },
+        "observedObject": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{40}$"
+        },
+        "observedCommit": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{40}$"
+        },
+        "observedTree": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{40}$"
+        },
+        "expectedObject": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{40}$"
+        },
+        "expectedTree": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{40}$"
+        },
+        "ancestryVerified": {
+          "type": "boolean"
+        },
+        "observedAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "repository",
+        "remote",
+        "destinationRef",
+        "expectedObject",
+        "expectedTree",
+        "ancestryVerified",
+        "observedAt"
+      ]
+    },
+    "GitHubProviderAccount": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "providerAccountId": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,255}$"
+        },
+        "host": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 4096
+        },
+        "credentialReferenceId": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,255}$"
+        },
+        "credentialType": {
+          "enum": [
+            "ssh_deploy_key",
+            "github_app_installation",
+            "fine_grained_token",
+            "commit_signing"
+          ]
+        },
+        "login": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 4096
+        },
+        "accountId": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "installationId": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "health": {
+          "enum": [
+            "healthy",
+            "degraded",
+            "unavailable",
+            "unknown"
+          ]
+        },
+        "lastSuccessfulUse": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "providerAccountId",
+        "host",
+        "credentialReferenceId",
+        "credentialType",
+        "health"
+      ]
+    },
+    "GitHubRepositoryAuthority": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "authorityId": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,255}$"
+        },
+        "schemaVersion": {
+          "const": "1.0.0"
+        },
+        "principal": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,255}$"
+        },
+        "repository": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "repositoryId": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,255}$"
+            },
+            "canonicalRemote": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 4096
+            },
+            "host": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 4096
+            },
+            "owner": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 4096
+            },
+            "name": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 4096
+            },
+            "numericRepositoryId": {
+              "type": "integer",
+              "minimum": 0
+            }
+          },
+          "required": [
+            "repositoryId",
+            "canonicalRemote",
+            "host",
+            "owner",
+            "name"
+          ]
+        },
+        "credentialReferenceId": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,255}$"
+        },
+        "credentialType": {
+          "enum": [
+            "ssh_deploy_key",
+            "github_app_installation",
+            "fine_grained_token",
+            "commit_signing"
+          ]
+        },
+        "readWriteClassification": {
+          "enum": [
+            "read_only",
+            "read_write"
+          ]
+        },
+        "allowedBranchPatterns": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 4096
+          }
+        },
+        "allowedOperationFamilies": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 4096
+          }
+        },
+        "permissionSnapshot": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "snapshotId": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,255}$"
+            },
+            "digest": {
+              "type": "string",
+              "pattern": "^[a-f0-9]{64}$"
+            },
+            "repositoryPermissions": {
+              "type": "object",
+              "additionalProperties": {
+                "enum": [
+                  "none",
+                  "read",
+                  "write",
+                  "admin"
+                ]
+              }
+            },
+            "organizationPermissions": {
+              "type": "object",
+              "additionalProperties": {
+                "enum": [
+                  "none",
+                  "read",
+                  "write",
+                  "admin"
+                ]
+              }
+            },
+            "capturedAt": {
+              "type": "string",
+              "format": "date-time"
+            }
+          },
+          "required": [
+            "snapshotId",
+            "digest",
+            "repositoryPermissions",
+            "organizationPermissions",
+            "capturedAt"
+          ]
+        },
+        "pinnedSshHostKeyDigest": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "expiresAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "revoked": {
+          "type": "boolean"
+        },
+        "lastVerifiedAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "health": {
+          "enum": [
+            "healthy",
+            "degraded",
+            "unavailable",
+            "unknown"
+          ]
+        }
+      },
+      "required": [
+        "authorityId",
+        "schemaVersion",
+        "principal",
+        "repository",
+        "credentialReferenceId",
+        "credentialType",
+        "readWriteClassification",
+        "allowedBranchPatterns",
+        "allowedOperationFamilies",
+        "permissionSnapshot",
+        "createdAt",
+        "revoked",
+        "health"
+      ]
+    },
+    "GitHubPermissionSnapshot": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "snapshotId": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,255}$"
+        },
+        "digest": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        "repositoryPermissions": {
+          "type": "object",
+          "additionalProperties": {
+            "enum": [
+              "none",
+              "read",
+              "write",
+              "admin"
+            ]
+          }
+        },
+        "organizationPermissions": {
+          "type": "object",
+          "additionalProperties": {
+            "enum": [
+              "none",
+              "read",
+              "write",
+              "admin"
+            ]
+          }
+        },
+        "capturedAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "snapshotId",
+        "digest",
+        "repositoryPermissions",
+        "organizationPermissions",
+        "capturedAt"
+      ]
+    },
+    "GitHubRateLimitState": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "limit": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "remaining": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "used": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "resetsAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "retryAfterSeconds": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "secondaryLimited": {
+          "type": "boolean"
+        },
+        "observedAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "limit",
+        "remaining",
+        "used",
+        "resetsAt",
+        "secondaryLimited",
+        "observedAt"
+      ]
+    },
+    "GitHubMutationIntent": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "mutationId": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,255}$"
+        },
+        "schemaVersion": {
+          "const": "1.0.0"
+        },
+        "operation": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 4096
+        },
+        "principal": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,255}$"
+        },
+        "authorityReference": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,255}$"
+        },
+        "repository": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "repositoryId": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,255}$"
+            },
+            "canonicalRemote": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 4096
+            },
+            "host": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 4096
+            },
+            "owner": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 4096
+            },
+            "name": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 4096
+            },
+            "numericRepositoryId": {
+              "type": "integer",
+              "minimum": 0
+            }
+          },
+          "required": [
+            "repositoryId",
+            "canonicalRemote",
+            "host",
+            "owner",
+            "name"
+          ]
+        },
+        "semanticIdempotencyFingerprint": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        "requestedStateDigest": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        "state": {
+          "enum": [
+            "intent_persisted",
+            "local_prepared",
+            "remote_attempted",
+            "remote_reconciled",
+            "verified",
+            "failed",
+            "ambiguous",
+            "unknown"
+          ]
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "expiresAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "mutationId",
+        "schemaVersion",
+        "operation",
+        "principal",
+        "authorityReference",
+        "repository",
+        "semanticIdempotencyFingerprint",
+        "requestedStateDigest",
+        "state",
+        "createdAt",
+        "expiresAt"
+      ]
+    },
+    "GitHubMutationReadback": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "mutationId": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,255}$"
+        },
+        "state": {
+          "enum": [
+            "intent_persisted",
+            "local_prepared",
+            "remote_attempted",
+            "remote_reconciled",
+            "verified",
+            "failed",
+            "ambiguous",
+            "unknown"
+          ]
+        },
+        "externalIdentifiers": {
+          "type": "object"
+        },
+        "observedStateDigest": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        "evidenceReferences": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 4096
+          }
+        },
+        "eventCursor": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "restartBehavior": {
+          "const": "durable_reconcile"
+        },
+        "recoveryState": {
+          "enum": [
+            "none",
+            "automatic",
+            "manual",
+            "unknown"
+          ]
+        },
+        "observedAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "mutationId",
+        "state",
+        "externalIdentifiers",
+        "evidenceReferences",
+        "eventCursor",
+        "restartBehavior",
+        "recoveryState",
+        "observedAt"
+      ]
+    },
+    "GitHubWorkflowIdentity": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "repository": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "repositoryId": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,255}$"
+            },
+            "canonicalRemote": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 4096
+            },
+            "host": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 4096
+            },
+            "owner": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 4096
+            },
+            "name": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 4096
+            },
+            "numericRepositoryId": {
+              "type": "integer",
+              "minimum": 0
+            }
+          },
+          "required": [
+            "repositoryId",
+            "canonicalRemote",
+            "host",
+            "owner",
+            "name"
+          ]
+        },
+        "workflowId": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,255}$"
+        },
+        "workflowName": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 4096
+        },
+        "runId": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "attempt": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "headSha": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{40}$"
+        },
+        "event": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 4096
+        }
+      },
+      "required": [
+        "repository",
+        "workflowId",
+        "runId",
+        "attempt",
+        "headSha",
+        "event"
+      ]
+    },
+    "GitHubArtifactIdentity": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "repository": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "repositoryId": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,255}$"
+            },
+            "canonicalRemote": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 4096
+            },
+            "host": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 4096
+            },
+            "owner": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 4096
+            },
+            "name": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 4096
+            },
+            "numericRepositoryId": {
+              "type": "integer",
+              "minimum": 0
+            }
+          },
+          "required": [
+            "repositoryId",
+            "canonicalRemote",
+            "host",
+            "owner",
+            "name"
+          ]
+        },
+        "workflow": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "repository": {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "repositoryId": {
+                  "type": "string",
+                  "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,255}$"
+                },
+                "canonicalRemote": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 4096
+                },
+                "host": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 4096
+                },
+                "owner": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 4096
+                },
+                "name": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 4096
+                },
+                "numericRepositoryId": {
+                  "type": "integer",
+                  "minimum": 0
+                }
+              },
+              "required": [
+                "repositoryId",
+                "canonicalRemote",
+                "host",
+                "owner",
+                "name"
+              ]
+            },
+            "workflowId": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,255}$"
+            },
+            "workflowName": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 4096
+            },
+            "runId": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "attempt": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "headSha": {
+              "type": "string",
+              "pattern": "^[a-f0-9]{40}$"
+            },
+            "event": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 4096
+            }
+          },
+          "required": [
+            "repository",
+            "workflowId",
+            "runId",
+            "attempt",
+            "headSha",
+            "event"
+          ]
+        },
+        "artifactId": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "name": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 4096
+        },
+        "archiveDigest": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        "size": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "sourceCommit": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{40}$"
+        },
+        "sourceTree": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{40}$"
+        }
+      },
+      "required": [
+        "repository",
+        "workflow",
+        "artifactId",
+        "name",
+        "archiveDigest",
+        "size",
+        "sourceCommit",
+        "sourceTree"
+      ]
+    },
+    "GitHubCredentialEnrollmentRecord": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "enrollmentId": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,255}$"
+        },
+        "schemaVersion": {
+          "const": "1.0.0"
+        },
+        "ownerPrincipal": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,255}$"
+        },
+        "provider": {
+          "const": "github"
+        },
+        "credentialType": {
+          "enum": [
+            "ssh_deploy_key",
+            "github_app_installation",
+            "fine_grained_token",
+            "commit_signing"
+          ]
+        },
+        "credentialReferenceId": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,255}$"
+        },
+        "accountOrInstallationId": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,255}$"
+        },
+        "repositoryAuthorityIds": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,255}$"
+          }
+        },
+        "allowedOperationFamilies": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 4096
+          }
+        },
+        "permissionSnapshotDigest": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        "encryptedCredentialName": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,255}$"
+        },
+        "encryptedCredentialDigest": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "expiresAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "revoked": {
+          "type": "boolean"
+        },
+        "plaintextPersisted": {
+          "const": false
+        }
+      },
+      "required": [
+        "enrollmentId",
+        "schemaVersion",
+        "ownerPrincipal",
+        "provider",
+        "credentialType",
+        "credentialReferenceId",
+        "accountOrInstallationId",
+        "repositoryAuthorityIds",
+        "allowedOperationFamilies",
+        "permissionSnapshotDigest",
+        "encryptedCredentialName",
+        "encryptedCredentialDigest",
+        "createdAt",
+        "revoked",
+        "plaintextPersisted"
+      ]
+    }
+  },
+  "operations": [
+    {
+      "operation": "baby.git.describe",
+      "version": "1.0.0",
+      "owner": "local_git",
+      "mutation": false,
+      "risk": "low",
+      "idempotency": "read_only",
+      "restartBehavior": "read_only",
+      "support": "contract_only",
+      "executable": false,
+      "permissionFamilies": [
+        "git.discovery"
+      ],
+      "input": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {}
+      },
+      "output": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "providerVersion": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 4096
+          },
+          "installedGitVersion": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 4096
+          },
+          "supportedOperationVersions": {
+            "type": "object"
+          },
+          "repositoryStorageRoots": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 4096
+            }
+          },
+          "limits": {
+            "type": "object"
+          },
+          "credentialReferenceSupport": {
+            "const": true
+          },
+          "knownLimitations": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 4096
+            }
+          },
+          "restartBehavior": {
+            "const": "read_only"
+          },
+          "supportState": {
+            "const": "contract_only"
+          }
+        },
+        "required": [
+          "providerVersion",
+          "installedGitVersion",
+          "supportedOperationVersions",
+          "repositoryStorageRoots",
+          "limits",
+          "credentialReferenceSupport",
+          "knownLimitations",
+          "restartBehavior",
+          "supportState"
+        ]
+      }
+    },
+    {
+      "operation": "baby.git.repository.materialize",
+      "version": "1.0.0",
+      "owner": "local_git",
+      "mutation": true,
+      "risk": "medium",
+      "idempotency": "semantic_replay_or_conflict",
+      "restartBehavior": "durable_reconcile",
+      "support": "contract_only",
+      "executable": false,
+      "permissionFamilies": [
+        "git.transport",
+        "git.repository.write"
+      ],
+      "input": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "repositoryAuthorityId": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,255}$"
+          },
+          "credentialReferenceId": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,255}$"
+          },
+          "canonicalRemote": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 4096
+          },
+          "expectedCommit": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{40}$"
+          },
+          "expectedTree": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{40}$"
+          },
+          "sourceRef": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 4096
+          },
+          "workspaceId": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,255}$"
+          }
+        },
+        "required": [
+          "repositoryAuthorityId",
+          "credentialReferenceId",
+          "canonicalRemote",
+          "expectedCommit",
+          "expectedTree",
+          "workspaceId"
+        ]
+      },
+      "output": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "workspace": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "workspaceId": {
+                "type": "string",
+                "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,255}$"
+              },
+              "repositoryId": {
+                "type": "string",
+                "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,255}$"
+              },
+              "mirrorPath": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 4096
+              },
+              "worktreePath": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 4096
+              },
+              "branch": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 4096
+              },
+              "head": {
+                "type": "string",
+                "pattern": "^[a-f0-9]{40}$"
+              },
+              "tree": {
+                "type": "string",
+                "pattern": "^[a-f0-9]{40}$"
+              },
+              "clean": {
+                "type": "boolean"
+              }
+            },
+            "required": [
+              "workspaceId",
+              "repositoryId",
+              "mirrorPath",
+              "worktreePath",
+              "head",
+              "tree",
+              "clean"
+            ]
+          },
+          "source": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "repository": {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                  "repositoryId": {
+                    "type": "string",
+                    "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,255}$"
+                  },
+                  "canonicalRemote": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 4096
+                  },
+                  "host": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 4096
+                  },
+                  "owner": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 4096
+                  },
+                  "name": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 4096
+                  },
+                  "numericRepositoryId": {
+                    "type": "integer",
+                    "minimum": 0
+                  }
+                },
+                "required": [
+                  "repositoryId",
+                  "canonicalRemote",
+                  "host",
+                  "owner",
+                  "name"
+                ]
+              },
+              "ref": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 4096
+              },
+              "commit": {
+                "type": "string",
+                "pattern": "^[a-f0-9]{40}$"
+              },
+              "tree": {
+                "type": "string",
+                "pattern": "^[a-f0-9]{40}$"
+              },
+              "parents": {
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "pattern": "^[a-f0-9]{40}$"
+                }
+              }
+            },
+            "required": [
+              "repository",
+              "commit",
+              "tree",
+              "parents"
+            ]
+          },
+          "resultDigest": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{64}$"
+          }
+        },
+        "required": [
+          "workspace",
+          "source",
+          "resultDigest"
+        ]
+      }
+    },
+    {
+      "operation": "baby.git.repository.verify",
+      "version": "1.0.0",
+      "owner": "local_git",
+      "mutation": false,
+      "risk": "low",
+      "idempotency": "read_only",
+      "restartBehavior": "read_only",
+      "support": "contract_only",
+      "executable": false,
+      "permissionFamilies": [
+        "git.repository.read"
+      ],
+      "input": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "workspaceId": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,255}$"
+          },
+          "repositoryAuthorityId": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,255}$"
+          }
+        },
+        "required": [
+          "workspaceId",
+          "repositoryAuthorityId"
+        ]
+      },
+      "output": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "workspace": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "workspaceId": {
+                "type": "string",
+                "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,255}$"
+              },
+              "repositoryId": {
+                "type": "string",
+                "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,255}$"
+              },
+              "mirrorPath": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 4096
+              },
+              "worktreePath": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 4096
+              },
+              "branch": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 4096
+              },
+              "head": {
+                "type": "string",
+                "pattern": "^[a-f0-9]{40}$"
+              },
+              "tree": {
+                "type": "string",
+                "pattern": "^[a-f0-9]{40}$"
+              },
+              "clean": {
+                "type": "boolean"
+              }
+            },
+            "required": [
+              "workspaceId",
+              "repositoryId",
+              "mirrorPath",
+              "worktreePath",
+              "head",
+              "tree",
+              "clean"
+            ]
+          },
+          "source": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "repository": {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                  "repositoryId": {
+                    "type": "string",
+                    "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,255}$"
+                  },
+                  "canonicalRemote": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 4096
+                  },
+                  "host": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 4096
+                  },
+                  "owner": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 4096
+                  },
+                  "name": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 4096
+                  },
+                  "numericRepositoryId": {
+                    "type": "integer",
+                    "minimum": 0
+                  }
+                },
+                "required": [
+                  "repositoryId",
+                  "canonicalRemote",
+                  "host",
+                  "owner",
+                  "name"
+                ]
+              },
+              "ref": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 4096
+              },
+              "commit": {
+                "type": "string",
+                "pattern": "^[a-f0-9]{40}$"
+              },
+              "tree": {
+                "type": "string",
+                "pattern": "^[a-f0-9]{40}$"
+              },
+              "parents": {
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "pattern": "^[a-f0-9]{40}$"
+                }
+              }
+            },
+            "required": [
+              "repository",
+              "commit",
+              "tree",
+              "parents"
+            ]
+          },
+          "canonicalRemoteVerified": {
+            "type": "boolean"
+          },
+          "ancestryVerified": {
+            "type": "boolean"
+          },
+          "objectAvailabilityVerified": {
+            "type": "boolean"
+          },
+          "submodulesDeclared": {
+            "type": "boolean"
+          },
+          "lfsDeclared": {
+            "type": "boolean"
+          },
+          "resultDigest": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{64}$"
+          }
+        },
+        "required": [
+          "workspace",
+          "source",
+          "canonicalRemoteVerified",
+          "ancestryVerified",
+          "objectAvailabilityVerified",
+          "submodulesDeclared",
+          "lfsDeclared",
+          "resultDigest"
+        ]
+      }
+    },
+    {
+      "operation": "baby.git.repository.status",
+      "version": "1.0.0",
+      "owner": "local_git",
+      "mutation": false,
+      "risk": "low",
+      "idempotency": "read_only",
+      "restartBehavior": "read_only",
+      "support": "contract_only",
+      "executable": false,
+      "permissionFamilies": [
+        "git.repository.read"
+      ],
+      "input": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "workspaceId": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,255}$"
+          },
+          "repositoryAuthorityId": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,255}$"
+          }
+        },
+        "required": [
+          "workspaceId",
+          "repositoryAuthorityId"
+        ]
+      },
+      "output": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "workspace": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "workspaceId": {
+                "type": "string",
+                "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,255}$"
+              },
+              "repositoryId": {
+                "type": "string",
+                "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,255}$"
+              },
+              "mirrorPath": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 4096
+              },
+              "worktreePath": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 4096
+              },
+              "branch": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 4096
+              },
+              "head": {
+                "type": "string",
+                "pattern": "^[a-f0-9]{40}$"
+              },
+              "tree": {
+                "type": "string",
+                "pattern": "^[a-f0-9]{40}$"
+              },
+              "clean": {
+                "type": "boolean"
+              }
+            },
+            "required": [
+              "workspaceId",
+              "repositoryId",
+              "mirrorPath",
+              "worktreePath",
+              "head",
+              "tree",
+              "clean"
+            ]
+          },
+          "upstream": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 4096
+          },
+          "ahead": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "behind": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "stagedPaths": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 4096
+            }
+          },
+          "unstagedPaths": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 4096
+            }
+          },
+          "untrackedPaths": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 4096
+            }
+          },
+          "conflicts": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 4096
+            }
+          },
+          "sequencerState": {
+            "enum": [
+              "none",
+              "merge",
+              "rebase",
+              "cherry_pick",
+              "revert",
+              "bisect"
+            ]
+          },
+          "boundedDiffSummary": {
+            "type": "object"
+          }
+        },
+        "required": [
+          "workspace",
+          "ahead",
+          "behind",
+          "stagedPaths",
+          "unstagedPaths",
+          "untrackedPaths",
+          "conflicts",
+          "sequencerState",
+          "boundedDiffSummary"
+        ]
+      }
+    },
+    {
+      "operation": "baby.git.fetch",
+      "version": "1.0.0",
+      "owner": "local_git",
+      "mutation": true,
+      "risk": "medium",
+      "idempotency": "semantic_replay_or_conflict",
+      "restartBehavior": "durable_reconcile",
+      "support": "contract_only",
+      "executable": false,
+      "permissionFamilies": [
+        "git.transport",
+        "git.repository.write"
+      ],
+      "input": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "repositoryAuthorityId": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,255}$"
+          },
+          "workspaceId": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,255}$"
+          },
+          "credentialReferenceId": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,255}$"
+          },
+          "exactRefs": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 4096
+            }
+          },
+          "prune": {
+            "const": false
+          }
+        },
+        "required": [
+          "repositoryAuthorityId",
+          "workspaceId",
+          "credentialReferenceId",
+          "exactRefs",
+          "prune"
+        ]
+      },
+      "output": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "operation": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 4096
+          },
+          "contractVersion": {
+            "const": "1.0.0"
+          },
+          "support": {
+            "const": "contract_only"
+          },
+          "evidenceReferences": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 4096
+            }
+          },
+          "resultDigest": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{64}$"
+          }
+        },
+        "required": [
+          "operation",
+          "contractVersion",
+          "support",
+          "evidenceReferences",
+          "resultDigest"
+        ]
+      }
+    },
+    {
+      "operation": "baby.git.branch.create",
+      "version": "1.0.0",
+      "owner": "local_git",
+      "mutation": true,
+      "risk": "medium",
+      "idempotency": "semantic_replay_or_conflict",
+      "restartBehavior": "durable_reconcile",
+      "support": "contract_only",
+      "executable": false,
+      "permissionFamilies": [
+        "git.repository.write"
+      ],
+      "input": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "repositoryAuthorityId": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,255}$"
+          },
+          "workspaceId": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,255}$"
+          },
+          "branch": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 4096
+          },
+          "expectedCommit": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{40}$"
+          },
+          "expectedTree": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{40}$"
+          }
+        },
+        "required": [
+          "repositoryAuthorityId",
+          "workspaceId",
+          "branch",
+          "expectedCommit",
+          "expectedTree"
+        ]
+      },
+      "output": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "operation": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 4096
+          },
+          "contractVersion": {
+            "const": "1.0.0"
+          },
+          "support": {
+            "const": "contract_only"
+          },
+          "evidenceReferences": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 4096
+            }
+          },
+          "resultDigest": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{64}$"
+          }
+        },
+        "required": [
+          "operation",
+          "contractVersion",
+          "support",
+          "evidenceReferences",
+          "resultDigest"
+        ]
+      }
+    },
+    {
+      "operation": "baby.git.commit.create",
+      "version": "1.0.0",
+      "owner": "local_git",
+      "mutation": true,
+      "risk": "high",
+      "idempotency": "semantic_replay_or_conflict",
+      "restartBehavior": "durable_reconcile",
+      "support": "contract_only",
+      "executable": false,
+      "permissionFamilies": [
+        "git.repository.write",
+        "git.commit"
+      ],
+      "input": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "repositoryAuthorityId": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,255}$"
+          },
+          "workspaceId": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,255}$"
+          },
+          "expectedParent": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{40}$"
+          },
+          "declaredPaths": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 4096
+            }
+          },
+          "authorIdentityReference": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,255}$"
+          },
+          "committerIdentityReference": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,255}$"
+          },
+          "message": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 10000
+          },
+          "signingCredentialReferenceId": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,255}$"
+          }
+        },
+        "required": [
+          "repositoryAuthorityId",
+          "workspaceId",
+          "expectedParent",
+          "declaredPaths",
+          "authorIdentityReference",
+          "committerIdentityReference",
+          "message"
+        ]
+      },
+      "output": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "commit": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{40}$"
+          },
+          "tree": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{40}$"
+          },
+          "parents": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "pattern": "^[a-f0-9]{40}$"
+            }
+          },
+          "authorIdentityReference": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,255}$"
+          },
+          "committerIdentityReference": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,255}$"
+          },
+          "messageDigest": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{64}$"
+          },
+          "changedPaths": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 4096
+            }
+          },
+          "signatureStatus": {
+            "enum": [
+              "verified",
+              "unsigned",
+              "not_configured"
+            ]
+          }
+        },
+        "required": [
+          "commit",
+          "tree",
+          "parents",
+          "authorIdentityReference",
+          "committerIdentityReference",
+          "messageDigest",
+          "changedPaths",
+          "signatureStatus"
+        ]
+      }
+    },
+    {
+      "operation": "baby.git.commit.verify",
+      "version": "1.0.0",
+      "owner": "local_git",
+      "mutation": false,
+      "risk": "low",
+      "idempotency": "read_only",
+      "restartBehavior": "read_only",
+      "support": "contract_only",
+      "executable": false,
+      "permissionFamilies": [
+        "git.repository.read"
+      ],
+      "input": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "repositoryAuthorityId": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,255}$"
+          },
+          "workspaceId": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,255}$"
+          },
+          "expectedCommit": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{40}$"
+          },
+          "expectedTree": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{40}$"
+          },
+          "expectedBase": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{40}$"
+          }
+        },
+        "required": [
+          "repositoryAuthorityId",
+          "workspaceId",
+          "expectedCommit",
+          "expectedTree",
+          "expectedBase"
+        ]
+      },
+      "output": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "commit": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{40}$"
+          },
+          "tree": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{40}$"
+          },
+          "parents": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "pattern": "^[a-f0-9]{40}$"
+            }
+          },
+          "authorIdentityReference": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,255}$"
+          },
+          "committerIdentityReference": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,255}$"
+          },
+          "messageDigest": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{64}$"
+          },
+          "changedPaths": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 4096
+            }
+          },
+          "signatureStatus": {
+            "enum": [
+              "verified",
+              "unsigned",
+              "not_configured"
+            ]
+          }
+        },
+        "required": [
+          "commit",
+          "tree",
+          "parents",
+          "authorIdentityReference",
+          "committerIdentityReference",
+          "messageDigest",
+          "changedPaths",
+          "signatureStatus"
+        ]
+      }
+    },
+    {
+      "operation": "baby.git.push.preview",
+      "version": "1.0.0",
+      "owner": "local_git",
+      "mutation": false,
+      "risk": "low",
+      "idempotency": "read_only",
+      "restartBehavior": "read_only",
+      "support": "contract_only",
+      "executable": false,
+      "permissionFamilies": [
+        "git.transport",
+        "git.remote.read"
+      ],
+      "input": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "repositoryAuthorityId": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,255}$"
+          },
+          "workspaceId": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,255}$"
+          },
+          "credentialReferenceId": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,255}$"
+          },
+          "sourceRef": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 4096
+          },
+          "destinationRef": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 4096
+          },
+          "expectedRemoteOldObject": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{40}$"
+          },
+          "expiresAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "repositoryAuthorityId",
+          "workspaceId",
+          "credentialReferenceId",
+          "sourceRef",
+          "destinationRef",
+          "expiresAt"
+        ]
+      },
+      "output": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "planId": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,255}$"
+          },
+          "planDigest": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{64}$"
+          },
+          "principal": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,255}$"
+          },
+          "repositoryAuthorityId": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,255}$"
+          },
+          "workspace": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "workspaceId": {
+                "type": "string",
+                "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,255}$"
+              },
+              "repositoryId": {
+                "type": "string",
+                "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,255}$"
+              },
+              "mirrorPath": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 4096
+              },
+              "worktreePath": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 4096
+              },
+              "branch": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 4096
+              },
+              "head": {
+                "type": "string",
+                "pattern": "^[a-f0-9]{40}$"
+              },
+              "tree": {
+                "type": "string",
+                "pattern": "^[a-f0-9]{40}$"
+              },
+              "clean": {
+                "type": "boolean"
+              }
+            },
+            "required": [
+              "workspaceId",
+              "repositoryId",
+              "mirrorPath",
+              "worktreePath",
+              "head",
+              "tree",
+              "clean"
+            ]
+          },
+          "credentialReferenceId": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,255}$"
+          },
+          "sourceRef": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 4096
+          },
+          "expectation": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "remote": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 4096
+              },
+              "destinationRef": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 4096
+              },
+              "expectedOldObject": {
+                "type": "string",
+                "pattern": "^[a-f0-9]{40}$"
+              },
+              "newObject": {
+                "type": "string",
+                "pattern": "^[a-f0-9]{40}$"
+              },
+              "newTree": {
+                "type": "string",
+                "pattern": "^[a-f0-9]{40}$"
+              },
+              "fastForwardOnly": {
+                "const": true
+              }
+            },
+            "required": [
+              "remote",
+              "destinationRef",
+              "newObject",
+              "newTree",
+              "fastForwardOnly"
+            ]
+          },
+          "mergeBase": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{40}$"
+          },
+          "objectsToTransfer": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "pattern": "^[a-f0-9]{40}$"
+            }
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "expiresAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "planId",
+          "planDigest",
+          "principal",
+          "repositoryAuthorityId",
+          "workspace",
+          "credentialReferenceId",
+          "sourceRef",
+          "expectation",
+          "objectsToTransfer",
+          "createdAt",
+          "expiresAt"
+        ]
+      }
+    },
+    {
+      "operation": "baby.git.push.apply",
+      "version": "1.0.0",
+      "owner": "local_git",
+      "mutation": true,
+      "risk": "high",
+      "idempotency": "semantic_replay_or_conflict",
+      "restartBehavior": "durable_reconcile",
+      "support": "contract_only",
+      "executable": false,
+      "permissionFamilies": [
+        "git.transport",
+        "git.remote.write"
+      ],
+      "input": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "repositoryAuthorityId": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,255}$"
+          },
+          "planId": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,255}$"
+          },
+          "planDigest": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{64}$"
+          },
+          "expectedLocalHead": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{40}$"
+          },
+          "expectedLocalTree": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{40}$"
+          },
+          "expectedRemoteOldObject": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{40}$"
+          },
+          "authorizationReference": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,255}$"
+          }
+        },
+        "required": [
+          "repositoryAuthorityId",
+          "planId",
+          "planDigest",
+          "expectedLocalHead",
+          "expectedLocalTree",
+          "authorizationReference"
+        ]
+      },
+      "output": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "mutationId": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,255}$"
+          },
+          "state": {
+            "enum": [
+              "intent_persisted",
+              "local_prepared",
+              "remote_attempted",
+              "remote_reconciled",
+              "verified",
+              "failed",
+              "ambiguous",
+              "unknown"
+            ]
+          },
+          "readback": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "repository": {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                  "repositoryId": {
+                    "type": "string",
+                    "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,255}$"
+                  },
+                  "canonicalRemote": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 4096
+                  },
+                  "host": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 4096
+                  },
+                  "owner": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 4096
+                  },
+                  "name": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 4096
+                  },
+                  "numericRepositoryId": {
+                    "type": "integer",
+                    "minimum": 0
+                  }
+                },
+                "required": [
+                  "repositoryId",
+                  "canonicalRemote",
+                  "host",
+                  "owner",
+                  "name"
+                ]
+              },
+              "remote": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 4096
+              },
+              "destinationRef": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 4096
+              },
+              "observedObject": {
+                "type": "string",
+                "pattern": "^[a-f0-9]{40}$"
+              },
+              "observedCommit": {
+                "type": "string",
+                "pattern": "^[a-f0-9]{40}$"
+              },
+              "observedTree": {
+                "type": "string",
+                "pattern": "^[a-f0-9]{40}$"
+              },
+              "expectedObject": {
+                "type": "string",
+                "pattern": "^[a-f0-9]{40}$"
+              },
+              "expectedTree": {
+                "type": "string",
+                "pattern": "^[a-f0-9]{40}$"
+              },
+              "ancestryVerified": {
+                "type": "boolean"
+              },
+              "observedAt": {
+                "type": "string",
+                "format": "date-time"
+              }
+            },
+            "required": [
+              "repository",
+              "remote",
+              "destinationRef",
+              "expectedObject",
+              "expectedTree",
+              "ancestryVerified",
+              "observedAt"
+            ]
+          },
+          "evidenceReferences": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 4096
+            }
+          }
+        },
+        "required": [
+          "mutationId",
+          "state",
+          "evidenceReferences"
+        ]
+      }
+    },
+    {
+      "operation": "baby.git.push.verify",
+      "version": "1.0.0",
+      "owner": "local_git",
+      "mutation": false,
+      "risk": "low",
+      "idempotency": "read_only",
+      "restartBehavior": "read_only",
+      "support": "contract_only",
+      "executable": false,
+      "permissionFamilies": [
+        "git.transport",
+        "git.remote.read"
+      ],
+      "input": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "repositoryAuthorityId": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,255}$"
+          },
+          "credentialReferenceId": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,255}$"
+          },
+          "destinationRef": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 4096
+          },
+          "expectedCommit": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{40}$"
+          },
+          "expectedTree": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{40}$"
+          }
+        },
+        "required": [
+          "repositoryAuthorityId",
+          "credentialReferenceId",
+          "destinationRef",
+          "expectedCommit",
+          "expectedTree"
+        ]
+      },
+      "output": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "repository": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "repositoryId": {
+                "type": "string",
+                "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,255}$"
+              },
+              "canonicalRemote": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 4096
+              },
+              "host": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 4096
+              },
+              "owner": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 4096
+              },
+              "name": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 4096
+              },
+              "numericRepositoryId": {
+                "type": "integer",
+                "minimum": 0
+              }
+            },
+            "required": [
+              "repositoryId",
+              "canonicalRemote",
+              "host",
+              "owner",
+              "name"
+            ]
+          },
+          "remote": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 4096
+          },
+          "destinationRef": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 4096
+          },
+          "observedObject": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{40}$"
+          },
+          "observedCommit": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{40}$"
+          },
+          "observedTree": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{40}$"
+          },
+          "expectedObject": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{40}$"
+          },
+          "expectedTree": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{40}$"
+          },
+          "ancestryVerified": {
+            "type": "boolean"
+          },
+          "observedAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "repository",
+          "remote",
+          "destinationRef",
+          "expectedObject",
+          "expectedTree",
+          "ancestryVerified",
+          "observedAt"
+        ]
+      }
+    },
+    {
+      "operation": "baby.github.describe",
+      "version": "1.0.0",
+      "owner": "github_provider",
+      "mutation": false,
+      "risk": "low",
+      "idempotency": "read_only",
+      "restartBehavior": "read_only",
+      "support": "contract_only",
+      "executable": false,
+      "permissionFamilies": [
+        "github.discovery"
+      ],
+      "input": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {}
+      },
+      "output": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "providerVersion": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 4096
+          },
+          "apiVersion": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 4096
+          },
+          "host": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 4096
+          },
+          "credentialTypes": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 4096
+            }
+          },
+          "supportedOperations": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 4096
+            }
+          },
+          "permissionRequirements": {
+            "type": "object"
+          },
+          "rateLimitBehavior": {
+            "type": "object"
+          },
+          "limits": {
+            "type": "object"
+          },
+          "supportState": {
+            "const": "contract_only"
+          },
+          "acceptanceState": {
+            "enum": [
+              "fixture_only",
+              "live_nonproduction_verified",
+              "production_enabled"
+            ]
+          }
+        },
+        "required": [
+          "providerVersion",
+          "apiVersion",
+          "host",
+          "credentialTypes",
+          "supportedOperations",
+          "permissionRequirements",
+          "rateLimitBehavior",
+          "limits",
+          "supportState",
+          "acceptanceState"
+        ]
+      }
+    },
+    {
+      "operation": "baby.github.auth.status",
+      "version": "1.0.0",
+      "owner": "github_provider",
+      "mutation": false,
+      "risk": "low",
+      "idempotency": "read_only",
+      "restartBehavior": "read_only",
+      "support": "contract_only",
+      "executable": false,
+      "permissionFamilies": [
+        "github.auth.read"
+      ],
+      "input": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "credentialReferenceId": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,255}$"
+          }
+        },
+        "required": [
+          "credentialReferenceId"
+        ]
+      },
+      "output": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "credentialReference": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "credentialReferenceId": {
+                "type": "string",
+                "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,255}$"
+              },
+              "credentialType": {
+                "enum": [
+                  "ssh_deploy_key",
+                  "github_app_installation",
+                  "fine_grained_token",
+                  "commit_signing"
+                ]
+              },
+              "provider": {
+                "enum": [
+                  "git",
+                  "github"
+                ]
+              },
+              "accountOrInstallationId": {
+                "type": "string",
+                "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,255}$"
+              },
+              "repositoryAuthorityId": {
+                "type": "string",
+                "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,255}$"
+              },
+              "allowedOperationFamilies": {
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 4096
+                }
+              },
+              "permissionSnapshotDigest": {
+                "type": "string",
+                "pattern": "^[a-f0-9]{64}$"
+              },
+              "expiresAt": {
+                "type": "string",
+                "format": "date-time"
+              },
+              "revoked": {
+                "type": "boolean"
+              },
+              "health": {
+                "enum": [
+                  "healthy",
+                  "degraded",
+                  "unavailable",
+                  "unknown"
+                ]
+              }
+            },
+            "required": [
+              "credentialReferenceId",
+              "credentialType",
+              "provider",
+              "accountOrInstallationId",
+              "repositoryAuthorityId",
+              "allowedOperationFamilies",
+              "permissionSnapshotDigest",
+              "revoked",
+              "health"
+            ]
+          },
+          "providerAccountId": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,255}$"
+          },
+          "repositoryScope": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 4096
+            }
+          },
+          "permissionSnapshot": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "snapshotId": {
+                "type": "string",
+                "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,255}$"
+              },
+              "digest": {
+                "type": "string",
+                "pattern": "^[a-f0-9]{64}$"
+              },
+              "repositoryPermissions": {
+                "type": "object",
+                "additionalProperties": {
+                  "enum": [
+                    "none",
+                    "read",
+                    "write",
+                    "admin"
+                  ]
+                }
+              },
+              "organizationPermissions": {
+                "type": "object",
+                "additionalProperties": {
+                  "enum": [
+                    "none",
+                    "read",
+                    "write",
+                    "admin"
+                  ]
+                }
+              },
+              "capturedAt": {
+                "type": "string",
+                "format": "date-time"
+              }
+            },
+            "required": [
+              "snapshotId",
+              "digest",
+              "repositoryPermissions",
+              "organizationPermissions",
+              "capturedAt"
+            ]
+          },
+          "expiry": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "health": {
+            "enum": [
+              "healthy",
+              "degraded",
+              "unavailable",
+              "unknown"
+            ]
+          },
+          "lastSuccessfulUse": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "credentialReference",
+          "providerAccountId",
+          "repositoryScope",
+          "permissionSnapshot",
+          "health"
+        ]
+      }
+    },
+    {
+      "operation": "baby.github.repo.authority.get",
+      "version": "1.0.0",
+      "owner": "github_provider",
+      "mutation": false,
+      "risk": "low",
+      "idempotency": "read_only",
+      "restartBehavior": "read_only",
+      "support": "contract_only",
+      "executable": false,
+      "permissionFamilies": [
+        "github.repository.metadata"
+      ],
+      "input": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "repositoryAuthorityId": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,255}$"
+          }
+        },
+        "required": [
+          "repositoryAuthorityId"
+        ]
+      },
+      "output": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "authorityId": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,255}$"
+          },
+          "schemaVersion": {
+            "const": "1.0.0"
+          },
+          "principal": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,255}$"
+          },
+          "repository": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "repositoryId": {
+                "type": "string",
+                "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,255}$"
+              },
+              "canonicalRemote": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 4096
+              },
+              "host": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 4096
+              },
+              "owner": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 4096
+              },
+              "name": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 4096
+              },
+              "numericRepositoryId": {
+                "type": "integer",
+                "minimum": 0
+              }
+            },
+            "required": [
+              "repositoryId",
+              "canonicalRemote",
+              "host",
+              "owner",
+              "name"
+            ]
+          },
+          "credentialReferenceId": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,255}$"
+          },
+          "credentialType": {
+            "enum": [
+              "ssh_deploy_key",
+              "github_app_installation",
+              "fine_grained_token",
+              "commit_signing"
+            ]
+          },
+          "readWriteClassification": {
+            "enum": [
+              "read_only",
+              "read_write"
+            ]
+          },
+          "allowedBranchPatterns": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 4096
+            }
+          },
+          "allowedOperationFamilies": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 4096
+            }
+          },
+          "permissionSnapshot": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "snapshotId": {
+                "type": "string",
+                "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,255}$"
+              },
+              "digest": {
+                "type": "string",
+                "pattern": "^[a-f0-9]{64}$"
+              },
+              "repositoryPermissions": {
+                "type": "object",
+                "additionalProperties": {
+                  "enum": [
+                    "none",
+                    "read",
+                    "write",
+                    "admin"
+                  ]
+                }
+              },
+              "organizationPermissions": {
+                "type": "object",
+                "additionalProperties": {
+                  "enum": [
+                    "none",
+                    "read",
+                    "write",
+                    "admin"
+                  ]
+                }
+              },
+              "capturedAt": {
+                "type": "string",
+                "format": "date-time"
+              }
+            },
+            "required": [
+              "snapshotId",
+              "digest",
+              "repositoryPermissions",
+              "organizationPermissions",
+              "capturedAt"
+            ]
+          },
+          "pinnedSshHostKeyDigest": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{64}$"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "expiresAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "revoked": {
+            "type": "boolean"
+          },
+          "lastVerifiedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "health": {
+            "enum": [
+              "healthy",
+              "degraded",
+              "unavailable",
+              "unknown"
+            ]
+          }
+        },
+        "required": [
+          "authorityId",
+          "schemaVersion",
+          "principal",
+          "repository",
+          "credentialReferenceId",
+          "credentialType",
+          "readWriteClassification",
+          "allowedBranchPatterns",
+          "allowedOperationFamilies",
+          "permissionSnapshot",
+          "createdAt",
+          "revoked",
+          "health"
+        ]
+      }
+    },
+    {
+      "operation": "baby.github.repo.authority.list",
+      "version": "1.0.0",
+      "owner": "github_provider",
+      "mutation": false,
+      "risk": "low",
+      "idempotency": "read_only",
+      "restartBehavior": "read_only",
+      "support": "contract_only",
+      "executable": false,
+      "permissionFamilies": [
+        "github.repository.metadata"
+      ],
+      "input": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "offset": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "limit": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 200
+          }
+        }
+      },
+      "output": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "offset": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "nextOffset": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "total": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "items": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "authorityId": {
+                  "type": "string",
+                  "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,255}$"
+                },
+                "schemaVersion": {
+                  "const": "1.0.0"
+                },
+                "principal": {
+                  "type": "string",
+                  "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,255}$"
+                },
+                "repository": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "repositoryId": {
+                      "type": "string",
+                      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,255}$"
+                    },
+                    "canonicalRemote": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 4096
+                    },
+                    "host": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 4096
+                    },
+                    "owner": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 4096
+                    },
+                    "name": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 4096
+                    },
+                    "numericRepositoryId": {
+                      "type": "integer",
+                      "minimum": 0
+                    }
+                  },
+                  "required": [
+                    "repositoryId",
+                    "canonicalRemote",
+                    "host",
+                    "owner",
+                    "name"
+                  ]
+                },
+                "credentialReferenceId": {
+                  "type": "string",
+                  "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,255}$"
+                },
+                "credentialType": {
+                  "enum": [
+                    "ssh_deploy_key",
+                    "github_app_installation",
+                    "fine_grained_token",
+                    "commit_signing"
+                  ]
+                },
+                "readWriteClassification": {
+                  "enum": [
+                    "read_only",
+                    "read_write"
+                  ]
+                },
+                "allowedBranchPatterns": {
+                  "type": "array",
+                  "items": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 4096
+                  }
+                },
+                "allowedOperationFamilies": {
+                  "type": "array",
+                  "items": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 4096
+                  }
+                },
+                "permissionSnapshot": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "snapshotId": {
+                      "type": "string",
+                      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,255}$"
+                    },
+                    "digest": {
+                      "type": "string",
+                      "pattern": "^[a-f0-9]{64}$"
+                    },
+                    "repositoryPermissions": {
+                      "type": "object",
+                      "additionalProperties": {
+                        "enum": [
+                          "none",
+                          "read",
+                          "write",
+                          "admin"
+                        ]
+                      }
+                    },
+                    "organizationPermissions": {
+                      "type": "object",
+                      "additionalProperties": {
+                        "enum": [
+                          "none",
+                          "read",
+                          "write",
+                          "admin"
+                        ]
+                      }
+                    },
+                    "capturedAt": {
+                      "type": "string",
+                      "format": "date-time"
+                    }
+                  },
+                  "required": [
+                    "snapshotId",
+                    "digest",
+                    "repositoryPermissions",
+                    "organizationPermissions",
+                    "capturedAt"
+                  ]
+                },
+                "pinnedSshHostKeyDigest": {
+                  "type": "string",
+                  "pattern": "^[a-f0-9]{64}$"
+                },
+                "createdAt": {
+                  "type": "string",
+                  "format": "date-time"
+                },
+                "expiresAt": {
+                  "type": "string",
+                  "format": "date-time"
+                },
+                "revoked": {
+                  "type": "boolean"
+                },
+                "lastVerifiedAt": {
+                  "type": "string",
+                  "format": "date-time"
+                },
+                "health": {
+                  "enum": [
+                    "healthy",
+                    "degraded",
+                    "unavailable",
+                    "unknown"
+                  ]
+                }
+              },
+              "required": [
+                "authorityId",
+                "schemaVersion",
+                "principal",
+                "repository",
+                "credentialReferenceId",
+                "credentialType",
+                "readWriteClassification",
+                "allowedBranchPatterns",
+                "allowedOperationFamilies",
+                "permissionSnapshot",
+                "createdAt",
+                "revoked",
+                "health"
+              ]
+            }
+          }
+        },
+        "required": [
+          "offset",
+          "nextOffset",
+          "total",
+          "items"
+        ]
+      }
+    },
+    {
+      "operation": "baby.github.remote.verify",
+      "version": "1.0.0",
+      "owner": "github_provider",
+      "mutation": false,
+      "risk": "low",
+      "idempotency": "read_only",
+      "restartBehavior": "read_only",
+      "support": "contract_only",
+      "executable": false,
+      "permissionFamilies": [
+        "github.repository.metadata",
+        "github.contents.read"
+      ],
+      "input": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "repositoryAuthorityId": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,255}$"
+          },
+          "branch": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 4096
+          },
+          "expectedCommit": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{40}$"
+          },
+          "expectedTree": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{40}$"
+          },
+          "expectedBaseBranch": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 4096
+          }
+        },
+        "required": [
+          "repositoryAuthorityId",
+          "branch",
+          "expectedCommit",
+          "expectedTree"
+        ]
+      },
+      "output": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "repository": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "repositoryId": {
+                "type": "string",
+                "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,255}$"
+              },
+              "canonicalRemote": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 4096
+              },
+              "host": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 4096
+              },
+              "owner": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 4096
+              },
+              "name": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 4096
+              },
+              "numericRepositoryId": {
+                "type": "integer",
+                "minimum": 0
+              }
+            },
+            "required": [
+              "repositoryId",
+              "canonicalRemote",
+              "host",
+              "owner",
+              "name"
+            ]
+          },
+          "branch": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 4096
+          },
+          "commit": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{40}$"
+          },
+          "tree": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{40}$"
+          },
+          "parents": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "pattern": "^[a-f0-9]{40}$"
+            }
+          },
+          "defaultBranch": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 4096
+          },
+          "archived": {
+            "type": "boolean"
+          },
+          "visibility": {
+            "enum": [
+              "private",
+              "internal",
+              "public"
+            ]
+          },
+          "comparison": {
+            "type": "object"
+          },
+          "rateLimit": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "limit": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "remaining": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "used": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "resetsAt": {
+                "type": "string",
+                "format": "date-time"
+              },
+              "retryAfterSeconds": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "secondaryLimited": {
+                "type": "boolean"
+              },
+              "observedAt": {
+                "type": "string",
+                "format": "date-time"
+              }
+            },
+            "required": [
+              "limit",
+              "remaining",
+              "used",
+              "resetsAt",
+              "secondaryLimited",
+              "observedAt"
+            ]
+          }
+        },
+        "required": [
+          "repository",
+          "branch",
+          "commit",
+          "tree",
+          "parents",
+          "defaultBranch",
+          "archived",
+          "visibility",
+          "comparison",
+          "rateLimit"
+        ]
+      }
+    },
+    {
+      "operation": "baby.github.pr.upsert",
+      "version": "1.0.0",
+      "owner": "github_provider",
+      "mutation": true,
+      "risk": "high",
+      "idempotency": "semantic_replay_or_conflict",
+      "restartBehavior": "durable_reconcile",
+      "support": "contract_only",
+      "executable": false,
+      "permissionFamilies": [
+        "github.pull_requests.write"
+      ],
+      "input": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "repositoryAuthorityId": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,255}$"
+          },
+          "headBranch": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 4096
+          },
+          "headCommit": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{40}$"
+          },
+          "headTree": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{40}$"
+          },
+          "baseBranch": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 4096
+          },
+          "expectedPreviousStateDigest": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{64}$"
+          },
+          "title": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 256
+          },
+          "body": {
+            "type": "string",
+            "maxLength": 65536
+          },
+          "draft": {
+            "const": true
+          },
+          "authorizationReference": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,255}$"
+          }
+        },
+        "required": [
+          "repositoryAuthorityId",
+          "headBranch",
+          "headCommit",
+          "headTree",
+          "baseBranch",
+          "title",
+          "body",
+          "draft",
+          "authorizationReference"
+        ]
+      },
+      "output": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "operation": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 4096
+          },
+          "contractVersion": {
+            "const": "1.0.0"
+          },
+          "support": {
+            "const": "contract_only"
+          },
+          "evidenceReferences": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 4096
+            }
+          },
+          "resultDigest": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{64}$"
+          }
+        },
+        "required": [
+          "operation",
+          "contractVersion",
+          "support",
+          "evidenceReferences",
+          "resultDigest"
+        ]
+      }
+    },
+    {
+      "operation": "baby.github.pr.get",
+      "version": "1.0.0",
+      "owner": "github_provider",
+      "mutation": false,
+      "risk": "low",
+      "idempotency": "read_only",
+      "restartBehavior": "read_only",
+      "support": "contract_only",
+      "executable": false,
+      "permissionFamilies": [
+        "github.pull_requests.read"
+      ],
+      "input": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "repositoryAuthorityId": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,255}$"
+          },
+          "pullRequestNumber": {
+            "type": "integer",
+            "minimum": 1
+          }
+        },
+        "required": [
+          "repositoryAuthorityId",
+          "pullRequestNumber"
+        ]
+      },
+      "output": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "operation": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 4096
+          },
+          "contractVersion": {
+            "const": "1.0.0"
+          },
+          "support": {
+            "const": "contract_only"
+          },
+          "evidenceReferences": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 4096
+            }
+          },
+          "resultDigest": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{64}$"
+          }
+        },
+        "required": [
+          "operation",
+          "contractVersion",
+          "support",
+          "evidenceReferences",
+          "resultDigest"
+        ]
+      }
+    },
+    {
+      "operation": "baby.github.pr.verify",
+      "version": "1.0.0",
+      "owner": "github_provider",
+      "mutation": false,
+      "risk": "low",
+      "idempotency": "read_only",
+      "restartBehavior": "read_only",
+      "support": "contract_only",
+      "executable": false,
+      "permissionFamilies": [
+        "github.pull_requests.read",
+        "github.contents.read"
+      ],
+      "input": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "repositoryAuthorityId": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,255}$"
+          },
+          "pullRequestNumber": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "expectedBaseBranch": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 4096
+          },
+          "expectedHeadBranch": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 4096
+          },
+          "expectedHeadCommit": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{40}$"
+          },
+          "expectedHeadTree": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{40}$"
+          },
+          "expectedDraft": {
+            "type": "boolean"
+          },
+          "expectedChangedPathsDigest": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{64}$"
+          }
+        },
+        "required": [
+          "repositoryAuthorityId",
+          "pullRequestNumber",
+          "expectedBaseBranch",
+          "expectedHeadBranch",
+          "expectedHeadCommit",
+          "expectedHeadTree",
+          "expectedDraft",
+          "expectedChangedPathsDigest"
+        ]
+      },
+      "output": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "operation": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 4096
+          },
+          "contractVersion": {
+            "const": "1.0.0"
+          },
+          "support": {
+            "const": "contract_only"
+          },
+          "evidenceReferences": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 4096
+            }
+          },
+          "resultDigest": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{64}$"
+          }
+        },
+        "required": [
+          "operation",
+          "contractVersion",
+          "support",
+          "evidenceReferences",
+          "resultDigest"
+        ]
+      }
+    },
+    {
+      "operation": "baby.github.workflow.find",
+      "version": "1.0.0",
+      "owner": "github_provider",
+      "mutation": false,
+      "risk": "low",
+      "idempotency": "read_only",
+      "restartBehavior": "read_only",
+      "support": "contract_only",
+      "executable": false,
+      "permissionFamilies": [
+        "github.actions.read"
+      ],
+      "input": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "repositoryAuthorityId": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,255}$"
+          },
+          "exactCommit": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{40}$"
+          },
+          "workflowId": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,255}$"
+          },
+          "event": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 4096
+          }
+        },
+        "required": [
+          "repositoryAuthorityId",
+          "exactCommit"
+        ]
+      },
+      "output": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "operation": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 4096
+          },
+          "contractVersion": {
+            "const": "1.0.0"
+          },
+          "support": {
+            "const": "contract_only"
+          },
+          "evidenceReferences": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 4096
+            }
+          },
+          "resultDigest": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{64}$"
+          }
+        },
+        "required": [
+          "operation",
+          "contractVersion",
+          "support",
+          "evidenceReferences",
+          "resultDigest"
+        ]
+      }
+    },
+    {
+      "operation": "baby.github.workflow.wait",
+      "version": "1.0.0",
+      "owner": "github_provider",
+      "mutation": true,
+      "risk": "medium",
+      "idempotency": "semantic_replay_or_conflict",
+      "restartBehavior": "durable_reconcile",
+      "support": "contract_only",
+      "executable": false,
+      "permissionFamilies": [
+        "github.actions.read"
+      ],
+      "input": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "repositoryAuthorityId": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,255}$"
+          },
+          "workflow": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "repository": {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                  "repositoryId": {
+                    "type": "string",
+                    "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,255}$"
+                  },
+                  "canonicalRemote": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 4096
+                  },
+                  "host": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 4096
+                  },
+                  "owner": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 4096
+                  },
+                  "name": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 4096
+                  },
+                  "numericRepositoryId": {
+                    "type": "integer",
+                    "minimum": 0
+                  }
+                },
+                "required": [
+                  "repositoryId",
+                  "canonicalRemote",
+                  "host",
+                  "owner",
+                  "name"
+                ]
+              },
+              "workflowId": {
+                "type": "string",
+                "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,255}$"
+              },
+              "workflowName": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 4096
+              },
+              "runId": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "attempt": {
+                "type": "integer",
+                "minimum": 1
+              },
+              "headSha": {
+                "type": "string",
+                "pattern": "^[a-f0-9]{40}$"
+              },
+              "event": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 4096
+              }
+            },
+            "required": [
+              "repository",
+              "workflowId",
+              "runId",
+              "attempt",
+              "headSha",
+              "event"
+            ]
+          },
+          "selectedJobIds": {
+            "type": "array",
+            "items": {
+              "type": "integer",
+              "minimum": 0
+            }
+          },
+          "deadline": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "pollPolicy": {
+            "type": "object"
+          }
+        },
+        "required": [
+          "repositoryAuthorityId",
+          "workflow",
+          "deadline",
+          "pollPolicy"
+        ]
+      },
+      "output": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "operation": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 4096
+          },
+          "contractVersion": {
+            "const": "1.0.0"
+          },
+          "support": {
+            "const": "contract_only"
+          },
+          "evidenceReferences": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 4096
+            }
+          },
+          "resultDigest": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{64}$"
+          }
+        },
+        "required": [
+          "operation",
+          "contractVersion",
+          "support",
+          "evidenceReferences",
+          "resultDigest"
+        ]
+      }
+    },
+    {
+      "operation": "baby.github.workflow.get",
+      "version": "1.0.0",
+      "owner": "github_provider",
+      "mutation": false,
+      "risk": "low",
+      "idempotency": "read_only",
+      "restartBehavior": "read_only",
+      "support": "contract_only",
+      "executable": false,
+      "permissionFamilies": [
+        "github.actions.read"
+      ],
+      "input": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "repositoryAuthorityId": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,255}$"
+          },
+          "workflow": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "repository": {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                  "repositoryId": {
+                    "type": "string",
+                    "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,255}$"
+                  },
+                  "canonicalRemote": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 4096
+                  },
+                  "host": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 4096
+                  },
+                  "owner": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 4096
+                  },
+                  "name": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 4096
+                  },
+                  "numericRepositoryId": {
+                    "type": "integer",
+                    "minimum": 0
+                  }
+                },
+                "required": [
+                  "repositoryId",
+                  "canonicalRemote",
+                  "host",
+                  "owner",
+                  "name"
+                ]
+              },
+              "workflowId": {
+                "type": "string",
+                "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,255}$"
+              },
+              "workflowName": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 4096
+              },
+              "runId": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "attempt": {
+                "type": "integer",
+                "minimum": 1
+              },
+              "headSha": {
+                "type": "string",
+                "pattern": "^[a-f0-9]{40}$"
+              },
+              "event": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 4096
+              }
+            },
+            "required": [
+              "repository",
+              "workflowId",
+              "runId",
+              "attempt",
+              "headSha",
+              "event"
+            ]
+          }
+        },
+        "required": [
+          "repositoryAuthorityId",
+          "workflow"
+        ]
+      },
+      "output": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "operation": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 4096
+          },
+          "contractVersion": {
+            "const": "1.0.0"
+          },
+          "support": {
+            "const": "contract_only"
+          },
+          "evidenceReferences": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 4096
+            }
+          },
+          "resultDigest": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{64}$"
+          }
+        },
+        "required": [
+          "operation",
+          "contractVersion",
+          "support",
+          "evidenceReferences",
+          "resultDigest"
+        ]
+      }
+    },
+    {
+      "operation": "baby.github.workflow.logs",
+      "version": "1.0.0",
+      "owner": "github_provider",
+      "mutation": true,
+      "risk": "medium",
+      "idempotency": "semantic_replay_or_conflict",
+      "restartBehavior": "durable_reconcile",
+      "support": "contract_only",
+      "executable": false,
+      "permissionFamilies": [
+        "github.actions.read",
+        "artifact.write"
+      ],
+      "input": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "repositoryAuthorityId": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,255}$"
+          },
+          "workflow": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "repository": {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                  "repositoryId": {
+                    "type": "string",
+                    "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,255}$"
+                  },
+                  "canonicalRemote": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 4096
+                  },
+                  "host": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 4096
+                  },
+                  "owner": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 4096
+                  },
+                  "name": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 4096
+                  },
+                  "numericRepositoryId": {
+                    "type": "integer",
+                    "minimum": 0
+                  }
+                },
+                "required": [
+                  "repositoryId",
+                  "canonicalRemote",
+                  "host",
+                  "owner",
+                  "name"
+                ]
+              },
+              "workflowId": {
+                "type": "string",
+                "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,255}$"
+              },
+              "workflowName": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 4096
+              },
+              "runId": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "attempt": {
+                "type": "integer",
+                "minimum": 1
+              },
+              "headSha": {
+                "type": "string",
+                "pattern": "^[a-f0-9]{40}$"
+              },
+              "event": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 4096
+              }
+            },
+            "required": [
+              "repository",
+              "workflowId",
+              "runId",
+              "attempt",
+              "headSha",
+              "event"
+            ]
+          },
+          "jobId": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "maximumBytes": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 67108864
+          },
+          "redactionProfile": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,255}$"
+          }
+        },
+        "required": [
+          "repositoryAuthorityId",
+          "workflow",
+          "maximumBytes",
+          "redactionProfile"
+        ]
+      },
+      "output": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "operation": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 4096
+          },
+          "contractVersion": {
+            "const": "1.0.0"
+          },
+          "support": {
+            "const": "contract_only"
+          },
+          "evidenceReferences": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 4096
+            }
+          },
+          "resultDigest": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{64}$"
+          }
+        },
+        "required": [
+          "operation",
+          "contractVersion",
+          "support",
+          "evidenceReferences",
+          "resultDigest"
+        ]
+      }
+    },
+    {
+      "operation": "baby.github.workflow.artifacts",
+      "version": "1.0.0",
+      "owner": "github_provider",
+      "mutation": true,
+      "risk": "medium",
+      "idempotency": "semantic_replay_or_conflict",
+      "restartBehavior": "durable_reconcile",
+      "support": "contract_only",
+      "executable": false,
+      "permissionFamilies": [
+        "github.actions.read",
+        "artifact.write"
+      ],
+      "input": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "repositoryAuthorityId": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,255}$"
+          },
+          "workflow": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "repository": {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                  "repositoryId": {
+                    "type": "string",
+                    "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,255}$"
+                  },
+                  "canonicalRemote": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 4096
+                  },
+                  "host": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 4096
+                  },
+                  "owner": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 4096
+                  },
+                  "name": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 4096
+                  },
+                  "numericRepositoryId": {
+                    "type": "integer",
+                    "minimum": 0
+                  }
+                },
+                "required": [
+                  "repositoryId",
+                  "canonicalRemote",
+                  "host",
+                  "owner",
+                  "name"
+                ]
+              },
+              "workflowId": {
+                "type": "string",
+                "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,255}$"
+              },
+              "workflowName": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 4096
+              },
+              "runId": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "attempt": {
+                "type": "integer",
+                "minimum": 1
+              },
+              "headSha": {
+                "type": "string",
+                "pattern": "^[a-f0-9]{40}$"
+              },
+              "event": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 4096
+              }
+            },
+            "required": [
+              "repository",
+              "workflowId",
+              "runId",
+              "attempt",
+              "headSha",
+              "event"
+            ]
+          },
+          "artifactNames": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 4096
+            }
+          },
+          "maximumArchiveBytes": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 536870912
+          }
+        },
+        "required": [
+          "repositoryAuthorityId",
+          "workflow",
+          "maximumArchiveBytes"
+        ]
+      },
+      "output": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "operation": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 4096
+          },
+          "contractVersion": {
+            "const": "1.0.0"
+          },
+          "support": {
+            "const": "contract_only"
+          },
+          "evidenceReferences": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 4096
+            }
+          },
+          "resultDigest": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{64}$"
+          }
+        },
+        "required": [
+          "operation",
+          "contractVersion",
+          "support",
+          "evidenceReferences",
+          "resultDigest"
+        ]
+      }
+    },
+    {
+      "operation": "baby.github.artifact.verify",
+      "version": "1.0.0",
+      "owner": "github_provider",
+      "mutation": false,
+      "risk": "low",
+      "idempotency": "read_only",
+      "restartBehavior": "read_only",
+      "support": "contract_only",
+      "executable": false,
+      "permissionFamilies": [
+        "github.actions.read",
+        "artifact.read"
+      ],
+      "input": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "repositoryAuthorityId": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,255}$"
+          },
+          "artifact": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "repository": {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                  "repositoryId": {
+                    "type": "string",
+                    "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,255}$"
+                  },
+                  "canonicalRemote": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 4096
+                  },
+                  "host": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 4096
+                  },
+                  "owner": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 4096
+                  },
+                  "name": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 4096
+                  },
+                  "numericRepositoryId": {
+                    "type": "integer",
+                    "minimum": 0
+                  }
+                },
+                "required": [
+                  "repositoryId",
+                  "canonicalRemote",
+                  "host",
+                  "owner",
+                  "name"
+                ]
+              },
+              "workflow": {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                  "repository": {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "properties": {
+                      "repositoryId": {
+                        "type": "string",
+                        "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,255}$"
+                      },
+                      "canonicalRemote": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 4096
+                      },
+                      "host": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 4096
+                      },
+                      "owner": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 4096
+                      },
+                      "name": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 4096
+                      },
+                      "numericRepositoryId": {
+                        "type": "integer",
+                        "minimum": 0
+                      }
+                    },
+                    "required": [
+                      "repositoryId",
+                      "canonicalRemote",
+                      "host",
+                      "owner",
+                      "name"
+                    ]
+                  },
+                  "workflowId": {
+                    "type": "string",
+                    "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,255}$"
+                  },
+                  "workflowName": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 4096
+                  },
+                  "runId": {
+                    "type": "integer",
+                    "minimum": 0
+                  },
+                  "attempt": {
+                    "type": "integer",
+                    "minimum": 1
+                  },
+                  "headSha": {
+                    "type": "string",
+                    "pattern": "^[a-f0-9]{40}$"
+                  },
+                  "event": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 4096
+                  }
+                },
+                "required": [
+                  "repository",
+                  "workflowId",
+                  "runId",
+                  "attempt",
+                  "headSha",
+                  "event"
+                ]
+              },
+              "artifactId": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "name": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 4096
+              },
+              "archiveDigest": {
+                "type": "string",
+                "pattern": "^[a-f0-9]{64}$"
+              },
+              "size": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "sourceCommit": {
+                "type": "string",
+                "pattern": "^[a-f0-9]{40}$"
+              },
+              "sourceTree": {
+                "type": "string",
+                "pattern": "^[a-f0-9]{40}$"
+              }
+            },
+            "required": [
+              "repository",
+              "workflow",
+              "artifactId",
+              "name",
+              "archiveDigest",
+              "size",
+              "sourceCommit",
+              "sourceTree"
+            ]
+          },
+          "expectedArchiveDigest": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{64}$"
+          },
+          "expectedMembers": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 4096
+            }
+          },
+          "expectedExtractedDigests": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "string",
+              "pattern": "^[a-f0-9]{64}$"
+            }
+          },
+          "expectedSourceCommit": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{40}$"
+          },
+          "expectedSourceTree": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{40}$"
+          },
+          "expectedCandidateDigest": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{64}$"
+          }
+        },
+        "required": [
+          "repositoryAuthorityId",
+          "artifact",
+          "expectedArchiveDigest",
+          "expectedMembers",
+          "expectedExtractedDigests",
+          "expectedSourceCommit",
+          "expectedSourceTree"
+        ]
+      },
+      "output": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "operation": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 4096
+          },
+          "contractVersion": {
+            "const": "1.0.0"
+          },
+          "support": {
+            "const": "contract_only"
+          },
+          "evidenceReferences": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 4096
+            }
+          },
+          "resultDigest": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{64}$"
+          }
+        },
+        "required": [
+          "operation",
+          "contractVersion",
+          "support",
+          "evidenceReferences",
+          "resultDigest"
+        ]
+      }
+    },
+    {
+      "operation": "baby.github.delivery.publish",
+      "version": "1.0.0",
+      "owner": "compound",
+      "mutation": true,
+      "risk": "high",
+      "idempotency": "semantic_replay_or_conflict",
+      "restartBehavior": "durable_reconcile",
+      "support": "contract_only",
+      "executable": false,
+      "permissionFamilies": [
+        "git.repository.read",
+        "git.transport",
+        "git.remote.write",
+        "github.repository.metadata",
+        "github.pull_requests.write",
+        "github.actions.read",
+        "artifact.write",
+        "artifact.read"
+      ],
+      "input": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "repositoryAuthorityId": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,255}$"
+          },
+          "workspaceId": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,255}$"
+          },
+          "expectedLocalCommit": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{40}$"
+          },
+          "expectedLocalTree": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{40}$"
+          },
+          "sourceBranch": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 4096
+          },
+          "destinationBranch": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 4096
+          },
+          "expectedRemoteOldObject": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{40}$"
+          },
+          "pushPlanDigest": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{64}$"
+          },
+          "pullRequest": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "baseBranch": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 4096
+              },
+              "title": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 256
+              },
+              "body": {
+                "type": "string",
+                "maxLength": 65536
+              },
+              "draft": {
+                "const": true
+              }
+            },
+            "required": [
+              "baseBranch",
+              "title",
+              "body",
+              "draft"
+            ]
+          },
+          "workflowExpectation": {
+            "type": "object"
+          },
+          "artifactExpectations": {
+            "type": "array"
+          },
+          "authorizationReference": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,255}$"
+          },
+          "deadline": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "repositoryAuthorityId",
+          "workspaceId",
+          "expectedLocalCommit",
+          "expectedLocalTree",
+          "sourceBranch",
+          "destinationBranch",
+          "pushPlanDigest",
+          "pullRequest",
+          "workflowExpectation",
+          "artifactExpectations",
+          "authorizationReference",
+          "deadline"
+        ]
+      },
+      "output": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "operation": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 4096
+          },
+          "contractVersion": {
+            "const": "1.0.0"
+          },
+          "support": {
+            "const": "contract_only"
+          },
+          "evidenceReferences": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 4096
+            }
+          },
+          "resultDigest": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{64}$"
+          }
+        },
+        "required": [
+          "operation",
+          "contractVersion",
+          "support",
+          "evidenceReferences",
+          "resultDigest"
+        ]
+      }
+    }
+  ],
+  "errors": [
+    "invalid_request",
+    "unsupported",
+    "not_configured",
+    "authority_missing",
+    "credential_unavailable",
+    "credential_revoked",
+    "credential_expired",
+    "permission_denied",
+    "permission_drift",
+    "repository_not_found",
+    "repository_mismatch",
+    "wrong_github_host",
+    "workspace_not_found",
+    "workspace_outside_root",
+    "workspace_dirty",
+    "object_missing",
+    "object_corrupt",
+    "ref_mismatch",
+    "expected_parent_mismatch",
+    "undeclared_path_change",
+    "invalid_commit_message",
+    "host_key_mismatch",
+    "remote_base_mismatch",
+    "non_fast_forward",
+    "plan_mismatch",
+    "idempotency_conflict",
+    "push_failed",
+    "push_result_unknown",
+    "remote_mismatch",
+    "pr_failed",
+    "pr_mismatch",
+    "workflow_not_found",
+    "workflow_failed",
+    "workflow_cancelled",
+    "workflow_timed_out",
+    "artifact_missing",
+    "artifact_mismatch",
+    "rate_limited",
+    "cancelled",
+    "partial",
+    "recovery_required",
+    "manual_recovery_required",
+    "ambiguous",
+    "unknown"
+  ],
+  "mutationStates": [
+    "intent_persisted",
+    "local_prepared",
+    "remote_attempted",
+    "remote_reconciled",
+    "verified",
+    "failed",
+    "ambiguous",
+    "unknown"
+  ],
+  "mutationTransitions": {
+    "intent_persisted": [
+      "local_prepared",
+      "failed",
+      "unknown"
+    ],
+    "local_prepared": [
+      "remote_attempted",
+      "failed",
+      "unknown"
+    ],
+    "remote_attempted": [
+      "remote_reconciled",
+      "ambiguous",
+      "unknown"
+    ],
+    "remote_reconciled": [
+      "verified",
+      "failed",
+      "ambiguous",
+      "unknown"
+    ],
+    "verified": [],
+    "failed": [],
+    "ambiguous": [
+      "remote_reconciled",
+      "failed",
+      "unknown"
+    ],
+    "unknown": [
+      "remote_reconciled",
+      "failed"
+    ]
+  },
+  "publicationStates": [
+    "PLANNED",
+    "LOCAL_VERIFYING",
+    "LOCAL_VERIFIED",
+    "REMOTE_BASE_READING",
+    "FAST_FORWARD_PROVEN",
+    "PUSH_INTENT_PERSISTED",
+    "PUSHING",
+    "REMOTE_RECONCILING",
+    "REMOTE_VERIFIED",
+    "PR_UPSERTING",
+    "PR_VERIFIED",
+    "WORKFLOW_DISCOVERING",
+    "WORKFLOW_WAITING",
+    "WORKFLOW_TERMINAL",
+    "LOGS_CAPTURING",
+    "ARTIFACTS_CAPTURING",
+    "ARTIFACTS_VERIFYING",
+    "SUCCEEDED"
+  ],
+  "publicationNonSuccessStates": [
+    "REJECTED",
+    "DIRTY_WORKTREE",
+    "LOCAL_IDENTITY_MISMATCH",
+    "REMOTE_BASE_MISMATCH",
+    "NON_FAST_FORWARD",
+    "AUTHORITY_MISSING",
+    "CREDENTIAL_UNAVAILABLE",
+    "PUSH_FAILED",
+    "PUSH_RESULT_UNKNOWN",
+    "REMOTE_MISMATCH",
+    "PR_FAILED",
+    "PR_MISMATCH",
+    "WORKFLOW_NOT_FOUND",
+    "WORKFLOW_FAILED",
+    "WORKFLOW_CANCELLED",
+    "WORKFLOW_TIMED_OUT",
+    "ARTIFACT_MISSING",
+    "ARTIFACT_MISMATCH",
+    "RATE_LIMITED",
+    "CANCELLED",
+    "PARTIAL",
+    "RECOVERY_REQUIRED",
+    "MANUAL_RECOVERY_REQUIRED",
+    "UNKNOWN"
+  ],
+  "exclusions": [
+    "unconstrained_force_push",
+    "remote_ref_deletion",
+    "repository_deletion",
+    "repository_transfer",
+    "repository_visibility_change",
+    "organization_membership_change",
+    "collaborator_change",
+    "team_change",
+    "repository_secret_change",
+    "actions_secret_change",
+    "branch_protection_change",
+    "ruleset_change",
+    "deploy_key_deletion_or_rotation",
+    "pull_request_merge",
+    "auto_merge",
+    "release_publication",
+    "package_publication",
+    "arbitrary_github_admin_api"
+  ],
+  "ownership": {
+    "publicAuthenticationAndMcpTransport": "baby_gateway",
+    "localGitWorkspacesAndProcesses": "baby_quirt",
+    "durableOperationLifecycle": "baby_quirt",
+    "credentialReferenceResolution": "baby_quirt",
+    "remoteGitRefs": "git_remote",
+    "githubProviderState": "github",
+    "localArtifactsAndEvidence": "baby_quirt",
+    "externalStateVerification": "baby_quirt_provider_readback",
+    "productionDeployment": "existing_baby_release_authority_later"
+  },
+  "nonDuplicationRules": [
+    "one_public_call_quirt_tool",
+    "existing_baby_scheduler_only",
+    "existing_baby_job_database_only",
+    "existing_baby_artifact_store_only",
+    "receipt_v2_only",
+    "existing_private_unix_socket_only",
+    "no_gateway_owned_git_controller",
+    "no_fix_dependency",
+    "no_old_operator_dependency",
+    "no_routine_ssh_or_termius_dependency"
+  ],
+  "capabilityMatrix": [
+    {
+      "operation": "baby.git.describe",
+      "owner": "local_git",
+      "mutation": false,
+      "risk": "low",
+      "permissionFamilies": [
+        "git.discovery"
+      ],
+      "support": "contract_only",
+      "executable": false
+    },
+    {
+      "operation": "baby.git.repository.materialize",
+      "owner": "local_git",
+      "mutation": true,
+      "risk": "medium",
+      "permissionFamilies": [
+        "git.transport",
+        "git.repository.write"
+      ],
+      "support": "contract_only",
+      "executable": false
+    },
+    {
+      "operation": "baby.git.repository.verify",
+      "owner": "local_git",
+      "mutation": false,
+      "risk": "low",
+      "permissionFamilies": [
+        "git.repository.read"
+      ],
+      "support": "contract_only",
+      "executable": false
+    },
+    {
+      "operation": "baby.git.repository.status",
+      "owner": "local_git",
+      "mutation": false,
+      "risk": "low",
+      "permissionFamilies": [
+        "git.repository.read"
+      ],
+      "support": "contract_only",
+      "executable": false
+    },
+    {
+      "operation": "baby.git.fetch",
+      "owner": "local_git",
+      "mutation": true,
+      "risk": "medium",
+      "permissionFamilies": [
+        "git.transport",
+        "git.repository.write"
+      ],
+      "support": "contract_only",
+      "executable": false
+    },
+    {
+      "operation": "baby.git.branch.create",
+      "owner": "local_git",
+      "mutation": true,
+      "risk": "medium",
+      "permissionFamilies": [
+        "git.repository.write"
+      ],
+      "support": "contract_only",
+      "executable": false
+    },
+    {
+      "operation": "baby.git.commit.create",
+      "owner": "local_git",
+      "mutation": true,
+      "risk": "high",
+      "permissionFamilies": [
+        "git.repository.write",
+        "git.commit"
+      ],
+      "support": "contract_only",
+      "executable": false
+    },
+    {
+      "operation": "baby.git.commit.verify",
+      "owner": "local_git",
+      "mutation": false,
+      "risk": "low",
+      "permissionFamilies": [
+        "git.repository.read"
+      ],
+      "support": "contract_only",
+      "executable": false
+    },
+    {
+      "operation": "baby.git.push.preview",
+      "owner": "local_git",
+      "mutation": false,
+      "risk": "low",
+      "permissionFamilies": [
+        "git.transport",
+        "git.remote.read"
+      ],
+      "support": "contract_only",
+      "executable": false
+    },
+    {
+      "operation": "baby.git.push.apply",
+      "owner": "local_git",
+      "mutation": true,
+      "risk": "high",
+      "permissionFamilies": [
+        "git.transport",
+        "git.remote.write"
+      ],
+      "support": "contract_only",
+      "executable": false
+    },
+    {
+      "operation": "baby.git.push.verify",
+      "owner": "local_git",
+      "mutation": false,
+      "risk": "low",
+      "permissionFamilies": [
+        "git.transport",
+        "git.remote.read"
+      ],
+      "support": "contract_only",
+      "executable": false
+    },
+    {
+      "operation": "baby.github.describe",
+      "owner": "github_provider",
+      "mutation": false,
+      "risk": "low",
+      "permissionFamilies": [
+        "github.discovery"
+      ],
+      "support": "contract_only",
+      "executable": false
+    },
+    {
+      "operation": "baby.github.auth.status",
+      "owner": "github_provider",
+      "mutation": false,
+      "risk": "low",
+      "permissionFamilies": [
+        "github.auth.read"
+      ],
+      "support": "contract_only",
+      "executable": false
+    },
+    {
+      "operation": "baby.github.repo.authority.get",
+      "owner": "github_provider",
+      "mutation": false,
+      "risk": "low",
+      "permissionFamilies": [
+        "github.repository.metadata"
+      ],
+      "support": "contract_only",
+      "executable": false
+    },
+    {
+      "operation": "baby.github.repo.authority.list",
+      "owner": "github_provider",
+      "mutation": false,
+      "risk": "low",
+      "permissionFamilies": [
+        "github.repository.metadata"
+      ],
+      "support": "contract_only",
+      "executable": false
+    },
+    {
+      "operation": "baby.github.remote.verify",
+      "owner": "github_provider",
+      "mutation": false,
+      "risk": "low",
+      "permissionFamilies": [
+        "github.repository.metadata",
+        "github.contents.read"
+      ],
+      "support": "contract_only",
+      "executable": false
+    },
+    {
+      "operation": "baby.github.pr.upsert",
+      "owner": "github_provider",
+      "mutation": true,
+      "risk": "high",
+      "permissionFamilies": [
+        "github.pull_requests.write"
+      ],
+      "support": "contract_only",
+      "executable": false
+    },
+    {
+      "operation": "baby.github.pr.get",
+      "owner": "github_provider",
+      "mutation": false,
+      "risk": "low",
+      "permissionFamilies": [
+        "github.pull_requests.read"
+      ],
+      "support": "contract_only",
+      "executable": false
+    },
+    {
+      "operation": "baby.github.pr.verify",
+      "owner": "github_provider",
+      "mutation": false,
+      "risk": "low",
+      "permissionFamilies": [
+        "github.pull_requests.read",
+        "github.contents.read"
+      ],
+      "support": "contract_only",
+      "executable": false
+    },
+    {
+      "operation": "baby.github.workflow.find",
+      "owner": "github_provider",
+      "mutation": false,
+      "risk": "low",
+      "permissionFamilies": [
+        "github.actions.read"
+      ],
+      "support": "contract_only",
+      "executable": false
+    },
+    {
+      "operation": "baby.github.workflow.wait",
+      "owner": "github_provider",
+      "mutation": true,
+      "risk": "medium",
+      "permissionFamilies": [
+        "github.actions.read"
+      ],
+      "support": "contract_only",
+      "executable": false
+    },
+    {
+      "operation": "baby.github.workflow.get",
+      "owner": "github_provider",
+      "mutation": false,
+      "risk": "low",
+      "permissionFamilies": [
+        "github.actions.read"
+      ],
+      "support": "contract_only",
+      "executable": false
+    },
+    {
+      "operation": "baby.github.workflow.logs",
+      "owner": "github_provider",
+      "mutation": true,
+      "risk": "medium",
+      "permissionFamilies": [
+        "github.actions.read",
+        "artifact.write"
+      ],
+      "support": "contract_only",
+      "executable": false
+    },
+    {
+      "operation": "baby.github.workflow.artifacts",
+      "owner": "github_provider",
+      "mutation": true,
+      "risk": "medium",
+      "permissionFamilies": [
+        "github.actions.read",
+        "artifact.write"
+      ],
+      "support": "contract_only",
+      "executable": false
+    },
+    {
+      "operation": "baby.github.artifact.verify",
+      "owner": "github_provider",
+      "mutation": false,
+      "risk": "low",
+      "permissionFamilies": [
+        "github.actions.read",
+        "artifact.read"
+      ],
+      "support": "contract_only",
+      "executable": false
+    },
+    {
+      "operation": "baby.github.delivery.publish",
+      "owner": "compound",
+      "mutation": true,
+      "risk": "high",
+      "permissionFamilies": [
+        "git.repository.read",
+        "git.transport",
+        "git.remote.write",
+        "github.repository.metadata",
+        "github.pull_requests.write",
+        "github.actions.read",
+        "artifact.write",
+        "artifact.read"
+      ],
+      "support": "contract_only",
+      "executable": false
+    }
+  ],
+  "credentialPolicy": {
+    "valuesPersisted": false,
+    "referencesOnly": true,
+    "plaintextInSqlite": false,
+    "plaintextInReleaseDirectories": false,
+    "plaintextInGitWorkspaces": false,
+    "currentBuildTransport": "repository_scoped_encrypted_ssh_deploy_key",
+    "permanentApiModel": "github_app_installation_credential_reference"
+  }
+}

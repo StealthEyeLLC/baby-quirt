@@ -131,3 +131,8 @@ Rollback is allowed only to the existing, distinct `/opt/baby-quirt/previous` re
 ## Reporting
 
 Report suspected vulnerabilities privately to StealthEye LLC. Do not place bearer tokens, private keys, request signatures, raw credentials, unredacted process output, or live secret values in GitHub issues or pull-request comments.
+
+
+## Universal GitHub Authority credential boundary
+
+GitHub credentials are opaque references resolved only into transient `systemd` encrypted-credential execution. Repository authority, branch policy, operation family, permission snapshot, expiry, and revocation all constrain use. Strict pinned host keys, noninteractive transport, bounded redaction, exact lease protection, and independent readback are mandatory. See [Credentials](GITHUB_AUTHORITY_CREDENTIALS_V1.md).

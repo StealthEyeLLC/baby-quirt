@@ -171,3 +171,8 @@ A sandbox limitation must be recorded as a limitation, not silently treated as a
 ## Production qualification
 
 The deployed runtime and gateway have passed local health, signed `baby.health`, receipt verification, public TLS, protected-resource metadata, JWKS reachability, OAuth/MCP challenge behavior, and release-identity readback. Current production truth must always be read directly from `baby.describe`, `baby.health`, `baby.release.status`, systemd, active pointers, and signed evidence before making a deployment claim.
+
+
+## Universal GitHub Authority source boundary
+
+Universal GitHub Authority v1 reuses the existing deployment database, durable jobs/events, artifact authority, receipts, and one-tool gateway boundary. Local Git object readback owns repository truth; GitHub provider readback owns PR, workflow, and artifact truth. The source-complete provider remains unregistered and undeployed through Checkpoint G. See [Checkpoint G](GITHUB_AUTHORITY_CHECKPOINT_G_V1.md).
