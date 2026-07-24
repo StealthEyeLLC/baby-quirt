@@ -97,7 +97,7 @@ function assertCode(callback: () => unknown, code: string): void {
 }
 
 describe('GitHub authority registry', () => {
-  it('preserves the authority migration while advancing the same Baby deployment database to version 5', () => {
+  it('preserves the authority migration while advancing the same Baby deployment database to version 6', () => {
     const path = makeDatabasePath();
     const database = new DeploymentDatabase(path);
     database.close();
@@ -105,7 +105,7 @@ describe('GitHub authority registry', () => {
     const version = raw.prepare('PRAGMA user_version').get() as { user_version: number };
     const migration = raw.prepare('SELECT version, name FROM schema_migrations WHERE version = 3').get();
     raw.close();
-    assert.equal(version.user_version, 5);
+    assert.equal(version.user_version, 6);
     assert.deepEqual({ ...migration }, { version: 3, name: 'github_authority_registry_v1' });
   });
 

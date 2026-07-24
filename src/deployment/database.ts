@@ -16,6 +16,7 @@ import { DELIVERY_LEDGER_MIGRATION, DeliveryPersistence } from '../delivery/pers
 import { GITHUB_AUTHORITY_REGISTRY_MIGRATION, GitHubAuthorityRegistry } from '../github/authority-registry.js';
 import { GITHUB_REPOSITORY_TRUTH_MIGRATION, GitWorkspaceRegistry } from '../github/repository-truth.js';
 import { GITHUB_SAFE_PUBLICATION_MIGRATION, GitSafePublicationRegistry } from '../github/safe-publication.js';
+import { GITHUB_PROVIDER_DELIVERY_MIGRATION, GitHubProviderRegistry } from '../github/provider-delivery.js';
 import {
   DEPLOYMENT_PRODUCTS,
   DeploymentError,
@@ -246,6 +247,7 @@ const MIGRATIONS: readonly Migration[] = [
   GITHUB_AUTHORITY_REGISTRY_MIGRATION,
   GITHUB_REPOSITORY_TRUTH_MIGRATION,
   GITHUB_SAFE_PUBLICATION_MIGRATION,
+  GITHUB_PROVIDER_DELIVERY_MIGRATION,
 ];
 
 type SqlRow = Record<string, unknown>;
@@ -469,6 +471,7 @@ export class DeploymentDatabase {
   readonly githubAuthorities: GitHubAuthorityRegistry;
   readonly githubGitWorkspaces: GitWorkspaceRegistry;
   readonly githubSafePublications: GitSafePublicationRegistry;
+  readonly githubProviderRuns: GitHubProviderRegistry;
   private closed = false;
 
   constructor(readonly databasePath: string) {
@@ -491,6 +494,7 @@ export class DeploymentDatabase {
     this.githubAuthorities = new GitHubAuthorityRegistry(this.database);
     this.githubGitWorkspaces = new GitWorkspaceRegistry(this.database);
     this.githubSafePublications = new GitSafePublicationRegistry(this.database);
+    this.githubProviderRuns = new GitHubProviderRegistry(this.database);
     this.assertIntegrity();
 
     if (databasePath !== ':memory:') {

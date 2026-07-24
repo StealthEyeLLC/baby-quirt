@@ -1,0 +1,93 @@
+{
+  "schemaVersion": "1.0.0",
+  "checkpoint": "F",
+  "title": "Durable GitHub provider and compound publication",
+  "checkpointBaseCommit": "9302c444c7a44ca7ecb29e8f403a05ae205451b8",
+  "implementationStatus": "source_complete_unregistered",
+  "scope": {
+    "provider": [
+      "baby.github.pr.upsert",
+      "baby.github.pr.get",
+      "baby.github.pr.verify",
+      "baby.github.workflow.find",
+      "baby.github.workflow.get",
+      "baby.github.workflow.wait",
+      "baby.github.workflow.logs.capture",
+      "baby.github.workflow.artifacts.capture"
+    ],
+    "compound": [
+      "baby.github.delivery.publish",
+      "baby.github.delivery.status",
+      "baby.github.delivery.events"
+    ]
+  },
+  "composition": {
+    "push": "GitSafePublication.preview/apply with exact lease, commit, and tree readback",
+    "pullRequest": "durable intent before mutation, exact draft PR reconciliation and verification",
+    "workflow": "exact pushed-commit discovery, bounded durable polling, selected-job verification",
+    "artifacts": "bounded capture with exact source commit/tree and digest-verified Baby artifact references"
+  },
+  "persistence": {
+    "database": "existing Baby deployment SQLite ledger",
+    "migrationVersion": 6,
+    "migrationName": "github_provider_delivery_v1",
+    "tables": [
+      "github_provider_runs",
+      "github_provider_events"
+    ],
+    "properties": [
+      "immutable run identity",
+      "semantic idempotency conflict detection",
+      "record digest verification",
+      "append-only events",
+      "restart-safe child-step replay",
+      "terminal partial-success recording"
+    ]
+  },
+  "deliveryStates": [
+    "intent_persisted",
+    "push_verified",
+    "pr_verified",
+    "workflow_verified",
+    "artifacts_verified",
+    "completed",
+    "failed",
+    "cancelled",
+    "ambiguous"
+  ],
+  "focusedVerification": {
+    "testFile": "test/github-provider-delivery.test.ts",
+    "tests": 6,
+    "suites": 1,
+    "passed": 6,
+    "failed": 0,
+    "cases": [
+      "immutable intent replay and changed-intent rejection",
+      "lost pull-request response reconciliation without duplicate write",
+      "workflow completion replay and exact-source artifact capture",
+      "complete push/PR/workflow/artifact publication replay",
+      "partial success after verified push without duplicate push",
+      "active runtime registry remains unchanged"
+    ]
+  },
+  "implementationPaths": [
+    "src/github/provider-delivery.ts",
+    "src/deployment/database.ts",
+    "test/github-provider-delivery.test.ts"
+  ],
+  "boundaries": {
+    "sourceOnly": true,
+    "runtimeOperationsRegistered": false,
+    "publicToolChanged": false,
+    "toolJsChanged": false,
+    "providerDeployed": false,
+    "productionCredentialInstalledOrRotated": false,
+    "productionStateMutated": false,
+    "merged": false
+  },
+  "notes": [
+    "The existing G3 coverage ledger remains local-Git-only and is not broadened by this checkpoint.",
+    "Checkpoint F implements provider and compound workflow source without advertising it in the active runtime.",
+    "A failure after verified push is recorded as terminal partial success; the push is not silently rolled back or repeated."
+  ]
+}
