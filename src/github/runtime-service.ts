@@ -2,7 +2,7 @@
 
 import { execFileSync, spawnSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
-import { mkdirSync, mkdtempSync, rmSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import type { RuntimeConfig } from '../config.js';
 import { OperationError } from '../operations/errors.js';
@@ -136,9 +136,13 @@ export class GitHubRuntimeService {
         },
         maximumOutputBytes: 65_536,
       };
+      const requestPath = join(temporary, 'request.json');
+      const stdoutPath = join(temporary, 'helper.stdout');
+      const stderrPath = join(temporary, 'helper.stderr');
+      writeFileSync(requestPath, `${JSON.stringify(helperRequest)}\n`, { mode: 0o600 });
       const unit = `baby-github-read-${sha256(requestId).slice(0, 20)}`;
       const execution = spawnSync('/usr/bin/systemd-run', [
-        '--pipe', '--wait', '--collect',
+        '--wait', '--collect', '--quiet',
         `--unit=${unit}`,
         '--property=Type=exec',
         '--property=NoNewPrivileges=yes',
@@ -147,20 +151,21 @@ export class GitHubRuntimeService {
         '--property=ProtectHome=yes',
         '--property=RestrictSUIDSGID=yes',
         `--property=WorkingDirectory=${repository}`,
-        `--property=ReadWritePaths=${repository}`,
+        `--property=ReadWritePaths=${temporary}`,
+        `--property=StandardInput=file:${requestPath}`,
+        `--property=StandardOutput=file:${stdoutPath}`,
+        `--property=StandardError=file:${stderrPath}`,
         `--property=LoadCredentialEncrypted=${PRODUCTION_GITHUB_CREDENTIAL_NAME}:${PRODUCTION_GITHUB_CREDENTIAL_PATH}`,
         '--', helperPath,
-      ], {
-        input: `${JSON.stringify(helperRequest)}\n`,
-        encoding: 'utf8',
-        maxBuffer: 1_048_576,
-      });
-      const helper = parseHelperResult(execution.stdout ?? '');
+      ], { encoding: 'utf8', maxBuffer: 1_048_576 });
+      const helperStdout = readFileSync(stdoutPath, 'utf8');
+      const helperStderr = readFileSync(stderrPath, 'utf8');
+      const helper = parseHelperResult(helperStdout);
       if (execution.status !== 0 || helper.status !== 'completed' || helper.exitCode !== 0) {
         throw new OperationError('github_remote_unavailable', 'GitHub remote verification failed', true, {
           helperStatus: helper.status,
           exitCode: helper.exitCode,
-          stderr: helper.stderr,
+          stderr: helper.stderr || helperStderr || execution.stderr,
         });
       }
       const commit = execFileSync('/usr/bin/git', ['--git-dir', repository, 'rev-parse', destination], { encoding: 'utf8' }).trim();
