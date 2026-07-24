@@ -16,6 +16,7 @@ import type { ResponsePayload } from '../protocol/frame.js';
 import { buildCapabilityDescription, OPERATION_DEFINITIONS } from './definitions.js';
 import { normalizeOperationError, OperationError } from './errors.js';
 import { StandaloneDeploymentService } from '../deployment/service.js';
+import { GitHubRuntimeService } from '../github/runtime-service.js';
 
 export interface OperationResult {
   response: ResponsePayload;
@@ -29,6 +30,7 @@ export class OperationRegistry {
   private readonly artifacts: ArtifactManager;
   private privateKey?: ReturnType<typeof loadPrivKey>;
   private deployments?: StandaloneDeploymentService;
+  private readonly githubRuntime: GitHubRuntimeService;
 
   constructor(
     private readonly config: RuntimeConfig,
@@ -39,6 +41,7 @@ export class OperationRegistry {
     this.files = new FileManager();
     this.pty = new PtyManager(store);
     this.artifacts = new ArtifactManager(store);
+    this.githubRuntime = new GitHubRuntimeService(config);
 
     if (existsSync(config.supervisorReceiptPrivateKeyPath)) {
       this.privateKey = loadPrivKey(config.supervisorReceiptPrivateKeyPath);
@@ -111,6 +114,9 @@ export class OperationRegistry {
     requestId: string,
     body: Record<string, unknown>,
   ): Promise<unknown> {
+    if (GitHubRuntimeService.handles(operation)) {
+      return this.githubRuntime.execute(operation, requestId, body);
+    }
     if (StandaloneDeploymentService.handles(operation)) {
       this.deployments ??= new StandaloneDeploymentService(this.config, {
         signingKey: this.privateKey,

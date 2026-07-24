@@ -382,6 +382,20 @@ export const OPERATION_DEFINITIONS: readonly OperationDefinition[] = [
     input: objectSchema({ deploymentId: identifier, kind: identifier, offset: integer, limit: { type: 'integer', minimum: 1, maximum: 200 } }, ['deploymentId']),
     output: objectSchema({ deploymentId: identifier, offset: integer, nextOffset: integer, total: integer, items: { type: 'array' } }),
   }),
+  {
+    operation: 'baby.github.describe', family: 'discovery', version: '1.0.0',
+    description: 'Describe the production-enabled GitHub read surface and registered repository authorities.',
+    mutation: false, idempotency: 'read_only', risk: 'low', input: objectSchema({}),
+  },
+  {
+    operation: 'baby.github.remote.verify', family: 'delivery', version: '1.0.0',
+    description: 'Verify an exact GitHub branch commit and tree through the encrypted repository-scoped SSH credential.',
+    mutation: false, idempotency: 'read_only', risk: 'low',
+    input: objectSchema({
+      repositoryAuthorityId: identifier, branch: string, expectedCommit: gitObject, expectedTree: gitObject, expectedBaseBranch: string,
+    }, ['repositoryAuthorityId', 'branch', 'expectedCommit', 'expectedTree']),
+    errors: ['invalid_request', 'github_authority_not_found', 'github_remote_unavailable', 'github_remote_mismatch'],
+  },
   ...DELIVERY_DEFINITIONS,
 ] as const;
 

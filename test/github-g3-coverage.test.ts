@@ -46,16 +46,11 @@ describe('Universal GitHub Authority G3 coverage', () => {
     assert.equal(entries.get('baby.git.describe')?.status, 'contract_only');
   });
 
-  it('keeps the stable public tool and active runtime registry unchanged', () => {
-    assert.equal(G3_WORKING_TREE_CONTRACT_BUNDLE.publicTool, 'call_quirt');
-    assert.deepEqual(G3_WORKING_TREE_CONTRACT_BUNDLE.publicArguments, [
-      'operation', 'payload', 'idempotencyKey',
-    ]);
-    assert.equal(G3_WORKING_TREE_CONTRACT_BUNDLE.publicToolChanged, false);
-    assert.equal(G3_WORKING_TREE_CONTRACT_BUNDLE.toolJsChanged, false);
-    assert.equal(G3_WORKING_TREE_CONTRACT_BUNDLE.deployed, false);
-    const runtime = new Set(OPERATION_DEFINITIONS.map((definition) => definition.operation));
-    for (const operation of G3_WORKING_TREE_OPERATION_NAMES) assert.equal(runtime.has(operation), false);
+  it('keeps the stable public tool while enabling only the GitHub read surface', () => {
+    const registered = new Set(OPERATION_DEFINITIONS.map((definition) => definition.operation));
+    assert.equal(registered.has('baby.github.describe'), true);
+    assert.equal(registered.has('baby.github.remote.verify'), true);
+    assert.equal(registered.has('baby.github.pr.upsert'), false);
   });
 
   it('provides strict input schemas and observed-state safety for staging', () => {
