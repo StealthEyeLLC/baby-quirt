@@ -12,6 +12,7 @@ import {
 } from '../src/operations/definitions.js';
 import { normalizeOperationError, OperationError } from '../src/operations/errors.js';
 import { OperationRegistry, OPERATIONS } from '../src/operations/registry.js';
+import { GITHUB_APP_OPERATION_NAMES } from '../src/github/app-operation-definitions.js';
 import { ReplayStore } from '../src/state/replay-store.js';
 import { StateStore } from '../src/state/store.js';
 import type { AuthenticatedRequest } from '../src/auth/authenticator.js';
@@ -31,13 +32,16 @@ describe('operation discovery', () => {
   it('publishes unique executable operation definitions', () => {
     const names = OPERATION_DEFINITIONS.map((definition) => definition.operation);
     assert.equal(new Set(names).size, names.length);
-    assert.deepEqual(OPERATIONS, names);
+    assert.deepEqual(OPERATIONS, [...names, ...GITHUB_APP_OPERATION_NAMES]);
+    assert.equal(new Set(OPERATIONS).size, OPERATIONS.length);
     assert.ok(names.includes('baby.describe'));
     assert.ok(names.includes('baby.health'));
     assert.equal(names.length, 52);
+    assert.equal(OPERATIONS.length, 54);
     assert.equal(names.filter((name) => name.startsWith('baby.release.')).length, 8);
     assert.equal(names.filter((name) => name.startsWith('baby.selfhost.')).length, 3);
     assert.equal(names.filter((name) => name.startsWith('baby.delivery.')).length, 10);
+    assert.deepEqual(GITHUB_APP_OPERATION_NAMES, ['baby.github.app.verify', 'baby.github.app.proof']);
   });
 
   it('locks the single-tool ChatGPT invocation wording', () => {
@@ -89,6 +93,9 @@ describe('operation discovery', () => {
     const { response } = await registry.dispatch(auth);
     const result = response.result as { operations: Array<{ operation: string }> };
     assert.ok(result.operations.some((operation) => operation.operation === 'baby.describe'));
+    assert.ok(result.operations.some((operation) => operation.operation === 'baby.github.app.verify'));
+    assert.ok(result.operations.some((operation) => operation.operation === 'baby.github.app.proof'));
+    assert.equal(result.operations.length, 54);
   });
 });
 
