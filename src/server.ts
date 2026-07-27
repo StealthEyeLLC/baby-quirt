@@ -43,6 +43,7 @@ export class BabyQuirtServer {
   }
 
   async start(): Promise<void> {
+    await this.registry.initialize();
     const recovery = this.registry.recover();
     console.log(
       `[baby-quirt] recovered ${recovery.jobs} jobs, ${recovery.detached} detached, ${recovery.ptySessions} pty sessions`,

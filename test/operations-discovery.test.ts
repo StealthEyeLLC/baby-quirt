@@ -34,7 +34,7 @@ describe('operation discovery', () => {
     assert.deepEqual(OPERATIONS, names);
     assert.ok(names.includes('baby.describe'));
     assert.ok(names.includes('baby.health'));
-    assert.equal(names.length, 44);
+    assert.equal(names.length, 48);
     assert.equal(names.filter((name) => name.startsWith('baby.release.')).length, 8);
     assert.equal(names.filter((name) => name.startsWith('baby.selfhost.')).length, 3);
   });

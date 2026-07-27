@@ -30,7 +30,10 @@
       "strict_semantic_idempotency",
       "atomic_compare_and_swap_file_replacement",
       "content_addressed_artifact_finalization",
-      "request_bound_signed_receipts"
+      "request_bound_signed_receipts",
+      "trusted_first_party_skill_loading",
+      "content_addressed_skill_bundles",
+      "atomic_skill_package_set_activation"
     ],
     "babyQuirtMustNotBecome": [
       "public_control_plane",
@@ -1292,6 +1295,150 @@
           "deploymentId"
         ]
       }
+    },
+    {
+      "operation": "baby.skill.deploy",
+      "description": "Deploy or idempotently reuse one exact trusted first-party JavaScript skill.",
+      "family": "skill",
+      "mutation": true,
+      "idempotency": "caller_key",
+      "risk": "high",
+      "input": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "repository": {
+            "type": "string",
+            "pattern": "^StealthEyeLLC/[A-Za-z0-9_.-]{1,100}$"
+          },
+          "ref": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 255
+          },
+          "skillPath": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 512
+          },
+          "expectedCommit": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{40}$"
+          },
+          "expectedCurrentSetDigest": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{64}$"
+          },
+          "smokeOperation": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 200
+          },
+          "smokePayload": {
+            "type": "object"
+          }
+        },
+        "required": [
+          "repository",
+          "ref",
+          "skillPath"
+        ]
+      },
+      "output": {
+        "type": "object"
+      },
+      "errors": [
+        "invalid_request",
+        "deployment_conflict",
+        "deployment_integrity_failed",
+        "operation_failed"
+      ],
+      "cancellation": "pre_arm_cleanup_post_arm_rollback",
+      "restartBehavior": "durable_reconcile",
+      "postActionVerification": true
+    },
+    {
+      "operation": "baby.skill.status",
+      "description": "Read the active skill package set, catalog identity, runtime release, and last deployment.",
+      "family": "skill",
+      "mutation": false,
+      "idempotency": "read_only",
+      "risk": "low",
+      "input": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {}
+      },
+      "output": {
+        "type": "object"
+      },
+      "errors": [
+        "operation_failed"
+      ],
+      "cancellation": "not_applicable",
+      "restartBehavior": "read_only",
+      "postActionVerification": true
+    },
+    {
+      "operation": "baby.skill.rollback",
+      "description": "Atomically activate the previous immutable skill package set with verified Baby restart.",
+      "family": "skill",
+      "mutation": true,
+      "idempotency": "caller_key",
+      "risk": "high",
+      "input": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "expectedCurrentSetDigest": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{64}$"
+          },
+          "reason": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 512
+          }
+        },
+        "required": [
+          "reason"
+        ]
+      },
+      "output": {
+        "type": "object"
+      },
+      "errors": [
+        "invalid_request",
+        "resource_unavailable",
+        "deployment_conflict",
+        "deployment_integrity_failed",
+        "operation_failed"
+      ],
+      "cancellation": "pre_arm_cleanup_post_arm_rollback",
+      "restartBehavior": "durable_reconcile",
+      "postActionVerification": true
+    },
+    {
+      "operation": "baby.skill.list",
+      "description": "List bounded immutable skill bundles and package sets with active and previous flags.",
+      "family": "skill",
+      "mutation": false,
+      "idempotency": "read_only",
+      "risk": "low",
+      "input": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {}
+      },
+      "output": {
+        "type": "object"
+      },
+      "errors": [
+        "operation_failed"
+      ],
+      "cancellation": "not_applicable",
+      "restartBehavior": "read_only",
+      "postActionVerification": true
     }
   ],
   "paths": {

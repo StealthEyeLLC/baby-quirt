@@ -70,6 +70,40 @@ interface TokenView {
   repositories?: Array<{ full_name?: string }>;
 }
 
+interface RepositoryCommitView {
+  sha?: string;
+  commit?: { tree?: { sha?: string } };
+}
+
+interface RecursiveTreeView {
+  truncated?: boolean;
+  tree?: Array<{ path?: string; mode?: string; type?: string; sha?: string; size?: number }>;
+}
+
+interface BlobView {
+  content?: string;
+  encoding?: string;
+  size?: number;
+}
+
+export interface GitHubSkillFile {
+  path: string;
+  mode: '100644' | '100755';
+  size: number;
+  data: Buffer;
+}
+
+export interface GitHubSkillMaterialization {
+  repository: string;
+  ref: string;
+  commit: string;
+  tree: string;
+  skillPath: string;
+  files: GitHubSkillFile[];
+  timingsMs: { sourceResolution: number; sourceMaterialization: number };
+  token: { scope: 'single_repository_contents_read'; persisted: false };
+}
+
 function credentialPath(): string {
   const directory = process.env.CREDENTIALS_DIRECTORY;
   if (!directory) return '';
@@ -151,6 +185,91 @@ export class GitHubAppAuthority {
         plaintextPersisted: false,
       },
       verifiedAt: new Date(this.now()).toISOString(),
+    };
+  }
+
+  async materializeSkill(
+    repositoryValue: unknown,
+    refValue: unknown,
+    skillPathValue: unknown,
+    expectedCommitValue?: unknown,
+  ): Promise<GitHubSkillMaterialization> {
+    const started = this.now();
+    const repository = safeRepository(repositoryValue);
+    const ref = String(refValue ?? '');
+    if (!ref || ref.length > 255 || ref.includes('\0')) throw new Error('ref must be a bounded Git ref');
+    const skillPath = String(skillPathValue ?? '').replaceAll('\\', '/');
+    if (!skillPath || skillPath.startsWith('/') || skillPath.length > 512 ||
+        skillPath.split('/').some((part) => !part || part === '.' || part === '..')) {
+      throw new Error('skillPath must be a normalized relative repository path');
+    }
+    await this.verifyIdentity();
+    const token = await this.mintInstallationToken(repository, 'read');
+    const commitResponse = await this.request<RepositoryCommitView>(
+      `/repos/${repository}/commits/${encodeURIComponent(ref)}`,
+      { authorization: token.value },
+    );
+    const commit = safeSha(commitResponse.body.sha, 'resolved commit');
+    const tree = safeSha(commitResponse.body.commit?.tree?.sha, 'resolved tree');
+    if (expectedCommitValue !== undefined && String(expectedCommitValue) !== commit) {
+      throw new Error(`resolved commit does not match expectedCommit: ${commit}`);
+    }
+    const resolvedAt = this.now();
+    const treeResponse = await this.request<RecursiveTreeView>(
+      `/repos/${repository}/git/trees/${tree}?recursive=1`,
+      { authorization: token.value },
+    );
+    if (treeResponse.body.truncated) throw new Error('GitHub recursive tree was truncated');
+    const prefix = `${skillPath}/`;
+    const selected = (treeResponse.body.tree ?? [])
+      .filter((entry) => entry.path === skillPath || entry.path?.startsWith(prefix))
+      .sort((a, b) => String(a.path).localeCompare(String(b.path)));
+    if (selected.length === 0) throw new Error('skillPath does not exist at the resolved commit');
+    const files: GitHubSkillFile[] = [];
+    let total = 0;
+    const paths = new Set<string>();
+    for (const entry of selected) {
+      if (entry.type === 'tree') continue;
+      if (entry.mode === '120000') throw new Error(`symlink rejected: ${entry.path}`);
+      if (entry.type === 'commit' || entry.mode === '160000') throw new Error(`Git submodule rejected: ${entry.path}`);
+      if (entry.type !== 'blob' || !['100644', '100755'].includes(String(entry.mode))) {
+        throw new Error(`unsupported Git object rejected: ${entry.path}`);
+      }
+      const repositoryPath = String(entry.path ?? '');
+      const relativePath = repositoryPath.slice(prefix.length);
+      if (!relativePath || relativePath.startsWith('/') || relativePath.split('/').some((part) => !part || part === '.' || part === '..')) {
+        throw new Error(`invalid normalized skill file path: ${repositoryPath}`);
+      }
+      if (paths.has(relativePath)) throw new Error(`duplicate normalized skill path: ${relativePath}`);
+      paths.add(relativePath);
+      if (files.length >= 256) throw new Error('skill exceeds 256 files');
+      const declaredSize = Number(entry.size ?? 0);
+      if (declaredSize > 4 * 1024 * 1024) throw new Error(`skill file exceeds 4 MiB: ${relativePath}`);
+      const blobSha = safeSha(entry.sha, 'blob');
+      const blob = await this.request<BlobView>(`/repos/${repository}/git/blobs/${blobSha}`, {
+        authorization: token.value,
+      });
+      if (blob.body.encoding !== 'base64' || typeof blob.body.content !== 'string') {
+        throw new Error(`GitHub blob encoding is unsupported: ${relativePath}`);
+      }
+      const data = Buffer.from(blob.body.content.replace(/\s/g, ''), 'base64');
+      if (data.length !== Number(blob.body.size ?? data.length) || data.length !== declaredSize) {
+        throw new Error(`GitHub blob size mismatch: ${relativePath}`);
+      }
+      total += data.length;
+      if (total > 16 * 1024 * 1024) throw new Error('skill exceeds 16 MiB total');
+      files.push({
+        path: relativePath,
+        mode: entry.mode as '100644' | '100755',
+        size: data.length,
+        data,
+      });
+    }
+    if (!files.some((file) => file.path === 'skill.json')) throw new Error('skillPath has no skill.json');
+    return {
+      repository, ref, commit, tree, skillPath, files,
+      timingsMs: { sourceResolution: resolvedAt - started, sourceMaterialization: this.now() - resolvedAt },
+      token: { scope: 'single_repository_contents_read', persisted: false },
     };
   }
 

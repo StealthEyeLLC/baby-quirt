@@ -17,6 +17,10 @@ import { buildCapabilityDescription, OPERATION_DEFINITIONS } from './definitions
 import { normalizeOperationError, OperationError } from './errors.js';
 import { StandaloneDeploymentService } from '../deployment/service.js';
 import { GitHubAppAuthority } from '../github/app-authority.js';
+import { SkillDeploymentService } from '../skills/service.js';
+import { catalogDigest, loadActivePackageSet } from '../skills/loader.js';
+import { assertJsonSerializable } from '../skills/schema.js';
+import type { LoadedPackageSet } from '../skills/types.js';
 
 export interface OperationResult {
   response: ResponsePayload;
@@ -31,6 +35,8 @@ export class OperationRegistry {
   private privateKey?: ReturnType<typeof loadPrivKey>;
   private deployments?: StandaloneDeploymentService;
   private githubAuthority?: GitHubAppAuthority;
+  private loadedSkills: LoadedPackageSet;
+  private readonly skillService: SkillDeploymentService;
 
   constructor(
     private readonly config: RuntimeConfig,
@@ -41,10 +47,27 @@ export class OperationRegistry {
     this.files = new FileManager();
     this.pty = new PtyManager(store);
     this.artifacts = new ArtifactManager(store);
+    this.loadedSkills = {
+      setDigest: null,
+      setPath: null,
+      manifest: null,
+      skills: [],
+      definitions: [],
+      handlers: new Map(),
+      inputValidators: new Map(),
+      outputValidators: new Map(),
+      catalogDigest: catalogDigest(OPERATION_DEFINITIONS),
+    };
+    this.skillService = new SkillDeploymentService(config, OPERATION_DEFINITIONS, () => this.loadedSkills);
 
     if (existsSync(config.supervisorReceiptPrivateKeyPath)) {
       this.privateKey = loadPrivKey(config.supervisorReceiptPrivateKeyPath);
     }
+  }
+
+  async initialize(): Promise<void> {
+    this.skillService.ensureInitialSet();
+    this.loadedSkills = await loadActivePackageSet(OPERATION_DEFINITIONS);
   }
 
   recover(): { jobs: number; detached: number; ptySessions: number } {
@@ -113,6 +136,27 @@ export class OperationRegistry {
     requestId: string,
     body: Record<string, unknown>,
   ): Promise<unknown> {
+    if (SkillDeploymentService.handles(operation)) {
+      return this.skillService.execute(operation, requestId, body);
+    }
+    const skillHandler = this.loadedSkills.handlers.get(operation);
+    if (skillHandler !== undefined) {
+      this.loadedSkills.inputValidators.get(operation)?.(body);
+      const skill = this.loadedSkills.skills.find((candidate) =>
+        candidate.definitions.some((definition) => definition.operation === operation));
+      if (skill === undefined) {
+        throw new OperationError('operation_failed', `Loaded skill source missing for ${operation}`, false);
+      }
+      const result = await skillHandler(body, {
+        skillName: skill.source.name,
+        skillVersion: skill.source.version,
+        bundleDigest: skill.source.bundleDigest,
+        activeSetDigest: this.loadedSkills.setDigest,
+      });
+      this.loadedSkills.outputValidators.get(operation)?.(result);
+      assertJsonSerializable(result, `${operation} result`);
+      return result;
+    }
     if (StandaloneDeploymentService.handles(operation)) {
       this.deployments ??= new StandaloneDeploymentService(this.config, {
         signingKey: this.privateKey,
@@ -123,7 +167,7 @@ export class OperationRegistry {
     }
     switch (operation) {
       case 'baby.describe':
-        return buildCapabilityDescription(this.config);
+        return buildCapabilityDescription(this.config, this.loadedSkills);
       case 'baby.health':
         return this.health();
       case 'baby.github.app.verify':

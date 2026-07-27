@@ -3,6 +3,7 @@
 import { existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import type { RuntimeConfig } from '../config.js';
+import type { LoadedPackageSet } from '../skills/types.js';
 import {
   CONTRACT_VERSION,
   DEFAULTS,
@@ -28,7 +29,7 @@ export interface OperationDefinition {
     | 'pty'
     | 'artifact'
     | 'release'
-    | 'selfhost';
+    | 'selfhost' | 'skill';
   version: string;
   description: string;
   mutation: boolean;
@@ -366,6 +367,44 @@ export const OPERATION_DEFINITIONS: readonly OperationDefinition[] = [
     input: objectSchema({ deploymentId: identifier, kind: identifier, offset: integer, limit: { type: 'integer', minimum: 1, maximum: 200 } }, ['deploymentId']),
     output: objectSchema({ deploymentId: identifier, offset: integer, nextOffset: integer, total: integer, items: { type: 'array' } }),
   }),
+  {
+    operation: 'baby.skill.deploy', family: 'skill', version: '1.0.0',
+    description: 'Deploy or idempotently reuse one exact trusted first-party JavaScript skill.',
+    mutation: true, idempotency: 'caller_key', risk: 'high',
+    input: objectSchema({
+      repository: { type: 'string', pattern: '^StealthEyeLLC\/[A-Za-z0-9_.-]{1,100}$' },
+      ref: { type: 'string', minLength: 1, maxLength: 255 },
+      skillPath: { type: 'string', minLength: 1, maxLength: 512 },
+      expectedCommit: { type: 'string', pattern: '^[a-f0-9]{40}$' },
+      expectedCurrentSetDigest: digest,
+      smokeOperation: { type: 'string', minLength: 1, maxLength: 200 },
+      smokePayload: { type: 'object' },
+    }, ['repository', 'ref', 'skillPath']),
+    output: { type: 'object' },
+    errors: ['invalid_request', 'deployment_conflict', 'deployment_integrity_failed', 'operation_failed'],
+    cancellation: 'pre_arm_cleanup_post_arm_rollback', restartBehavior: 'durable_reconcile', postActionVerification: true,
+  },
+  {
+    operation: 'baby.skill.status', family: 'skill', version: '1.0.0',
+    description: 'Read the active skill package set, catalog identity, runtime release, and last deployment.',
+    mutation: false, idempotency: 'read_only', risk: 'low', input: objectSchema({}), output: { type: 'object' },
+    errors: ['operation_failed'], cancellation: 'not_applicable', restartBehavior: 'read_only', postActionVerification: true,
+  },
+  {
+    operation: 'baby.skill.rollback', family: 'skill', version: '1.0.0',
+    description: 'Atomically activate the previous immutable skill package set with verified Baby restart.',
+    mutation: true, idempotency: 'caller_key', risk: 'high',
+    input: objectSchema({ expectedCurrentSetDigest: digest, reason: { type: 'string', minLength: 1, maxLength: 512 } }, ['reason']),
+    output: { type: 'object' },
+    errors: ['invalid_request', 'resource_unavailable', 'deployment_conflict', 'deployment_integrity_failed', 'operation_failed'],
+    cancellation: 'pre_arm_cleanup_post_arm_rollback', restartBehavior: 'durable_reconcile', postActionVerification: true,
+  },
+  {
+    operation: 'baby.skill.list', family: 'skill', version: '1.0.0',
+    description: 'List bounded immutable skill bundles and package sets with active and previous flags.',
+    mutation: false, idempotency: 'read_only', risk: 'low', input: objectSchema({}), output: { type: 'object' },
+    errors: ['operation_failed'], cancellation: 'not_applicable', restartBehavior: 'read_only', postActionVerification: true,
+  },
 ] as const;
 
 function discoveredDefinition(definition: OperationDefinition): Record<string, unknown> {
@@ -415,7 +454,8 @@ export function readReleaseIdentity(): Record<string, unknown> {
   }
 }
 
-export function buildCapabilityDescription(config: RuntimeConfig): Record<string, unknown> {
+export function buildCapabilityDescription(config: RuntimeConfig, loadedSkills?: LoadedPackageSet): Record<string, unknown> {
+  const definitions = loadedSkills === undefined ? OPERATION_DEFINITIONS : [...OPERATION_DEFINITIONS, ...loadedSkills.definitions];
   return {
     product: PRODUCT_NAME,
     protocolVersion: PROTOCOL_VERSION,
@@ -430,6 +470,16 @@ export function buildCapabilityDescription(config: RuntimeConfig): Record<string
       transport: 'private_unix_socket',
     },
     release: readReleaseIdentity(),
+    skills: {
+      activeSetDigest: loadedSkills?.setDigest ?? null,
+      catalogDigest: loadedSkills?.catalogDigest ?? null,
+      coreOperationCount: OPERATION_DEFINITIONS.length,
+      skillOperationCount: loadedSkills?.definitions.length ?? 0,
+      loaded: loadedSkills?.skills.map((skill) => ({
+        ...skill.source,
+        operations: skill.definitions.map((definition) => definition.operation),
+      })) ?? [],
+    },
     limits: {
       maxFrameSize: config.maxFrameSize,
       maxOutputBytes: config.maxOutputBytes,
@@ -455,6 +505,6 @@ export function buildCapabilityDescription(config: RuntimeConfig): Record<string
         'Use a new idempotency key whenever the operation or payload changes.',
       ],
     },
-    operations: OPERATION_DEFINITIONS.map(discoveredDefinition),
+    operations: definitions.map(discoveredDefinition),
   };
 }
