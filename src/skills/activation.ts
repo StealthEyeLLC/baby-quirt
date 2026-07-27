@@ -143,6 +143,7 @@ export async function activateRecord(
   await sleep(dependencies.delayMs ?? 0);
   const record = JSON.parse(readFileSync(recordPath, 'utf8')) as ActivationRecord;
   const timestamp = (): string => (dependencies.now?.() ?? new Date()).toISOString();
+  let pointerMutationStarted = false;
   try {
     const observedCurrentPath = pointerTarget(dependencies.currentLink);
     const observedCurrentDigest = packageSetDigestFromPath(observedCurrentPath);
@@ -160,6 +161,7 @@ export async function activateRecord(
     record.timestamps.pointerMutationAt = timestamp();
     atomicWrite(recordPath, record);
     const pointerStarted = Date.now();
+    pointerMutationStarted = true;
     replacePointer(dependencies.previousLink, record.priorActiveSetPath);
     replacePointer(dependencies.currentLink, record.candidateSetPath);
     record.timingsMs.pointerActivation = Date.now() - pointerStarted;
@@ -171,6 +173,9 @@ export async function activateRecord(
     record.timestamps.verifyingAt = timestamp();
     atomicWrite(recordPath, record);
     record.healthReadback = await dependencies.healthReadback();
+    if (pointerTarget(dependencies.currentLink) !== record.candidateSetPath) {
+      throw new Error('active package-set pointer changed during activation');
+    }
     const readback = await verifyCandidate(record, dependencies);
     record.describeReadback = readback;
     record.smokeResult = readback.smokeResult;
@@ -185,6 +190,14 @@ export async function activateRecord(
     return record;
   } catch (error) {
     record.redactedError = redactActivationError(error);
+    if (!pointerMutationStarted) {
+      record.lifecycleState = 'FAILED';
+      record.finalState = 'FAILED';
+      record.rollbackStatus = 'not_required';
+      record.timestamps.failedAt = timestamp();
+      atomicWrite(recordPath, record);
+      return record;
+    }
     record.lifecycleState = 'ROLLING_BACK';
     record.rollbackStatus = 'running';
     record.timestamps.rollingBackAt = timestamp();

@@ -493,20 +493,25 @@ describe('minimal trusted skill loader', () => {
     });
   });
 
-  it('21. current-pointer compare-and-swap conflict rolls back safely', async () => {
+  it('21. pre-CAS duplicate activation fails without rolling back another transaction', async () => {
     await inFixture(async (fixture) => {
       const prior = emptySet(fixture, '1970-01-01T00:00:00.000Z');
       const other = emptySet(fixture, '1970-01-02T00:00:00.000Z');
       const candidate = emptySet(fixture, '1970-01-03T00:00:00.000Z');
       replacePointer(fixture.currentLink, other.path);
+      let restartCalls = 0;
       const recordPath = writeRecord(fixture, activationRecord(prior, candidate));
       const result = await activateRecord(recordPath, {
         currentLink: fixture.currentLink, previousLink: fixture.previousLink,
         releaseRoot: fixture.releaseRoot, coreDefinitions: CORE,
-        restart: () => 1, healthReadback: async () => ({ durationMs: 1 }),
+        restart: () => { restartCalls += 1; return 1; },
+        healthReadback: async () => ({ durationMs: 1 }),
       });
-      assert.equal(result.finalState, 'ROLLED_BACK');
-      assert.equal(pointerTarget(fixture.currentLink), prior.path);
+      assert.equal(result.finalState, 'FAILED');
+      assert.equal(result.rollbackStatus, 'not_required');
+      assert.equal(pointerTarget(fixture.currentLink), other.path);
+      assert.equal(pointerTarget(fixture.previousLink), null);
+      assert.equal(restartCalls, 0);
       assert.match(result.redactedError ?? '', /compare-and-swap/);
     });
   });
@@ -530,6 +535,31 @@ describe('minimal trusted skill loader', () => {
       });
       assert.equal(observed, true);
       assert.equal(result.finalState, 'ACTIVE');
+    });
+  });
+
+  it('22b. active-pointer races are detected before activation success', async () => {
+    await inFixture(async (fixture) => {
+      const prior = emptySet(fixture, '1970-01-01T00:00:00.000Z');
+      const candidate = emptySet(fixture, '1970-01-02T00:00:00.000Z');
+      const intruder = emptySet(fixture, '1970-01-03T00:00:00.000Z');
+      replacePointer(fixture.currentLink, prior.path);
+      let restartCalls = 0;
+      let healthCalls = 0;
+      const result = await activateRecord(writeRecord(fixture, activationRecord(prior, candidate)), {
+        currentLink: fixture.currentLink, previousLink: fixture.previousLink,
+        releaseRoot: fixture.releaseRoot, coreDefinitions: CORE,
+        restart: () => { restartCalls += 1; return 1; },
+        healthReadback: async () => {
+          healthCalls += 1;
+          if (healthCalls === 1) replacePointer(fixture.currentLink, intruder.path);
+          return { durationMs: 1 };
+        },
+      });
+      assert.equal(result.finalState, 'ROLLED_BACK');
+      assert.equal(pointerTarget(fixture.currentLink), prior.path);
+      assert.equal(restartCalls, 2);
+      assert.match(result.redactedError ?? '', /pointer changed/);
     });
   });
 
@@ -618,6 +648,21 @@ describe('minimal trusted skill loader', () => {
     assert.equal(definition?.restartBehavior, 'durable_reconcile');
     const serviceSource = readFileSync(new URL('../src/skills/service.ts', import.meta.url), 'utf8');
     assert.match(serviceSource, /'--no-block'/);
+  });
+
+  it('27b. exact semantic replay returns one durable deployment record', async () => {
+    await inFixture(async (fixture) => {
+      const { service, scheduled } = await createService(fixture);
+      const request = {
+        repository: 'StealthEyeLLC/baby-quirt', ref: COMMIT,
+        skillPath: 'examples/skills/proof-echo', expectedCommit: COMMIT,
+      };
+      const first = await service.execute('baby.skill.deploy', 'same-semantic-fingerprint', request) as Record<string, unknown>;
+      const replay = await service.execute('baby.skill.deploy', 'same-semantic-fingerprint', request) as Record<string, unknown>;
+      assert.equal(replay.deploymentId, first.deploymentId);
+      assert.equal(scheduled.length, 1);
+      assert.equal(readdirSync(fixture.deploymentRoot).length, 1);
+    });
   });
 
   it('28. identical redeployment reuses the exact bundle directory', async () => {

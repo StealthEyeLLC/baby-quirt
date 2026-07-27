@@ -51,6 +51,7 @@ interface DeploymentRecord {
   deploymentId: string;
   action: 'deploy' | 'rollback';
   idempotencyKeyDigest: string;
+  requestDigest?: string;
   request: Record<string, unknown>;
   source: { repository: string; ref: string; path: string; commit: string; tree: string } | null;
   priorActiveSetDigest: string | null;
@@ -201,17 +202,35 @@ export class SkillDeploymentService {
     return digest;
   }
 
-  async execute(operation: string, requestId: string, body: Record<string, unknown>): Promise<unknown> {
+  async execute(operation: string, idempotencyIdentity: string, body: Record<string, unknown>): Promise<unknown> {
     switch (operation) {
-      case 'baby.skill.deploy': return this.deploy(requestId, body);
+      case 'baby.skill.deploy': return this.deploy(idempotencyIdentity, body);
       case 'baby.skill.status': return this.status();
-      case 'baby.skill.rollback': return this.rollback(requestId, body);
+      case 'baby.skill.rollback': return this.rollback(idempotencyIdentity, body);
       case 'baby.skill.list': return this.list();
       default: throw new Error(`unsupported skill operation ${operation}`);
     }
   }
 
-  private async deploy(requestId: string, body: Record<string, unknown>): Promise<Record<string, unknown>> {
+  private findIdempotentRecord(idempotencyIdentity: string, requestDigest: string): DeploymentRecord | null {
+    const keyDigest = sha256Hex(idempotencyIdentity);
+    if (!existsSync(this.paths.deploymentRoot)) return null;
+    for (const name of readdirSync(this.paths.deploymentRoot).sort()) {
+      const recordPath = join(this.paths.deploymentRoot, name, 'record.json');
+      if (!existsSync(recordPath)) continue;
+      const record = JSON.parse(readFileSync(recordPath, 'utf8')) as DeploymentRecord;
+      if (record.idempotencyKeyDigest !== keyDigest) continue;
+      if (record.requestDigest !== requestDigest) {
+        throw new OperationError('deployment_conflict', 'idempotency key conflicts with another skill request', false, {
+          deploymentId: record.deploymentId,
+        });
+      }
+      return record;
+    }
+    return null;
+  }
+
+  private async deploy(idempotencyIdentity: string, body: Record<string, unknown>): Promise<Record<string, unknown>> {
     const repository = String(body.repository ?? '');
     const ref = String(body.ref ?? '');
     const skillPath = String(body.skillPath ?? '');
@@ -222,6 +241,19 @@ export class SkillDeploymentService {
     if (body.expectedCurrentSetDigest !== undefined && !DIGEST.test(String(body.expectedCurrentSetDigest))) fail('expectedCurrentSetDigest is invalid');
     if (body.smokeOperation !== undefined && typeof body.smokeOperation !== 'string') fail('smokeOperation must be a string');
     if (body.smokePayload !== undefined && !isObject(body.smokePayload)) fail('smokePayload must be an object');
+
+    const requestDigest = sha256Hex(canonicalJson({
+      action: 'deploy',
+      repository,
+      ref,
+      skillPath,
+      expectedCommit: body.expectedCommit ?? null,
+      expectedCurrentSetDigest: body.expectedCurrentSetDigest ?? null,
+      smokeOperation: body.smokeOperation ?? null,
+      smokePayload: body.smokePayload ?? null,
+    }));
+    const replay = this.findIdempotentRecord(idempotencyIdentity, requestDigest);
+    if (replay !== null) return this.publicRecord(replay);
 
     const priorPath = linkTarget(this.paths.currentLink);
     const priorDigest = digestFromSetPath(priorPath);
@@ -237,7 +269,8 @@ export class SkillDeploymentService {
     mkdirSync(staging, { recursive: false, mode: 0o700 });
     const record: DeploymentRecord = {
       schemaVersion: '1.0.0', deploymentId, action: 'deploy',
-      idempotencyKeyDigest: sha256Hex(requestId), request: { repository, ref, skillPath },
+      idempotencyKeyDigest: sha256Hex(idempotencyIdentity), requestDigest,
+      request: { repository, ref, skillPath },
       source: null, priorActiveSetDigest: priorDigest, priorActiveSetPath: priorPath,
       priorPreviousSetPath: linkTarget(this.paths.previousLink), candidateSetDigest: '', candidateSetPath: '',
       bundleDigest: null, expectedCatalogDigest: '', expectedSkillOperations: [],
@@ -319,8 +352,8 @@ export class SkillDeploymentService {
       const preloadResult = JSON.parse(preload.stdout) as { catalogDigest?: string };
       if (preloadResult.catalogDigest !== expectedCatalogDigest) throw new Error('candidate preload catalog digest mismatch');
       record.lifecycleState = 'READY'; record.timestamps.readyAt = now(); atomicWriteJson(recordPath, record);
-      this.scheduleActivation(recordPath, deploymentId);
       record.lifecycleState = 'ACTIVATING'; record.timestamps.activatingAt = now(); atomicWriteJson(recordPath, record);
+      this.scheduleActivation(recordPath, deploymentId);
       return this.publicRecord(record);
     } catch (error) {
       rmSync(staging, { recursive: true, force: true });
@@ -330,9 +363,16 @@ export class SkillDeploymentService {
     }
   }
 
-  private rollback(requestId: string, body: Record<string, unknown>): Record<string, unknown> {
+  private rollback(idempotencyIdentity: string, body: Record<string, unknown>): Record<string, unknown> {
     if (body.expectedCurrentSetDigest !== undefined && !DIGEST.test(String(body.expectedCurrentSetDigest))) fail('expectedCurrentSetDigest is invalid');
     if (typeof body.reason !== 'string' || body.reason.length < 1 || body.reason.length > 512) fail('reason is required');
+    const requestDigest = sha256Hex(canonicalJson({
+      action: 'rollback',
+      expectedCurrentSetDigest: body.expectedCurrentSetDigest ?? null,
+      reason: body.reason,
+    }));
+    const replay = this.findIdempotentRecord(idempotencyIdentity, requestDigest);
+    if (replay !== null) return this.publicRecord(replay);
     const currentPath = linkTarget(this.paths.currentLink);
     const previousPath = linkTarget(this.paths.previousLink);
     if (currentPath === null || previousPath === null) throw new OperationError('resource_unavailable', 'previous package-set pointer is unavailable', false);
@@ -356,7 +396,8 @@ export class SkillDeploymentService {
     const deploymentId = randomUUID();
     const record: DeploymentRecord = {
       schemaVersion: '1.0.0', deploymentId, action: 'rollback',
-      idempotencyKeyDigest: sha256Hex(requestId), request: { reason: body.reason }, source: null,
+      idempotencyKeyDigest: sha256Hex(idempotencyIdentity), requestDigest,
+      request: { reason: body.reason }, source: null,
       priorActiveSetDigest: currentDigest, priorActiveSetPath: currentPath, priorPreviousSetPath: previousPath,
       candidateSetDigest: candidateDigest, candidateSetPath: previousPath, bundleDigest: null,
       expectedCatalogDigest: candidate.expectedCatalogDigest,
@@ -370,8 +411,14 @@ export class SkillDeploymentService {
     };
     const recordPath = join(this.paths.deploymentRoot, deploymentId, 'record.json');
     atomicWriteJson(recordPath, record);
-    this.scheduleActivation(recordPath, deploymentId);
     record.lifecycleState = 'ACTIVATING'; record.timestamps.activatingAt = now(); atomicWriteJson(recordPath, record);
+    try {
+      this.scheduleActivation(recordPath, deploymentId);
+    } catch (error) {
+      record.lifecycleState = 'FAILED'; record.finalState = 'FAILED'; record.redactedError = redact(error);
+      record.timestamps.failedAt = now(); atomicWriteJson(recordPath, record);
+      throw new OperationError('operation_failed', record.redactedError, false, { deploymentId });
+    }
     return this.publicRecord(record);
   }
 

@@ -90,7 +90,7 @@ export class OperationRegistry {
     const startedAt = new Date().toISOString();
 
     try {
-      result = await this.executeOperation(operation, payload.requestId, body);
+      result = await this.executeOperation(operation, payload.requestId, body, auth.fingerprint);
     } catch (error) {
       result = normalizeOperationError(error, operation, payload.requestId);
     }
@@ -135,9 +135,10 @@ export class OperationRegistry {
     operation: string,
     requestId: string,
     body: Record<string, unknown>,
+    semanticFingerprint: string,
   ): Promise<unknown> {
     if (SkillDeploymentService.handles(operation)) {
-      return this.skillService.execute(operation, requestId, body);
+      return this.skillService.execute(operation, semanticFingerprint, body);
     }
     const skillHandler = this.loadedSkills.handlers.get(operation);
     if (skillHandler !== undefined) {
