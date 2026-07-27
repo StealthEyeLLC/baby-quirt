@@ -17,10 +17,23 @@ import { buildCapabilityDescription, OPERATION_DEFINITIONS } from './definitions
 import { normalizeOperationError, OperationError } from './errors.js';
 import { StandaloneDeploymentService } from '../deployment/service.js';
 import { GitHubRuntimeService } from '../github/runtime-service.js';
+import {
+  GITHUB_APP_OPERATION_DEFINITIONS,
+  GITHUB_APP_OPERATION_NAMES,
+} from '../github/app-operation-definitions.js';
 
 export interface OperationResult {
   response: ResponsePayload;
   cached?: boolean;
+}
+
+function buildRuntimeCapabilityDescription(config: RuntimeConfig): Record<string, unknown> {
+  const description = buildCapabilityDescription(config);
+  const operations = Array.isArray(description.operations) ? description.operations : [];
+  return {
+    ...description,
+    operations: [...operations, ...GITHUB_APP_OPERATION_DEFINITIONS],
+  };
 }
 
 export class OperationRegistry {
@@ -127,7 +140,7 @@ export class OperationRegistry {
     }
     switch (operation) {
       case 'baby.describe':
-        return buildCapabilityDescription(this.config);
+        return buildRuntimeCapabilityDescription(this.config);
       case 'baby.health':
         return this.health();
       case 'baby.exec':
@@ -213,4 +226,7 @@ export class OperationRegistry {
   }
 }
 
-export const OPERATIONS = OPERATION_DEFINITIONS.map((definition) => definition.operation) as readonly string[];
+export const OPERATIONS = [
+  ...OPERATION_DEFINITIONS.map((definition) => definition.operation),
+  ...GITHUB_APP_OPERATION_NAMES,
+] as readonly string[];
