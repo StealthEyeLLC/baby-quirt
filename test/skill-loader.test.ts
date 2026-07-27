@@ -665,6 +665,22 @@ describe('minimal trusted skill loader', () => {
     });
   });
 
+  it('27c. a different caller key creates a new transaction for identical source', async () => {
+    await inFixture(async (fixture) => {
+      const { service, scheduled } = await createService(fixture);
+      const request = {
+        repository: 'StealthEyeLLC/baby-quirt', ref: COMMIT,
+        skillPath: 'examples/skills/proof-echo', expectedCommit: COMMIT,
+      };
+      const first = await service.execute('baby.skill.deploy', 'caller-key-one', request) as Record<string, unknown>;
+      const second = await service.execute('baby.skill.deploy', 'caller-key-two', request) as Record<string, unknown>;
+      assert.notEqual(second.deploymentId, first.deploymentId);
+      assert.equal(scheduled.length, 2);
+      assert.equal(readdirSync(fixture.deploymentRoot).length, 2);
+      assert.equal(second.bundleDigest, first.bundleDigest);
+    });
+  });
+
   it('28. identical redeployment reuses the exact bundle directory', async () => {
     await inFixture(async (fixture) => {
       const { service } = await createService(fixture);
