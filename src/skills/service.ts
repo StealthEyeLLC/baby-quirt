@@ -383,10 +383,19 @@ export class SkillDeploymentService {
     const invocation = cliInvocation('activate-cli');
     const unit = `baby-skill-activate-${deploymentId.replaceAll('-', '')}`;
     const scheduled = spawnSync('/usr/bin/systemd-run', [
-      '--unit', unit, '--collect', '--quiet', '--property=Type=oneshot',
+      '--unit', unit, '--collect', '--quiet', '--no-block', '--property=Type=oneshot',
       ...invocation, recordPath,
     ], { encoding: 'utf8', timeout: 10_000 });
-    if (scheduled.status !== 0) throw new Error(`failed to schedule durable activation: ${scheduled.stderr.trim()}`);
+    if (scheduled.status !== 0) {
+      const diagnostic = [
+        scheduled.error?.message,
+        scheduled.stderr.trim(),
+        scheduled.stdout.trim(),
+        scheduled.signal === null ? undefined : `signal=${scheduled.signal}`,
+        scheduled.status === null ? 'status=null' : `status=${scheduled.status}`,
+      ].filter((value): value is string => value !== undefined && value.length > 0).join('; ');
+      throw new Error(`failed to schedule durable activation: ${diagnostic || 'unknown systemd-run failure'}`);
+    }
   }
 
   private status(): Record<string, unknown> {

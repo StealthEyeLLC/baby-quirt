@@ -11,6 +11,7 @@ import { loadPackageSetFromPath } from './loader.js';
 export interface ActivationRecord {
   action: 'deploy' | 'rollback';
   deploymentId: string;
+  priorActiveSetDigest: string | null;
   priorActiveSetPath: string | null;
   priorPreviousSetPath: string | null;
   candidateSetPath: string;
@@ -58,6 +59,13 @@ export function pointerTarget(link: string): string | null {
   if (!existsSync(link)) return null;
   if (!lstatSync(link).isSymbolicLink()) throw new Error(`${link} is not a symlink`);
   return resolve(dirname(link), readlinkSync(link));
+}
+
+function packageSetDigestFromPath(path: string | null): string | null {
+  if (path === null) return null;
+  const match = /\/([a-f0-9]{64})\.json$/.exec(path);
+  if (match === null) throw new Error(`invalid package-set target: ${path}`);
+  return match[1]!;
 }
 
 export function replacePointer(link: string, destination: string | null): void {
@@ -136,8 +144,17 @@ export async function activateRecord(
   const record = JSON.parse(readFileSync(recordPath, 'utf8')) as ActivationRecord;
   const timestamp = (): string => (dependencies.now?.() ?? new Date()).toISOString();
   try {
-    if (pointerTarget(dependencies.currentLink) !== record.priorActiveSetPath) {
-      throw new Error('current pointer compare-and-swap mismatch');
+    const observedCurrentPath = pointerTarget(dependencies.currentLink);
+    const observedCurrentDigest = packageSetDigestFromPath(observedCurrentPath);
+    const recordedPathDigest = packageSetDigestFromPath(record.priorActiveSetPath);
+    if (
+      observedCurrentDigest !== record.priorActiveSetDigest ||
+      recordedPathDigest !== record.priorActiveSetDigest
+    ) {
+      throw new Error(
+        `current pointer compare-and-swap mismatch: expected ${record.priorActiveSetDigest ?? 'none'}, ` +
+        `observed ${observedCurrentDigest ?? 'none'}`,
+      );
     }
     record.lifecycleState = 'ACTIVATING';
     record.timestamps.pointerMutationAt = timestamp();

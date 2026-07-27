@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { generateKeyPairSync } from 'node:crypto';
 import {
-  cpSync, existsSync, mkdirSync, mkdtempSync, readdirSync,
+  cpSync, existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync,
   rmSync, symlinkSync, writeFileSync,
 } from 'node:fs';
 import { tmpdir } from 'node:os';
@@ -178,6 +178,7 @@ function activationRecord(
   return {
     action: 'deploy',
     deploymentId: 'deployment-test',
+    priorActiveSetDigest: prior.digest,
     priorActiveSetPath: prior.path,
     priorPreviousSetPath: null,
     candidateSetPath: candidate.path,
@@ -611,10 +612,12 @@ describe('minimal trusted skill loader', () => {
     });
   });
 
-  it('27. deploy uses the existing caller-key idempotency authority', () => {
+  it('27. deploy uses caller-key idempotency and non-blocking durable activation', () => {
     const definition = CORE.find((item) => item.operation === 'baby.skill.deploy');
     assert.equal(definition?.idempotency, 'caller_key');
     assert.equal(definition?.restartBehavior, 'durable_reconcile');
+    const serviceSource = readFileSync(new URL('../src/skills/service.ts', import.meta.url), 'utf8');
+    assert.match(serviceSource, /'--no-block'/);
   });
 
   it('28. identical redeployment reuses the exact bundle directory', async () => {
