@@ -16,6 +16,7 @@ import type { ResponsePayload } from '../protocol/frame.js';
 import { buildCapabilityDescription, OPERATION_DEFINITIONS } from './definitions.js';
 import { normalizeOperationError, OperationError } from './errors.js';
 import { StandaloneDeploymentService } from '../deployment/service.js';
+import { GitHubAppAuthority } from '../github/app-authority.js';
 
 export interface OperationResult {
   response: ResponsePayload;
@@ -29,6 +30,7 @@ export class OperationRegistry {
   private readonly artifacts: ArtifactManager;
   private privateKey?: ReturnType<typeof loadPrivKey>;
   private deployments?: StandaloneDeploymentService;
+  private githubAuthority?: GitHubAppAuthority;
 
   constructor(
     private readonly config: RuntimeConfig,
@@ -124,6 +126,12 @@ export class OperationRegistry {
         return buildCapabilityDescription(this.config);
       case 'baby.health':
         return this.health();
+      case 'baby.github.app.verify':
+        this.githubAuthority ??= new GitHubAppAuthority();
+        return await this.githubAuthority.verify(body);
+      case 'baby.github.app.proof':
+        this.githubAuthority ??= new GitHubAppAuthority();
+        return await this.githubAuthority.proof(body);
       case 'baby.exec':
         return await this.jobs.exec(requestId, body as never);
       case 'baby.shell':

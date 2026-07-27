@@ -21,6 +21,7 @@ export interface OperationDefinition {
   family:
     | 'discovery'
     | 'health'
+    | 'github'
     | 'execution'
     | 'job'
     | 'file'
@@ -133,6 +134,26 @@ export const OPERATION_DEFINITIONS: readonly OperationDefinition[] = [
     operation: 'baby.health', family: 'health', version: '1.0.0',
     description: 'Return bounded runtime health and exact host identity.',
     mutation: false, idempotency: 'read_only', risk: 'low', input: objectSchema({}),
+  },
+  {
+    operation: 'baby.github.app.verify', family: 'github', version: '1.0.0',
+    description: 'Verify the exact Baby GitHub Authority App, StealthEyeLLC installation, encrypted credential, and single-repository read access using an ephemeral token.',
+    mutation: false, idempotency: 'read_only', risk: 'low',
+    input: objectSchema({
+      repository: { type: 'string', pattern: '^StealthEyeLLC\/[A-Za-z0-9_.-]{1,100}$' },
+    }),
+    errors: ['invalid_request', 'credential_unavailable', 'github_identity_mismatch', 'github_request_failed'],
+    cancellation: 'not_applicable', restartBehavior: 'read_only', postActionVerification: true,
+  },
+  {
+    operation: 'baby.github.app.proof', family: 'github', version: '1.0.0',
+    description: 'Create, read back, and positively delete one ephemeral proof branch through the exact Baby GitHub Authority installation.',
+    mutation: true, idempotency: 'caller_key', risk: 'high',
+    input: objectSchema({
+      repository: { type: 'string', pattern: '^StealthEyeLLC\/[A-Za-z0-9_.-]{1,100}$' },
+    }, ['repository']),
+    errors: ['invalid_request', 'credential_unavailable', 'github_identity_mismatch', 'github_request_failed', 'github_cleanup_failed'],
+    cancellation: 'pre_arm_cleanup_post_arm_rollback', restartBehavior: 'durable_reconcile', postActionVerification: true,
   },
   {
     operation: 'baby.exec', family: 'execution', version: '1.0.0',

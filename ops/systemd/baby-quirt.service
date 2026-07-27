@@ -11,6 +11,7 @@ Group=root
 ExecStart=/opt/baby-quirt/current/bin/baby-quirt-daemon
 Environment=NODE_ENV=production
 EnvironmentFile=-/etc/baby-quirt/environment
+LoadCredentialEncrypted=github-baby-quirt-app-private-key:/etc/credstore.encrypted/github-baby-quirt-app-private-key.cred
 Restart=on-failure
 RestartSec=5
 TimeoutStopSec=30

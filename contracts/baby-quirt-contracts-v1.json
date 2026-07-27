@@ -119,6 +119,45 @@
       }
     },
     {
+      "operation": "baby.github.app.verify",
+      "description": "Verify the exact Baby GitHub Authority App, StealthEyeLLC installation, encrypted credential, and single-repository read access using an ephemeral token.",
+      "family": "github",
+      "mutation": false,
+      "idempotency": "read_only",
+      "risk": "low",
+      "input": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "repository": {
+            "type": "string",
+            "pattern": "^StealthEyeLLC\\/[A-Za-z0-9_.-]{1,100}$"
+          }
+        }
+      }
+    },
+    {
+      "operation": "baby.github.app.proof",
+      "description": "Create, read back, and positively delete one ephemeral proof branch through the exact Baby GitHub Authority installation.",
+      "family": "github",
+      "mutation": true,
+      "idempotency": "caller_key",
+      "risk": "high",
+      "input": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "repository": {
+            "type": "string",
+            "pattern": "^StealthEyeLLC\\/[A-Za-z0-9_.-]{1,100}$"
+          }
+        },
+        "required": [
+          "repository"
+        ]
+      }
+    },
+    {
       "operation": "baby.exec",
       "description": "Execute an exact executable and argv as a durable job.",
       "family": "execution",
@@ -948,7 +987,24 @@
       "mutation": false,
       "idempotency": "read_only",
       "risk": "low",
-      "input": { "type": "object", "additionalProperties": false, "properties": { "deploymentId": { "type": "string" }, "offset": { "type": "integer", "minimum": 0 }, "limit": { "type": "integer", "minimum": 1, "maximum": 200 } } }
+      "input": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "deploymentId": {
+            "type": "string"
+          },
+          "offset": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "limit": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 200
+          }
+        }
+      }
     },
     {
       "operation": "baby.release.build",
@@ -958,7 +1014,37 @@
       "mutation": true,
       "idempotency": "caller_key",
       "risk": "medium",
-      "input": { "type": "object", "additionalProperties": false, "properties": { "deploymentId": { "type": "string" }, "generation": { "type": "integer", "minimum": 1 }, "planDigest": { "type": "string", "pattern": "^[a-f0-9]{64}$" }, "deadline": { "type": "string", "format": "date-time" }, "sources": { "type": "object" } }, "required": ["deploymentId", "generation", "planDigest", "deadline", "sources"] }
+      "input": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "deploymentId": {
+            "type": "string"
+          },
+          "generation": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "planDigest": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{64}$"
+          },
+          "deadline": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "sources": {
+            "type": "object"
+          }
+        },
+        "required": [
+          "deploymentId",
+          "generation",
+          "planDigest",
+          "deadline",
+          "sources"
+        ]
+      }
     },
     {
       "operation": "baby.release.stage",
@@ -968,7 +1054,23 @@
       "mutation": true,
       "idempotency": "caller_key",
       "risk": "medium",
-      "input": { "type": "object", "additionalProperties": false, "properties": { "deploymentId": { "type": "string" }, "expectedSequence": { "type": "integer", "minimum": 0 } }, "required": ["deploymentId", "expectedSequence"] }
+      "input": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "deploymentId": {
+            "type": "string"
+          },
+          "expectedSequence": {
+            "type": "integer",
+            "minimum": 0
+          }
+        },
+        "required": [
+          "deploymentId",
+          "expectedSequence"
+        ]
+      }
     },
     {
       "operation": "baby.release.verify",
@@ -978,7 +1080,18 @@
       "mutation": false,
       "idempotency": "read_only",
       "risk": "low",
-      "input": { "type": "object", "additionalProperties": false, "properties": { "deploymentId": { "type": "string" } }, "required": ["deploymentId"] }
+      "input": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "deploymentId": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "deploymentId"
+        ]
+      }
     },
     {
       "operation": "baby.release.activate",
@@ -988,7 +1101,28 @@
       "mutation": true,
       "idempotency": "caller_key",
       "risk": "high",
-      "input": { "type": "object", "additionalProperties": false, "properties": { "deploymentId": { "type": "string" }, "expectedSequence": { "type": "integer", "minimum": 0 }, "confirmationDigest": { "type": "string", "pattern": "^[a-f0-9]{64}$" } }, "required": ["deploymentId", "expectedSequence", "confirmationDigest"] }
+      "input": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "deploymentId": {
+            "type": "string"
+          },
+          "expectedSequence": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "confirmationDigest": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{64}$"
+          }
+        },
+        "required": [
+          "deploymentId",
+          "expectedSequence",
+          "confirmationDigest"
+        ]
+      }
     },
     {
       "operation": "baby.release.rollback",
@@ -998,7 +1132,24 @@
       "mutation": true,
       "idempotency": "caller_key",
       "risk": "high",
-      "input": { "type": "object", "additionalProperties": false, "properties": { "deploymentId": { "type": "string" }, "reason": { "type": "string", "minLength": 8, "maxLength": 512 } }, "required": ["deploymentId", "reason"] }
+      "input": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "deploymentId": {
+            "type": "string"
+          },
+          "reason": {
+            "type": "string",
+            "minLength": 8,
+            "maxLength": 512
+          }
+        },
+        "required": [
+          "deploymentId",
+          "reason"
+        ]
+      }
     },
     {
       "operation": "baby.release.repair",
@@ -1008,7 +1159,23 @@
       "mutation": true,
       "idempotency": "caller_key",
       "risk": "high",
-      "input": { "type": "object", "additionalProperties": false, "properties": { "deploymentId": { "type": "string" }, "expectedSequence": { "type": "integer", "minimum": 0 } }, "required": ["deploymentId", "expectedSequence"] }
+      "input": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "deploymentId": {
+            "type": "string"
+          },
+          "expectedSequence": {
+            "type": "integer",
+            "minimum": 0
+          }
+        },
+        "required": [
+          "deploymentId",
+          "expectedSequence"
+        ]
+      }
     },
     {
       "operation": "baby.release.prune",
@@ -1018,7 +1185,23 @@
       "mutation": true,
       "idempotency": "caller_key",
       "risk": "medium",
-      "input": { "type": "object", "additionalProperties": false, "properties": { "dryRun": { "type": "boolean" }, "retain": { "type": "integer", "minimum": 2, "maximum": 100 } }, "required": ["dryRun"] }
+      "input": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "dryRun": {
+            "type": "boolean"
+          },
+          "retain": {
+            "type": "integer",
+            "minimum": 2,
+            "maximum": 100
+          }
+        },
+        "required": [
+          "dryRun"
+        ]
+      }
     },
     {
       "operation": "baby.selfhost.source.get",
@@ -1028,7 +1211,25 @@
       "mutation": true,
       "idempotency": "caller_key",
       "risk": "medium",
-      "input": { "type": "object", "additionalProperties": false, "properties": { "deploymentId": { "type": "string" }, "product": { "enum": ["baby-quirt", "baby-quirt-mcp"] } }, "required": ["deploymentId", "product"] }
+      "input": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "deploymentId": {
+            "type": "string"
+          },
+          "product": {
+            "enum": [
+              "baby-quirt",
+              "baby-quirt-mcp"
+            ]
+          }
+        },
+        "required": [
+          "deploymentId",
+          "product"
+        ]
+      }
     },
     {
       "operation": "baby.selfhost.acceptance.run",
@@ -1038,7 +1239,26 @@
       "mutation": true,
       "idempotency": "caller_key",
       "risk": "medium",
-      "input": { "type": "object", "additionalProperties": false, "properties": { "deploymentId": { "type": "string" }, "profile": { "enum": ["preactivation", "postactivation", "full"] } }, "required": ["deploymentId", "profile"] }
+      "input": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "deploymentId": {
+            "type": "string"
+          },
+          "profile": {
+            "enum": [
+              "preactivation",
+              "postactivation",
+              "full"
+            ]
+          }
+        },
+        "required": [
+          "deploymentId",
+          "profile"
+        ]
+      }
     },
     {
       "operation": "baby.selfhost.evidence.get",
@@ -1048,7 +1268,30 @@
       "mutation": false,
       "idempotency": "read_only",
       "risk": "low",
-      "input": { "type": "object", "additionalProperties": false, "properties": { "deploymentId": { "type": "string" }, "kind": { "type": "string" }, "offset": { "type": "integer", "minimum": 0 }, "limit": { "type": "integer", "minimum": 1, "maximum": 200 } }, "required": ["deploymentId"] }
+      "input": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "deploymentId": {
+            "type": "string"
+          },
+          "kind": {
+            "type": "string"
+          },
+          "offset": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "limit": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 200
+          }
+        },
+        "required": [
+          "deploymentId"
+        ]
+      }
     }
   ],
   "paths": {
