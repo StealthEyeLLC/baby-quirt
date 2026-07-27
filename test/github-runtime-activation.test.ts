@@ -1,19 +1,17 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 import type { RuntimeConfig } from '../src/config.js';
-import { OPERATION_DEFINITIONS } from '../src/operations/definitions.js';
 import { GitHubRuntimeService, PRODUCTION_GITHUB_AUTHORITY_ID } from '../src/github/runtime-service.js';
 
 const APP_OPERATIONS = ['baby.github.app.verify', 'baby.github.app.proof'] as const;
 
 describe('production GitHub runtime activation', () => {
-  it('advertises the production read surface and minimal GitHub App authority', () => {
-    const names = new Set(OPERATION_DEFINITIONS.map((definition) => definition.operation));
-    assert.equal(names.has('baby.github.describe'), true);
-    assert.equal(names.has('baby.github.remote.verify'), true);
-    assert.equal(names.has('baby.github.app.verify'), true);
-    assert.equal(names.has('baby.github.app.proof'), true);
-    assert.equal(names.has('baby.github.pr.upsert'), false);
+  it('registers the production read surface and minimal GitHub App authority', () => {
+    assert.equal(GitHubRuntimeService.handles('baby.github.describe'), true);
+    assert.equal(GitHubRuntimeService.handles('baby.github.remote.verify'), true);
+    assert.equal(GitHubRuntimeService.handles('baby.github.app.verify'), true);
+    assert.equal(GitHubRuntimeService.handles('baby.github.app.proof'), true);
+    assert.equal(GitHubRuntimeService.handles('baby.github.pr.upsert'), false);
   });
 
   it('describes registered authorities and dispatches SSH and GitHub App operations', async () => {
