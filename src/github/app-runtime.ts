@@ -16,6 +16,7 @@ const GITHUB_API_ORIGIN = 'https://api.github.com';
 const GITHUB_API_VERSION = '2026-03-10';
 const GITHUB_USER_AGENT = 'baby-quirt-github-app/1.0';
 const MAX_RESPONSE_BYTES = 1_048_576;
+const REQUEST_TIMEOUT_MS = 30_000;
 
 type JsonRecord = Record<string, unknown>;
 
@@ -174,6 +175,7 @@ export class GitHubAppRuntime {
     try {
       response = await fetch(`${GITHUB_API_ORIGIN}${path}`, {
         method,
+        signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
         headers: {
           Accept: 'application/vnd.github+json',
           Authorization: `Bearer ${bearer}`,
@@ -312,7 +314,7 @@ export class GitHubAppRuntime {
           id: PRODUCTION_GITHUB_APP_ID,
           name: PRODUCTION_GITHUB_APP_NAME,
           owner: PRODUCTION_GITHUB_ACCOUNT,
-          slug: typeof session.app.slug === 'string' ? session.app.slug : undefined,
+          ...(typeof session.app.slug === 'string' ? { slug: session.app.slug } : {}),
         },
         installation: {
           id: PRODUCTION_GITHUB_INSTALLATION_ID,
@@ -345,15 +347,17 @@ export class GitHubAppRuntime {
     const { owner, name } = repositoryParts(repository);
     const session = await this.authenticate(name, 'write');
     const branch = `baby-authority-proof/${sha256(requestId).slice(0, 24)}`;
-    const refPath = `/repos/${encodeURIComponent(owner)}/${encodeURIComponent(name)}/git/refs/heads/${encodedRef(branch)}`;
+    const encodedBranch = encodedRef(branch);
+    const refGetPath = `/repos/${encodeURIComponent(owner)}/${encodeURIComponent(name)}/git/ref/heads/${encodedBranch}`;
+    const refMutationPath = `/repos/${encodeURIComponent(owner)}/${encodeURIComponent(name)}/git/refs/heads/${encodedBranch}`;
     let branchCreated = false;
     let branchDeleted = false;
     let primaryError: unknown;
     let proofResult: Record<string, unknown> | undefined;
 
     const removeBranch = async (): Promise<void> => {
-      await this.request(refPath, session.token, { method: 'DELETE', expectedStatuses: [204, 404] });
-      const readback = await this.request(refPath, session.token, { expectedStatuses: [200, 404] });
+      await this.request(refMutationPath, session.token, { method: 'DELETE', expectedStatuses: [204, 404] });
+      const readback = await this.request(refGetPath, session.token, { expectedStatuses: [200, 404] });
       if (readback.status !== 404) {
         throw new OperationError('github_proof_cleanup_failed', 'Temporary proof branch still exists after deletion', false, {
           repository,
@@ -367,7 +371,7 @@ export class GitHubAppRuntime {
     try {
       const repositoryResponse = await this.request(`/repos/${encodeURIComponent(owner)}/${encodeURIComponent(name)}`, session.token);
       const defaultBranch = requiredString(repositoryResponse.body.default_branch, 'repository.default_branch');
-      const existing = await this.request(refPath, session.token, { expectedStatuses: [200, 404] });
+      const existing = await this.request(refGetPath, session.token, { expectedStatuses: [200, 404] });
       if (existing.status === 200) await removeBranch();
       branchDeleted = false;
 
@@ -429,12 +433,12 @@ export class GitHubAppRuntime {
         },
       });
       const commitSha = requiredString(commitResponse.body.sha, 'commit.sha');
-      await this.request(refPath, session.token, {
+      await this.request(refMutationPath, session.token, {
         method: 'PATCH',
         body: { sha: commitSha, force: false },
       });
 
-      const refReadback = await this.request(refPath, session.token);
+      const refReadback = await this.request(refGetPath, session.token);
       const refObject = requiredRecord(refReadback.body.object, 'proofRef.object');
       const observedCommit = requiredString(refObject.sha, 'proofRef.object.sha');
       const commitReadback = await this.request(
