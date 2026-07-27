@@ -1,4 +1,4 @@
-/** Production runtime registration for the safely deployable GitHub read surface. */
+/** Production runtime registration for the safely deployable GitHub surfaces. */
 
 import { execFileSync, spawnSync } from 'node:child_process';
 import { chmodSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
@@ -6,6 +6,15 @@ import { join } from 'node:path';
 import type { RuntimeConfig } from '../config.js';
 import { OperationError } from '../operations/errors.js';
 import { GITHUB_AUTHORITY_CONTRACT_VERSION } from './contracts.js';
+import {
+  GitHubAppRuntime,
+  PRODUCTION_GITHUB_ACCOUNT,
+  PRODUCTION_GITHUB_APP_CREDENTIAL_NAME,
+  PRODUCTION_GITHUB_APP_ID,
+  PRODUCTION_GITHUB_APP_NAME,
+  PRODUCTION_GITHUB_INSTALLATION_ID,
+  PRODUCTION_GITHUB_PROOF_REPOSITORY,
+} from './app-runtime.js';
 
 export const PRODUCTION_GITHUB_AUTHORITY_ID = 'github-baby-quirt';
 export const PRODUCTION_GITHUB_REMOTE = 'git@github.com:StealthEyeLLC/baby-quirt.git';
@@ -24,6 +33,8 @@ export interface GitHubRemoteVerifyInput {
 
 export interface GitHubRuntimeServiceOptions {
   verifyRemote?: (requestId: string, input: GitHubRemoteVerifyInput) => Record<string, unknown>;
+  verifyApp?: (requestId: string) => Promise<Record<string, unknown>> | Record<string, unknown>;
+  runAppProof?: (requestId: string) => Promise<Record<string, unknown>> | Record<string, unknown>;
 }
 
 function requiredString(body: Record<string, unknown>, key: string): string {
@@ -36,16 +47,27 @@ function requiredString(body: Record<string, unknown>, key: string): string {
 
 export class GitHubRuntimeService {
   private readonly verifyRemoteImplementation: (requestId: string, input: GitHubRemoteVerifyInput) => Record<string, unknown>;
+  private readonly appRuntime: GitHubAppRuntime;
 
   constructor(private readonly config: RuntimeConfig, options: GitHubRuntimeServiceOptions = {}) {
     this.verifyRemoteImplementation = options.verifyRemote ?? ((requestId, input) => this.verifyRemote(requestId, input));
+    this.appRuntime = new GitHubAppRuntime({
+      ...(options.verifyApp ? { verifyApp: options.verifyApp } : {}),
+      ...(options.runAppProof ? { runProof: options.runAppProof } : {}),
+    });
   }
 
   static handles(operation: string): boolean {
-    return operation === 'baby.github.describe' || operation === 'baby.github.remote.verify';
+    return operation === 'baby.github.describe'
+      || operation === 'baby.github.remote.verify'
+      || GitHubAppRuntime.handles(operation);
   }
 
-  execute(operation: string, requestId: string, body: Record<string, unknown>): Record<string, unknown> {
+  execute(
+    operation: string,
+    requestId: string,
+    body: Record<string, unknown>,
+  ): Record<string, unknown> | Promise<Record<string, unknown>> {
     if (operation === 'baby.github.describe') return this.describe();
     if (operation === 'baby.github.remote.verify') {
       return this.verifyRemoteImplementation(requestId, {
@@ -56,17 +78,23 @@ export class GitHubRuntimeService {
         ...(typeof body.expectedBaseBranch === 'string' ? { expectedBaseBranch: body.expectedBaseBranch } : {}),
       });
     }
+    if (GitHubAppRuntime.handles(operation)) return this.appRuntime.execute(operation, requestId);
     throw new OperationError('unknown_operation', `Unknown GitHub runtime operation: ${operation}`, false, { operation });
   }
 
   private describe(): Record<string, unknown> {
     return {
-      providerVersion: '1.0.0',
+      providerVersion: '1.1.0',
       contractVersion: GITHUB_AUTHORITY_CONTRACT_VERSION,
-      apiVersion: 'git-protocol-v2',
+      apiVersion: '2026-03-10',
       host: 'github.com',
-      credentialTypes: ['ssh_deploy_key'],
-      supportedOperations: ['baby.github.describe', 'baby.github.remote.verify'],
+      credentialTypes: ['ssh_deploy_key', 'github_app_private_key'],
+      supportedOperations: [
+        'baby.github.describe',
+        'baby.github.remote.verify',
+        'baby.github.app.verify',
+        'baby.github.app.proof',
+      ],
       repositoryAuthorities: [{
         repositoryAuthorityId: PRODUCTION_GITHUB_AUTHORITY_ID,
         repository: 'StealthEyeLLC/baby-quirt',
@@ -75,15 +103,29 @@ export class GitHubRuntimeService {
         credentialReferenceId: PRODUCTION_GITHUB_CREDENTIAL_NAME,
         permissions: ['github.repository.metadata', 'github.contents.read'],
       }],
+      appAuthorities: [{
+        authorityId: 'github-app-baby-quirt-authority',
+        appId: PRODUCTION_GITHUB_APP_ID,
+        appName: PRODUCTION_GITHUB_APP_NAME,
+        installationId: PRODUCTION_GITHUB_INSTALLATION_ID,
+        account: PRODUCTION_GITHUB_ACCOUNT,
+        credentialReferenceId: PRODUCTION_GITHUB_APP_CREDENTIAL_NAME,
+        proofRepository: PRODUCTION_GITHUB_PROOF_REPOSITORY,
+        tokenPersistence: 'memory_only',
+      }],
       permissionRequirements: {
         'baby.github.describe': ['github.discovery'],
         'baby.github.remote.verify': ['github.repository.metadata', 'github.contents.read'],
+        'baby.github.app.verify': ['github.repository.metadata', 'github.contents.read'],
+        'baby.github.app.proof': ['github.repository.metadata', 'github.contents.write'],
       },
-      rateLimitBehavior: { transport: 'git_ssh', apiRateLimitConsumed: false },
+      rateLimitBehavior: {
+        ssh: { transport: 'git_ssh', apiRateLimitConsumed: false },
+        app: { transport: 'github_rest', installationTokens: 'just_in_time_memory_only' },
+      },
       limits: { maximumOutputBytes: 65_536, maximumParents: 256 },
       supportState: 'production_enabled',
-      acceptanceState: 'production_enabled',
-      unavailableWithoutAdditionalCredential: ['github_api_operations'],
+      acceptanceState: 'credential_verification_required',
     };
   }
 
