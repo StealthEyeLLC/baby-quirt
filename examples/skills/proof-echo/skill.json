@@ -1,0 +1,35 @@
+{
+  "schemaVersion": "1.0.0",
+  "name": "proof",
+  "version": "1.0.0",
+  "entrypoint": "index.mjs",
+  "babyCompatibility": ">=0.1.0 <1.0.0",
+  "operations": [
+    {
+      "operation": "baby.skill.proof.echo",
+      "version": "1.0.0",
+      "description": "Return a deterministic harmless proof echo from the active immutable skill bundle.",
+      "mutation": false,
+      "risk": "low",
+      "input": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["text"],
+        "properties": { "text": { "type": "string", "maxLength": 4096 } }
+      },
+      "output": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["text", "skillName", "skillVersion", "bundleDigest", "activeSetDigest"],
+        "properties": {
+          "text": { "type": "string" },
+          "skillName": { "type": "string" },
+          "skillVersion": { "type": "string" },
+          "bundleDigest": { "type": "string" },
+          "activeSetDigest": { "type": "string" }
+        }
+      },
+      "handler": "echo"
+    }
+  ]
+}
